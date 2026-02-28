@@ -2,18 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { UserButton, SignedIn } from '@clerk/nextjs';
 import AnimatedNumber from '../shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-
-let UserButton: React.ComponentType<{ afterSignOutUrl?: string; appearance?: Record<string, unknown> }> | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const clerk = require('@clerk/nextjs');
-  UserButton = clerk.UserButton;
-} catch {
-  // Clerk not available
-}
 
 export default function TopBar() {
   const pathname = usePathname();
@@ -69,21 +61,16 @@ export default function TopBar() {
 
         {/* User / Sign Out */}
         <div className="flex items-center gap-3">
-          {UserButton ? (
+          <SignedIn>
             <UserButton
               afterSignOutUrl="/sign-in"
               appearance={{
                 elements: {
                   avatarBox: 'w-8 h-8',
-                  userButtonPopoverCard: 'bg-bg-elevated border border-border',
                 },
               }}
             />
-          ) : (
-              <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-sm font-semibold text-accent">
-                A
-              </div>
-          )}
+          </SignedIn>
         </div>
       </div>
     </header>

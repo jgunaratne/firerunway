@@ -11,15 +11,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { mockAccounts, mockAllocation, mockPortfolioHistory, mockETFRecommendations } from '@/lib/mock-data';
 import { useSearchParams } from 'next/navigation';
-
-let useUser: () => { user: { id: string; primaryEmailAddress?: { emailAddress: string } } | null | undefined } = () => ({ user: null });
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const clerk = require('@clerk/nextjs');
-  useUser = clerk.useUser;
-} catch {
-  // Clerk not available
-}
+import { useAuth } from '@clerk/nextjs';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
@@ -293,17 +285,17 @@ interface ConnectedAccount {
 }
 
 function AccountsTab() {
-  const { user } = useUser();
+  const { userId } = useAuth();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAccounts = useCallback(async () => {
-    if (!user?.id) return;
+    if (!userId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/snaptrade/accounts?clerkId=${user.id}`);
+      const res = await fetch(`/api/snaptrade/accounts?clerkId=${userId}`);
       const data = await res.json();
       setAccounts(data.accounts || []);
     } catch {
@@ -311,14 +303,14 @@ function AccountsTab() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
 
   const connectBrokerage = async (brokerId?: string) => {
-    if (!user?.id) return;
+    if (!userId) return;
     setConnecting(true);
     setError(null);
     try {
@@ -326,14 +318,14 @@ function AccountsTab() {
       await fetch('/api/snaptrade/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: user.id }),
+        body: JSON.stringify({ clerkId: userId }),
       });
 
       // Step 2: Get connection portal URL
       const connectRes = await fetch('/api/snaptrade/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: user.id, broker: brokerId || undefined }),
+        body: JSON.stringify({ clerkId: userId, broker: brokerId || undefined }),
       });
       const connectData = await connectRes.json();
 
@@ -360,12 +352,12 @@ function AccountsTab() {
   };
 
   const disconnectAccount = async (authorizationId: string) => {
-    if (!user?.id) return;
+    if (!userId) return;
     try {
       await fetch('/api/snaptrade/accounts', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: user.id, authorizationId }),
+        body: JSON.stringify({ clerkId: userId, authorizationId }),
       });
       fetchAccounts();
     } catch {
@@ -423,7 +415,7 @@ function AccountsTab() {
             <button
               key={broker.id || 'other'}
               onClick={() => connectBrokerage(broker.id)}
-              disabled={connecting || !user}
+              disabled={connecting || !userId}
               className="glass-card-hover p-4 text-center flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="text-3xl">{broker.icon}</span>
@@ -433,7 +425,7 @@ function AccountsTab() {
           ))}
         </div>
 
-        {!user && (
+        {!userId && (
           <p className="text-xs text-amber-400 mt-4">
             ⚠️ Sign in to connect your brokerage accounts.
           </p>
