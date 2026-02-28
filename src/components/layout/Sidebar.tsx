@@ -11,6 +11,7 @@ const navItems = [
   { href: '/equity', icon: '💼', label: 'Equity / RSUs' },
   { href: '/fire-score', icon: '🔥', label: 'FIRE Score' },
   { href: '/monte-carlo', icon: '📊', label: 'Monte Carlo' },
+  { href: '/portfolio?tab=accounts', icon: '🔗', label: 'Accounts' },
 ];
 
 export default function Sidebar() {
