@@ -3,18 +3,66 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
-import { formatCurrency } from '@/lib/calculations';
+import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 
-const steps = [
-  'Welcome',
-  'Create Account',
-  'Connect Accounts',
-  'RSU Setup',
-  'Real Estate',
-  'Your Numbers',
-  'First Look',
-];
+// ─── Types ──────────────────────────────────────────────────────────
+
+interface RSUGrant {
+  companyTicker: string;
+  grantDate: string;
+  totalShares: number;
+  vestedShares: number;
+  cliffMonths: number;
+  vestPeriodMonths: number;
+  vestFrequency: string;
+}
+
+interface RealEstateProperty {
+  address: string;
+  propertyType: string;
+  purchasePrice: number;
+  purchaseDate: string;
+  currentValue: number;
+  originalLoanAmount: number;
+  mortgageBalance: number;
+  mortgageRate: number;
+  mortgageTermMonths: number;
+  mortgageStartDate: string;
+  monthlyPayment: number;
+  monthlyRent: number | null;
+}
+
+interface UserProfile {
+  annualIncome: number;
+  annualSpend: number;
+  retirementSpend: number;
+  stateOfResidence: string;
+  filingStatus: string;
+  fireNumber: number;
+  fireTargetYear: number | null;
+}
+
+interface OnboardingData {
+  profile: UserProfile;
+  rsuGrants: RSUGrant[];
+  realEstate: RealEstateProperty[];
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+const inputClass = 'w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors';
+const numberClass = `${inputClass} number-display`;
+const labelClass = 'text-xs text-text-secondary block mb-1';
+
+function parseNum(val: string): number {
+  return Number(val.replace(/[^0-9.-]/g, '')) || 0;
+}
+
+// ─── Steps ──────────────────────────────────────────────────────────
+
+const steps = ['Welcome', 'Connect Accounts', 'RSU Setup', 'Real Estate', 'Your Numbers', 'First Look'];
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -22,48 +70,27 @@ function ProgressIndicator({ current, total }: { current: number; total: number 
       {Array.from({ length: total }, (_, i) => (
         <div
           key={i}
-          className={`h-1.5 rounded-full transition-all duration-300 ${i < current ? 'bg-accent w-8' : i === current ? 'bg-accent w-12' : 'bg-border w-8'
-            }`}
+          className={`h-1.5 rounded-full transition-all duration-300 ${i < current ? 'bg-accent w-8' : i === current ? 'bg-accent w-12' : 'bg-border w-8'}`}
         />
       ))}
     </div>
   );
 }
 
-// Welcome Screen
+// Welcome
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4"
-    >
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
-      >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
+      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }}>
         <span className="text-6xl mb-6 block">🔥</span>
       </motion.div>
-      <motion.h1
-        className="font-display text-3xl lg:text-5xl text-text-primary max-w-2xl leading-tight"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-      >
+      <motion.h1 className="font-display text-3xl lg:text-5xl text-text-primary max-w-2xl leading-tight"
+        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }}>
         Know if you&apos;re financially independent — before you find out the hard way
       </motion.h1>
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
-        className="mt-10"
-      >
-        <button
-          onClick={onNext}
-          className="px-8 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all transform hover:scale-105 text-lg"
-        >
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.5 }} className="mt-10">
+        <button onClick={onNext} className="px-8 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all transform hover:scale-105 text-lg">
           Get Started
         </button>
       </motion.div>
@@ -71,82 +98,24 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-// Create Account Screen
-function CreateAccountStep({ onNext }: { onNext: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }}
-      className="max-w-md mx-auto space-y-6"
-    >
-      <div>
-        <h2 className="font-display text-2xl text-text-primary">Create Your Account</h2>
-        <p className="text-sm text-text-secondary mt-1">Secure, private, encrypted</p>
-      </div>
-
-      <div className="space-y-4">
-        <button className="w-full glass-card-hover p-3 flex items-center justify-center gap-3 text-sm font-medium">
-          <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-          Continue with Google
-        </button>
-
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-text-secondary">or</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Email</label>
-            <input type="email" placeholder="you@email.com" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/50 focus:border-accent focus:outline-none transition-colors" />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Password</label>
-            <input type="password" placeholder="••••••••••" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder-text-secondary/50 focus:border-accent focus:outline-none transition-colors" />
-          </div>
-        </div>
-
-        <button
-          onClick={onNext}
-          className="w-full py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm"
-        >
-          Create Account
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-// Connect Accounts Screen
+// Connect Accounts (placeholder for SnapTrade)
 function ConnectAccountsStep({ onNext }: { onNext: () => void }) {
   const [connected, setConnected] = useState({ brokerage: false, retirement: false, ira: false });
-
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }}
-      className="max-w-md mx-auto space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-md mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Connect Your Accounts</h2>
         <p className="text-sm text-text-secondary mt-1">Securely link your brokerage and retirement accounts</p>
       </div>
-
       <div className="space-y-3">
         {[
           { key: 'brokerage', label: 'Brokerage', desc: 'Schwab, Fidelity, E*Trade, etc.', icon: '📈' },
           { key: 'retirement', label: '401k / Retirement', desc: 'Employer retirement plan', icon: '🏦' },
           { key: 'ira', label: 'IRA / Roth IRA', desc: 'Individual retirement accounts', icon: '💰' },
         ].map((account) => (
-          <button
-            key={account.key}
+          <button key={account.key}
             onClick={() => setConnected(prev => ({ ...prev, [account.key]: !prev[account.key as keyof typeof prev] }))}
-            className={`w-full glass-card p-4 flex items-center gap-4 text-left transition-all ${connected[account.key as keyof typeof connected] ? 'border-emerald-500/30 bg-emerald-500/5' : ''
-              }`}
-          >
+            className={`w-full glass-card p-4 flex items-center gap-4 text-left transition-all ${connected[account.key as keyof typeof connected] ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}>
             <span className="text-2xl">{account.icon}</span>
             <div className="flex-1">
               <p className="text-sm font-medium text-text-primary">{account.label}</p>
@@ -156,148 +125,201 @@ function ConnectAccountsStep({ onNext }: { onNext: () => void }) {
           </button>
         ))}
       </div>
-
+      <p className="text-xs text-text-secondary/60 text-center">Account connections via SnapTrade coming soon. Skip for now and enter data manually.</p>
       <div className="flex gap-3">
-        <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">
-          Continue
-        </button>
-        <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">
-          Skip for now
-        </button>
+        <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">Continue</button>
+        <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">Skip for now</button>
       </div>
     </motion.div>
   );
 }
 
-// RSU Setup Screen
-function RSUSetupStep({ onNext }: { onNext: () => void }) {
+// RSU Setup
+function RSUSetupStep({ onNext, grants, setGrants }: { onNext: () => void; grants: RSUGrant[]; setGrants: (g: RSUGrant[]) => void }) {
+  const updateGrant = (idx: number, field: keyof RSUGrant, val: string | number) => {
+    const updated = [...grants];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setGrants(updated);
+  };
+
+  const addGrant = () => {
+    setGrants([...grants, { companyTicker: '', grantDate: '', totalShares: 0, vestedShares: 0, cliffMonths: 12, vestPeriodMonths: 48, vestFrequency: 'quarterly' }]);
+  };
+
+  const removeGrant = (idx: number) => {
+    if (grants.length > 1) setGrants(grants.filter((_, i) => i !== idx));
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }}
-      className="max-w-lg mx-auto space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">RSU / Equity Setup</h2>
         <p className="text-sm text-text-secondary mt-1">Tell us about your equity compensation</p>
       </div>
 
-      <div className="glass-card p-5 space-y-4">
-        <div>
-          <label className="text-xs text-text-secondary block mb-1">Employer Company</label>
-          <input type="text" defaultValue="Amazon" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors" />
+      {grants.map((grant, idx) => (
+        <div key={idx} className="glass-card p-5 space-y-4">
+          {grants.length > 1 && (
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-text-secondary font-medium">Grant {idx + 1}</p>
+              <button onClick={() => removeGrant(idx)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+            </div>
+          )}
+          <div>
+            <label className={labelClass}>Company Ticker</label>
+            <input type="text" value={grant.companyTicker} onChange={e => updateGrant(idx, 'companyTicker', e.target.value.toUpperCase())} placeholder="AMZN" className={inputClass} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Grant Date</label>
+              <input type="date" value={grant.grantDate} onChange={e => updateGrant(idx, 'grantDate', e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Total Shares Granted</label>
+              <input type="number" value={grant.totalShares || ''} onChange={e => updateGrant(idx, 'totalShares', parseInt(e.target.value) || 0)} className={numberClass} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Shares Already Vested</label>
+              <input type="number" value={grant.vestedShares || ''} onChange={e => updateGrant(idx, 'vestedShares', parseInt(e.target.value) || 0)} className={numberClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Vesting Schedule</label>
+              <select value={grant.vestFrequency} onChange={e => updateGrant(idx, 'vestFrequency', e.target.value)} className={inputClass}>
+                <option value="quarterly">4-year / 1-year cliff (quarterly)</option>
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+              </select>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Grant Date</label>
-            <input type="date" defaultValue="2022-01-15" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors" />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Total Shares Granted</label>
-            <input type="number" defaultValue={1000} className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors number-display" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Shares Already Vested</label>
-            <input type="number" defaultValue={750} className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors number-display" />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Vesting Schedule</label>
-            <select className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors">
-              <option>4-year / 1-year cliff</option>
-              <option>Custom</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      ))}
 
-      <button className="w-full glass-card-hover p-3 text-sm text-accent font-medium flex items-center justify-center gap-2">
+      <button onClick={addGrant} className="w-full glass-card-hover p-3 text-sm text-accent font-medium flex items-center justify-center gap-2">
         <span>+</span> Add Another Grant
       </button>
 
-      <button className="w-full glass-card-hover p-3 text-sm text-text-secondary font-medium flex items-center justify-center gap-2">
-        📄 Upload Grant Document (AI will parse it)
-      </button>
-
-      <button onClick={onNext} className="w-full py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">
-        Continue
-      </button>
+      <div className="flex gap-3">
+        <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">Continue</button>
+        <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">Skip</button>
+      </div>
     </motion.div>
   );
 }
 
-// Real Estate Setup Screen
-function RealEstateSetupStep({ onNext }: { onNext: () => void }) {
+// Real Estate Setup
+function RealEstateSetupStep({ onNext, properties, setProperties }: { onNext: () => void; properties: RealEstateProperty[]; setProperties: (p: RealEstateProperty[]) => void }) {
+  const updateProp = (idx: number, field: keyof RealEstateProperty, val: string | number | null) => {
+    const updated = [...properties];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setProperties(updated);
+  };
+
+  const addProperty = () => {
+    setProperties([...properties, {
+      address: '', propertyType: 'primary', purchasePrice: 0, purchaseDate: '', currentValue: 0,
+      originalLoanAmount: 0, mortgageBalance: 0, mortgageRate: 0, mortgageTermMonths: 360,
+      mortgageStartDate: '', monthlyPayment: 0, monthlyRent: null,
+    }]);
+  };
+
+  const removeProperty = (idx: number) => {
+    if (properties.length > 1) setProperties(properties.filter((_, i) => i !== idx));
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }}
-      className="max-w-lg mx-auto space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Real Estate</h2>
         <p className="text-sm text-text-secondary mt-1">Add your properties to get a complete net worth picture</p>
       </div>
 
-      <div className="glass-card p-5 space-y-4">
-        <div>
-          <label className="text-xs text-text-secondary block mb-1">Property Address</label>
-          <input type="text" defaultValue="123 Main St, Seattle, WA" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none" />
+      {properties.map((prop, idx) => (
+        <div key={idx} className="glass-card p-5 space-y-4">
+          {properties.length > 1 && (
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-text-secondary font-medium">Property {idx + 1}</p>
+              <button onClick={() => removeProperty(idx)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+            </div>
+          )}
+          <div>
+            <label className={labelClass}>Property Address</label>
+            <input type="text" value={prop.address} onChange={e => updateProp(idx, 'address', e.target.value)} placeholder="123 Main St, City, State" className={inputClass} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Property Type</label>
+              <select value={prop.propertyType} onChange={e => updateProp(idx, 'propertyType', e.target.value)} className={inputClass}>
+                <option value="primary">Primary Residence</option>
+                <option value="rental">Rental</option>
+                <option value="vacation">Vacation</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Current Value</label>
+              <input type="number" value={prop.currentValue || ''} onChange={e => updateProp(idx, 'currentValue', parseNum(e.target.value))} placeholder="0" className={numberClass} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Purchase Price</label>
+              <input type="number" value={prop.purchasePrice || ''} onChange={e => updateProp(idx, 'purchasePrice', parseNum(e.target.value))} className={numberClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Purchase Date</label>
+              <input type="date" value={prop.purchaseDate} onChange={e => updateProp(idx, 'purchaseDate', e.target.value)} className={inputClass} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Mortgage Balance</label>
+              <input type="number" value={prop.mortgageBalance || ''} onChange={e => updateProp(idx, 'mortgageBalance', parseNum(e.target.value))} className={numberClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Monthly Payment</label>
+              <input type="number" value={prop.monthlyPayment || ''} onChange={e => updateProp(idx, 'monthlyPayment', parseNum(e.target.value))} className={numberClass} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Mortgage Rate (%)</label>
+              <input type="number" step="0.01" value={prop.mortgageRate || ''} onChange={e => updateProp(idx, 'mortgageRate', parseFloat(e.target.value) || 0)} className={numberClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Original Loan Amount</label>
+              <input type="number" value={prop.originalLoanAmount || ''} onChange={e => updateProp(idx, 'originalLoanAmount', parseNum(e.target.value))} className={numberClass} />
+            </div>
+          </div>
+          {prop.propertyType === 'rental' && (
+            <div>
+              <label className={labelClass}>Monthly Rent</label>
+              <input type="number" value={prop.monthlyRent || ''} onChange={e => updateProp(idx, 'monthlyRent', parseNum(e.target.value))} className={numberClass} />
+            </div>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Property Type</label>
-            <select className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none">
-              <option>Primary Residence</option>
-              <option>Rental</option>
-              <option>Vacation</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Current Value</label>
-            <input type="text" defaultValue="$1,400,000" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none number-display" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Mortgage Balance</label>
-            <input type="text" defaultValue="$620,000" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none number-display" />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Monthly Payment</label>
-            <input type="text" defaultValue="$3,840" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none number-display" />
-          </div>
-        </div>
-      </div>
+      ))}
 
-      <button className="w-full glass-card-hover p-3 text-sm text-accent font-medium flex items-center justify-center gap-2">
+      <button onClick={addProperty} className="w-full glass-card-hover p-3 text-sm text-accent font-medium flex items-center justify-center gap-2">
         <span>+</span> Add Another Property
       </button>
 
       <div className="flex gap-3">
-        <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">
-          Continue
-        </button>
-        <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">
-          Skip
-        </button>
+        <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">Continue</button>
+        <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">Skip</button>
       </div>
     </motion.div>
   );
 }
 
-// Your Numbers Screen
-function YourNumbersStep({ onNext }: { onNext: () => void }) {
+// Your Numbers
+function YourNumbersStep({ onNext, profile, setProfile }: { onNext: () => void; profile: UserProfile; setProfile: (p: UserProfile) => void }) {
+  const update = (field: keyof UserProfile, val: string | number | null) => {
+    setProfile({ ...profile, [field]: val });
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }}
-      className="max-w-lg mx-auto space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Your Numbers</h2>
         <p className="text-sm text-text-secondary mt-1">We need a few more details to calculate your FIRE score</p>
@@ -306,39 +328,42 @@ function YourNumbersStep({ onNext }: { onNext: () => void }) {
       <div className="glass-card p-5 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-text-secondary block mb-1">Annual Gross Income</label>
-            <input type="text" defaultValue="$380,000" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none number-display" />
+            <label className={labelClass}>Annual Gross Income</label>
+            <input type="number" value={profile.annualIncome || ''} onChange={e => update('annualIncome', parseNum(e.target.value))} placeholder="380000" className={numberClass} />
           </div>
           <div>
-            <label className="text-xs text-text-secondary block mb-1">Annual Expenses</label>
-            <input type="text" defaultValue="$120,000" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none number-display" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Retirement Spending</label>
-            <input type="text" defaultValue="$96,000" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none number-display" />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary block mb-1">Target FIRE Date</label>
-            <input type="text" placeholder="Optional — we'll calculate" className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-secondary/50 focus:border-accent focus:outline-none" />
+            <label className={labelClass}>Annual Expenses</label>
+            <input type="number" value={profile.annualSpend || ''} onChange={e => update('annualSpend', parseNum(e.target.value))} placeholder="120000" className={numberClass} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-text-secondary block mb-1">State of Residence</label>
-            <select className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none">
-              <option>WA — Washington</option>
-              <option>CA — California</option>
-              <option>NY — New York</option>
-              <option>TX — Texas</option>
+            <label className={labelClass}>Expected Retirement Spending</label>
+            <input type="number" value={profile.retirementSpend || ''} onChange={e => update('retirementSpend', parseNum(e.target.value))} placeholder="96000" className={numberClass} />
+          </div>
+          <div>
+            <label className={labelClass}>FIRE Number (target)</label>
+            <input type="number" value={profile.fireNumber || ''} onChange={e => update('fireNumber', parseNum(e.target.value))} placeholder="3000000" className={numberClass} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>State of Residence</label>
+            <select value={profile.stateOfResidence} onChange={e => update('stateOfResidence', e.target.value)} className={inputClass}>
+              <option value="WA">WA — Washington</option>
+              <option value="CA">CA — California</option>
+              <option value="NY">NY — New York</option>
+              <option value="TX">TX — Texas</option>
+              <option value="FL">FL — Florida</option>
+              <option value="CO">CO — Colorado</option>
+              <option value="OR">OR — Oregon</option>
             </select>
           </div>
           <div>
-            <label className="text-xs text-text-secondary block mb-1">Filing Status</label>
-            <select className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none">
-              <option>Single</option>
-              <option>Married Filing Jointly</option>
+            <label className={labelClass}>Filing Status</label>
+            <select value={profile.filingStatus} onChange={e => update('filingStatus', e.target.value)} className={inputClass}>
+              <option value="single">Single</option>
+              <option value="mfj">Married Filing Jointly</option>
             </select>
           </div>
         </div>
@@ -352,94 +377,139 @@ function YourNumbersStep({ onNext }: { onNext: () => void }) {
 }
 
 // First Look / Payoff Screen
-function FirstLookStep({ onFinish }: { onFinish: () => void }) {
+function FirstLookStep({ onFinish, data, saving }: { onFinish: () => void; data: OnboardingData; saving: boolean }) {
+  const investable = data.rsuGrants.reduce((sum, g) => sum + g.vestedShares * 190, 0); // rough estimate
+  const realEstateEquity = data.realEstate.reduce((sum, p) => sum + (p.currentValue - p.mortgageBalance), 0);
+  const totalNetWorth = investable + realEstateEquity;
+  const runway = data.profile.annualSpend > 0 ? totalNetWorth / data.profile.annualSpend : 0;
+
+  const fiScore = calculateFIScore({
+    currentInvestableAssets: investable,
+    fireNumber: data.profile.fireNumber || 3000000,
+    liquidAssets: investable,
+    annualSpend: data.profile.annualSpend || 120000,
+    employerStockValue: investable * 0.3,
+    totalNetWorth,
+    isEmployed: true,
+    annualIncome: data.profile.annualIncome || 380000,
+  });
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4 space-y-8"
-    >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-      >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4 space-y-8">
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}>
         <span className="text-7xl block">🔥</span>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="space-y-2"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="space-y-2">
         <p className="text-sm text-text-secondary uppercase tracking-wider">Your FI Score</p>
         <p className="number-display text-7xl lg:text-8xl font-bold text-accent">
-          <AnimatedNumber value={72} duration={1500} />
+          <AnimatedNumber value={fiScore.total} duration={1500} />
         </p>
-        <p className="text-text-secondary">out of 100 — Approaching Independence</p>
+        <p className="text-text-secondary">
+          out of 100 — {fiScore.total >= 75 ? 'Approaching Independence' : fiScore.total >= 50 ? 'Halfway There' : 'Building Your Base'}
+        </p>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2 }}
-        className="grid grid-cols-3 gap-6 max-w-xl"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }} className="grid grid-cols-3 gap-6 max-w-xl">
         <div className="glass-card p-4 text-center">
           <p className="text-xs text-text-secondary mb-1">Net Worth</p>
           <p className="number-display text-xl font-bold text-emerald-400">
-            <AnimatedNumber value={3960000} format={(n) => formatCurrency(n, true)} duration={1200} />
+            <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} duration={1200} />
           </p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-xs text-text-secondary mb-1">FIRE Date</p>
+          <p className="text-xs text-text-secondary mb-1">FIRE Number</p>
           <p className="number-display text-xl font-bold text-text-primary">
-            <AnimatedNumber value={2028} duration={1200} />
+            <AnimatedNumber value={data.profile.fireNumber || 3000000} format={(n) => formatCurrency(n, true)} duration={1200} />
           </p>
         </div>
         <div className="glass-card p-4 text-center">
           <p className="text-xs text-text-secondary mb-1">Runway</p>
           <p className="number-display text-xl font-bold text-accent">
-            <AnimatedNumber value={142} format={(n) => `${(n / 10).toFixed(1)}yr`} duration={1200} />
+            <AnimatedNumber value={Math.round(runway * 10)} format={(n) => `${(n / 10).toFixed(1)}yr`} duration={1200} />
           </p>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.8 }}
-      >
-        <button
-          onClick={onFinish}
-          className="px-8 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all transform hover:scale-105 text-lg"
-        >
-          Go to Dashboard →
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8 }}>
+        <button onClick={onFinish} disabled={saving}
+          className="px-8 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all transform hover:scale-105 text-lg disabled:opacity-50 disabled:transform-none">
+          {saving ? 'Saving your data...' : 'Go to Dashboard →'}
         </button>
       </motion.div>
     </motion.div>
   );
 }
 
+// ─── Main Onboarding Page ───────────────────────────────────────────
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
+  const { user } = useUser();
+
+  // Form state
+  const [profile, setProfile] = useState<UserProfile>({
+    annualIncome: 0,
+    annualSpend: 0,
+    retirementSpend: 0,
+    stateOfResidence: 'WA',
+    filingStatus: 'single',
+    fireNumber: 0,
+    fireTargetYear: null,
+  });
+
+  const [rsuGrants, setRsuGrants] = useState<RSUGrant[]>([
+    { companyTicker: '', grantDate: '', totalShares: 0, vestedShares: 0, cliffMonths: 12, vestPeriodMonths: 48, vestFrequency: 'quarterly' },
+  ]);
+
+  const [realEstate, setRealEstate] = useState<RealEstateProperty[]>([
+    { address: '', propertyType: 'primary', purchasePrice: 0, purchaseDate: '', currentValue: 0, originalLoanAmount: 0, mortgageBalance: 0, mortgageRate: 0, mortgageTermMonths: 360, mortgageStartDate: '', monthlyPayment: 0, monthlyRent: null },
+  ]);
 
   const next = () => setStep(s => Math.min(s + 1, steps.length - 1));
-  const finish = () => router.push('/dashboard');
 
-  // Step mappings (0-based):
-  // 0: Welcome, 1: Create, 2: Connect, 3: RSU, 4: Real Estate, 5: Numbers, 6: First Look
+  const finish = async () => {
+    setSaving(true);
+    try {
+      // Filter out empty grants and properties
+      const validGrants = rsuGrants.filter(g => g.companyTicker && g.totalShares > 0);
+      const validProperties = realEstate.filter(p => p.address && p.currentValue > 0);
+
+      const res = await fetch('/api/onboarding/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user?.id,
+          email: user?.primaryEmailAddress?.emailAddress,
+          profile,
+          rsuGrants: validGrants,
+          realEstate: validProperties,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error('Failed to save onboarding data:', await res.text());
+      }
+    } catch (err) {
+      console.error('Onboarding save error:', err);
+    } finally {
+      setSaving(false);
+      router.push('/dashboard');
+    }
+  };
+
+  const data: OnboardingData = { profile, rsuGrants, realEstate };
 
   return (
     <div className="min-h-screen bg-bg-primary">
-      {/* Progress (hidden on welcome and first look) */}
-      {step > 0 && step < 6 && (
+      {step > 0 && step < 5 && (
         <div className="fixed top-0 left-0 right-0 z-50 py-4 px-6 flex justify-center bg-bg-primary/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary">Step {step} of 5</span>
-            <ProgressIndicator current={step} total={6} />
+            <span className="text-xs text-text-secondary">Step {step} of {steps.length - 2}</span>
+            <ProgressIndicator current={step} total={steps.length - 1} />
           </div>
         </div>
       )}
@@ -447,12 +517,11 @@ export default function OnboardingPage() {
       <div className="pt-16 pb-8 px-4">
         <AnimatePresence mode="wait">
           {step === 0 && <WelcomeStep key="welcome" onNext={next} />}
-          {step === 1 && <CreateAccountStep key="create" onNext={next} />}
-          {step === 2 && <ConnectAccountsStep key="connect" onNext={next} />}
-          {step === 3 && <RSUSetupStep key="rsu" onNext={next} />}
-          {step === 4 && <RealEstateSetupStep key="realestate" onNext={next} />}
-          {step === 5 && <YourNumbersStep key="numbers" onNext={next} />}
-          {step === 6 && <FirstLookStep key="firstlook" onFinish={finish} />}
+          {step === 1 && <ConnectAccountsStep key="connect" onNext={next} />}
+          {step === 2 && <RSUSetupStep key="rsu" onNext={next} grants={rsuGrants} setGrants={setRsuGrants} />}
+          {step === 3 && <RealEstateSetupStep key="realestate" onNext={next} properties={realEstate} setProperties={setRealEstate} />}
+          {step === 4 && <YourNumbersStep key="numbers" onNext={next} profile={profile} setProfile={setProfile} />}
+          {step === 5 && <FirstLookStep key="firstlook" onFinish={finish} data={data} saving={saving} />}
         </AnimatePresence>
       </div>
     </div>
