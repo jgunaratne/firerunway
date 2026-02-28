@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
-import { mockRSUGrants, mockStockPrice, mockVestingEvents, mockTotals } from '@/lib/mock-data';
+import { useUserData } from '@/lib/UserDataContext';
+import { mockStockPrice, mockVestingEvents } from '@/lib/mock-data';
 
 function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number }) {
   const radius = (size - 24) / 2;
@@ -42,15 +43,22 @@ function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number })
 }
 
 export default function EquityPage() {
+  const { rsuGrants, realEstate } = useUserData();
   const [priceAdjust, setPriceAdjust] = useState(0);
-  const currentPrice = mockStockPrice.AMZN;
+
+  // Use first grant's ticker for price lookup (default AMZN)
+  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
+  const currentPrice = mockStockPrice[ticker as keyof typeof mockStockPrice] || 190;
   const adjustedPrice = currentPrice * (1 + priceAdjust / 100);
 
-  const totalVestedShares = mockRSUGrants.reduce((s, g) => s + g.vestedShares, 0);
-  const totalUnvestedShares = mockRSUGrants.reduce((s, g) => s + (g.totalShares - g.vestedShares), 0);
+  const totalVestedShares = rsuGrants.reduce((s, g) => s + g.vested_shares, 0);
+  const totalUnvestedShares = rsuGrants.reduce((s, g) => s + (g.total_shares - g.vested_shares), 0);
   const vestedValue = totalVestedShares * adjustedPrice;
   const unvestedValue = totalUnvestedShares * adjustedPrice;
-  const concentrationPct = ((vestedValue + unvestedValue) / (mockTotals.netWorth + (adjustedPrice - currentPrice) * (totalVestedShares + totalUnvestedShares))) * 100;
+  const totalRSUValue = vestedValue + unvestedValue;
+  const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
+  const netWorth = totalRSUValue + realEstateEquity;
+  const concentrationPct = netWorth > 0 ? (totalRSUValue / netWorth) * 100 : 0;
 
   // Estimate FIRE date delta
   const monthsDelta = Math.round(priceAdjust * 0.3);
@@ -202,16 +210,16 @@ export default function EquityPage() {
               </tr>
             </thead>
             <tbody>
-              {mockRSUGrants.map((grant) => {
-                const unvested = grant.totalShares - grant.vestedShares;
+              {rsuGrants.map((grant, idx) => {
+                const unvested = grant.total_shares - grant.vested_shares;
                 return (
                   <tr key={grant.id} className="border-b border-border/50">
-                    <td className="py-2 font-medium text-text-primary">Grant {grant.id === '1' ? 'A' : 'B'}</td>
+                    <td className="py-2 font-medium text-text-primary">Grant {String.fromCharCode(65 + idx)}</td>
                     <td className="py-2 text-text-secondary">
-                      {new Date(grant.grantDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      {new Date(grant.grant_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </td>
-                    <td className="py-2 text-right number-display">{grant.totalShares.toLocaleString()}</td>
-                    <td className="py-2 text-right number-display">{grant.vestedShares.toLocaleString()}</td>
+                    <td className="py-2 text-right number-display">{grant.total_shares.toLocaleString()}</td>
+                    <td className="py-2 text-right number-display">{grant.vested_shares.toLocaleString()}</td>
                     <td className="py-2 text-right number-display">{unvested.toLocaleString()}</td>
                     <td className="py-2 text-right number-display font-bold text-accent-amber">
                       {formatCurrency(unvested * adjustedPrice)}

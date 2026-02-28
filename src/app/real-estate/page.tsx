@@ -6,9 +6,11 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calcRentalMetrics, generateAmortizationSchedule } from '@/lib/calculations';
+import { useUserData } from '@/lib/UserDataContext';
 import { mockRealEstate } from '@/lib/mock-data';
 
-function PropertyCard({ property, delay }: { property: typeof mockRealEstate[0]; delay: number }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function PropertyCard({ property, delay }: { property: any; delay: number }) {
   const [expanded, setExpanded] = useState(false);
   const [showAmortization, setShowAmortization] = useState(false);
   const [extraPayment, setExtraPayment] = useState(0);
@@ -167,9 +169,26 @@ function PropertyCard({ property, delay }: { property: typeof mockRealEstate[0];
 }
 
 export default function RealEstatePage() {
-  const totalPropertyValue = mockRealEstate.reduce((s, p) => s + p.currentValue, 0);
-  const totalMortgageBalance = mockRealEstate.reduce((s, p) => s + p.mortgageBalance, 0);
+  const { realEstate, isLoading } = useUserData();
+  const properties = realEstate.length > 0 ? realEstate.map(p => ({
+    ...p,
+    propertyType: p.property_type,
+    purchasePrice: p.purchase_price,
+    purchaseDate: p.purchase_date,
+    currentValue: p.current_value,
+    originalLoanAmount: p.original_loan_amount,
+    mortgageBalance: p.mortgage_balance,
+    mortgageRate: p.mortgage_rate,
+    mortgageTermMonths: p.mortgage_term_months,
+    mortgageStartDate: p.mortgage_start_date,
+    monthlyPayment: p.monthly_payment,
+    monthlyRent: p.monthly_rent,
+  })) : mockRealEstate;
+
+  const totalPropertyValue = properties.reduce((s, p) => s + p.currentValue, 0);
+  const totalMortgageBalance = properties.reduce((s, p) => s + p.mortgageBalance, 0);
   const totalEquity = totalPropertyValue - totalMortgageBalance;
+
 
   // Generate equity over time data
   const equityData = useMemo(() => {
@@ -181,13 +200,15 @@ export default function RealEstatePage() {
       const balanceReduction = m * 2800;
       data.push({
         date: date.toISOString().split('T')[0],
-        value: Math.round(1630000 * valueFactor),
-        mortgage: Math.round(1200000 - balanceReduction),
-        equity: Math.round(1630000 * valueFactor - (1200000 - balanceReduction)),
+        value: Math.round(totalPropertyValue * valueFactor),
+        mortgage: Math.round(totalMortgageBalance - balanceReduction),
+        equity: Math.round(totalPropertyValue * valueFactor - (totalMortgageBalance - balanceReduction)),
       });
     }
     return data;
-  }, []);
+  }, [totalPropertyValue, totalMortgageBalance]);
+
+  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">
@@ -219,7 +240,7 @@ export default function RealEstatePage() {
       </div>
 
       {/* Property cards */}
-      {mockRealEstate.map((property, i) => (
+      {properties.map((property, i) => (
         <PropertyCard key={property.id} property={property} delay={0.3 + i * 0.1} />
       ))}
 

@@ -4,18 +4,7 @@ import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { calculateFIScore, formatCurrency } from '@/lib/calculations';
-import { mockTotals, mockProfile, mockUser } from '@/lib/mock-data';
-
-const fiData = calculateFIScore({
-  currentInvestableAssets: mockTotals.investmentAccounts + mockTotals.retirementAccounts + mockTotals.rsuValueVested,
-  fireNumber: mockProfile.fireNumber,
-  liquidAssets: mockTotals.investmentAccounts + mockTotals.cashOther,
-  annualSpend: mockProfile.annualSpend,
-  employerStockValue: 280 * 190.50 + (875 - 280) * 190.50 * 0.2, // vested + partial unvested
-  totalNetWorth: mockTotals.netWorth,
-  isEmployed: mockUser.isEmployed,
-  annualIncome: mockProfile.annualIncome,
-});
+import { useUserData } from '@/lib/UserDataContext';
 
 const milestones = [
   { value: 0, label: 'Starting out' },
@@ -59,7 +48,29 @@ const levers = [
 ];
 
 export default function FireScorePage() {
+  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+
+  const annualSpend = profile?.annual_spend || 120000;
+  const annualIncome = profile?.annual_income || 380000;
+  const fireNumber = profile?.fire_number || 3000000;
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
+  const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
+  const totalNetWorth = rsuValue + realEstateEquity;
+
+  const fiData = calculateFIScore({
+    currentInvestableAssets: rsuValue,
+    fireNumber,
+    liquidAssets: rsuValue,
+    annualSpend,
+    employerStockValue: rsuValue,
+    totalNetWorth,
+    isEmployed: true,
+    annualIncome,
+  });
+
   const score = fiData.total;
+
+  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">

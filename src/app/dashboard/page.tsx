@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
-import { formatCurrency } from '@/lib/calculations';
-import { mockInsights, mockTotals, mockProfile } from '@/lib/mock-data';
+import { formatCurrency, calculateFIScore } from '@/lib/calculations';
+import { useUserData } from '@/lib/UserDataContext';
+import { mockInsights } from '@/lib/mock-data';
 import Link from 'next/link';
 
 // Arc Gauge Component
@@ -98,8 +99,33 @@ function InsightCard({ insight, delay }: { insight: typeof mockInsights[0]; dela
 }
 
 export default function DashboardPage() {
-  const runway = mockTotals.investmentAccounts / mockProfile.annualSpend;
-  const fireGap = mockProfile.fireNumber - (mockTotals.investmentAccounts + mockTotals.retirementAccounts + mockTotals.rsuValueVested);
+  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+
+  const annualSpend = profile?.annual_spend || 120000;
+  const annualIncome = profile?.annual_income || 380000;
+  const fireNumber = profile?.fire_number || 3000000;
+
+  // Derive totals from real data
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0); // TODO: use real stock price
+  const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
+  const investable = rsuValue; // Without SnapTrade, RSU value is the only investable we know
+  const totalNetWorth = investable + realEstateEquity;
+
+  const fiScore = calculateFIScore({
+    currentInvestableAssets: investable,
+    fireNumber,
+    liquidAssets: investable,
+    annualSpend,
+    employerStockValue: rsuValue,
+    totalNetWorth,
+    isEmployed: true,
+    annualIncome,
+  });
+
+  const runway = annualSpend > 0 ? investable / annualSpend : 0;
+  const fireGap = Math.max(fireNumber - investable, 0);
+
+  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">
@@ -113,7 +139,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* FI Score */}
         <Card delay={0.1} className="flex flex-col items-center justify-center">
-          <ArcGauge value={72} label="Approaching independence" />
+          <ArcGauge value={fiScore.total} label={fiScore.total >= 75 ? 'Approaching independence' : fiScore.total >= 50 ? 'Halfway there' : 'Building your base'} />
           <p className="text-xs text-text-secondary mt-2 uppercase tracking-wider">FI Score</p>
         </Card>
 
