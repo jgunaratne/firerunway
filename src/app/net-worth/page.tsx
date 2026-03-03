@@ -9,8 +9,9 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { mockNetWorthHistory } from '@/lib/mock-data';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 
 
 const timeRanges = ['3M', '6M', '1Y', '3Y', 'All'] as const;
@@ -37,33 +38,32 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function NetWorthPage() {
   const { rsuGrants, realEstate, netWorthHistory, isLoading } = useUserData();
+  const { userId } = useAuth();
+  const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
   const [timeRange, setTimeRange] = useState<string>('All');
 
-  // Derive totals from context
+  // Derive totals from context + SnapTrade
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
   const totalPropertyValue = realEstate.reduce((sum, p) => sum + p.current_value, 0);
   const totalMortgage = realEstate.reduce((sum, p) => sum + p.mortgage_balance, 0);
   const realEstateEquity = totalPropertyValue - totalMortgage;
-  const investmentAccounts = 0; // Placeholder until SnapTrade
-  const retirementAccounts = 0;
-  const cashOther = 0;
-  const totalAssets = rsuValue + totalPropertyValue + investmentAccounts + retirementAccounts + cashOther;
+  const investmentAccounts = totalInvestment; // Real portfolio value from SnapTrade
+  const totalAssets = rsuValue + totalPropertyValue + investmentAccounts;
   const netWorth = totalAssets - totalMortgage;
 
+  // Use real history if available, otherwise show current value as single data point
   const historyData = netWorthHistory.length > 0
     ? netWorthHistory.map(h => ({ date: h.recorded_date, totalNetWorth: h.total_net_worth }))
-    : mockNetWorthHistory;
+    : [{ date: new Date().toISOString().split('T')[0], totalNetWorth: netWorth }];
 
   const chartData = getFilteredHistory(timeRange, historyData);
 
-  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+  if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   const assetClasses = [
     { key: 'investmentValue', label: 'Investment Accounts', value: investmentAccounts, color: '#6366f1', pct: totalAssets > 0 ? Math.round(investmentAccounts / totalAssets * 100 * 10) / 10 : 0, icon: '📈', href: '/portfolio' },
-    { key: 'retirementValue', label: 'Retirement Accounts', value: retirementAccounts, color: '#818cf8', pct: totalAssets > 0 ? Math.round(retirementAccounts / totalAssets * 100 * 10) / 10 : 0, icon: '🏦', href: '/portfolio' },
     { key: 'realEstateEquity', label: 'Real Estate Equity', value: realEstateEquity, color: '#10b981', pct: totalAssets > 0 ? Math.round(realEstateEquity / totalAssets * 100 * 10) / 10 : 0, icon: '🏠', href: '/real-estate' },
     { key: 'rsuValue', label: 'RSU Value (vested)', value: rsuValue, color: '#f59e0b', pct: totalAssets > 0 ? Math.round(rsuValue / totalAssets * 100 * 10) / 10 : 0, icon: '💼', href: '/equity' },
-    { key: 'cashOther', label: 'Cash & Other', value: cashOther, color: '#8888aa', pct: totalAssets > 0 ? Math.round(cashOther / totalAssets * 100 * 10) / 10 : 0, icon: '💰', href: '#' },
   ].filter(a => a.value > 0 || a.key === 'rsuValue'); // Only show non-zero or RSU
 
   // Calculate change from first to last data point

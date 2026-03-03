@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { mockStockPrice, mockVestingEvents } from '@/lib/mock-data';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useAuth } from '@clerk/nextjs';
 
 function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number }) {
   const radius = (size - 24) / 2;
@@ -44,11 +45,27 @@ function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number })
 
 export default function EquityPage() {
   const { rsuGrants, realEstate } = useUserData();
+  const { userId } = useAuth();
+  const { totalInvestment } = useHoldingsCache(userId);
   const [priceAdjust, setPriceAdjust] = useState(0);
+  const [currentPrice, setCurrentPrice] = useState(190);
 
   // Use first grant's ticker for price lookup (default AMZN)
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
-  const currentPrice = mockStockPrice[ticker as keyof typeof mockStockPrice] || 190;
+
+  // Fetch real stock price from our API
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/stock/${ticker}`);
+        const data = await res.json();
+        if (data.price) setCurrentPrice(data.price);
+      } catch {
+        // Fall back to default price
+      }
+    })();
+  }, [ticker]);
+
   const adjustedPrice = currentPrice * (1 + priceAdjust / 100);
 
   const totalVestedShares = rsuGrants.reduce((s, g) => s + g.vested_shares, 0);
@@ -57,20 +74,36 @@ export default function EquityPage() {
   const unvestedValue = totalUnvestedShares * adjustedPrice;
   const totalRSUValue = vestedValue + unvestedValue;
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
-  const netWorth = totalRSUValue + realEstateEquity;
+  // Include SnapTrade portfolio in net worth for concentration calc
+  const netWorth = totalRSUValue + realEstateEquity + totalInvestment;
   const concentrationPct = netWorth > 0 ? (totalRSUValue / netWorth) * 100 : 0;
 
   // Estimate FIRE date delta
   const monthsDelta = Math.round(priceAdjust * 0.3);
 
-  const adjustedEvents = useMemo(() =>
-    mockVestingEvents.map(e => ({
-      ...e,
-      grossValue: e.shares * adjustedPrice,
-      afterTaxValue: e.shares * adjustedPrice * 0.557,
-    })),
-    [adjustedPrice]
-  );
+  // Compute vesting events from actual RSU grants
+  const adjustedEvents = useMemo(() => {
+    const events: { date: string; shares: number; grossValue: number; afterTaxValue: number }[] = [];
+    const now = new Date();
+    for (const grant of rsuGrants) {
+      const unvested = grant.total_shares - grant.vested_shares;
+      if (unvested <= 0) continue;
+      const freq = grant.vest_frequency === 'monthly' ? 1 : 3;
+      const sharesPerVest = Math.round(grant.total_shares / (grant.vest_period_months / freq));
+      for (let i = 0; i < 8; i++) {
+        const vestDate = new Date(now);
+        vestDate.setMonth(vestDate.getMonth() + (i * freq));
+        if (sharesPerVest <= 0) break;
+        events.push({
+          date: vestDate.toISOString().split('T')[0],
+          shares: sharesPerVest,
+          grossValue: sharesPerVest * adjustedPrice,
+          afterTaxValue: sharesPerVest * adjustedPrice * 0.557,
+        });
+      }
+    }
+    return events.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+  }, [rsuGrants, adjustedPrice]);
 
   const taxRate = {
     federal: 35,

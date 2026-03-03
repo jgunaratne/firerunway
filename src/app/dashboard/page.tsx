@@ -5,8 +5,9 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { mockInsights } from '@/lib/mock-data';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 
 // Arc Gauge Component
 function ArcGauge({ value, max = 100, size = 160, label }: { value: number; max?: number; size?: number; label: string }) {
@@ -82,7 +83,7 @@ function LayoffItem({ status, label, detail }: { status: 'green' | 'amber' | 're
 }
 
 // Insight Card
-function InsightCard({ insight, delay }: { insight: typeof mockInsights[0]; delay: number }) {
+function InsightCard({ insight, delay }: { insight: { icon: string; title: string; body: string; type: string }; delay: number }) {
   const bgColor = insight.type === 'success' ? 'border-emerald-500/20' : insight.type === 'warning' ? 'border-amber-500/20' : 'border-accent/20';
   return (
     <Card delay={delay} className={`${bgColor}`} hover>
@@ -100,15 +101,18 @@ function InsightCard({ insight, delay }: { insight: typeof mockInsights[0]; dela
 
 export default function DashboardPage() {
   const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+  const { userId } = useAuth();
+  const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
 
   const annualSpend = profile?.annual_spend || 120000;
   const annualIncome = profile?.annual_income || 380000;
   const fireNumber = profile?.fire_number || 3000000;
 
   // Derive totals from real data
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0); // TODO: use real stock price
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
-  const investable = rsuValue; // Without SnapTrade, RSU value is the only investable we know
+  // Use real portfolio value from SnapTrade if available, otherwise fall back to RSU estimate
+  const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
   const totalNetWorth = investable + realEstateEquity;
 
   const fiScore = calculateFIScore({
@@ -125,7 +129,36 @@ export default function DashboardPage() {
   const runway = annualSpend > 0 ? investable / annualSpend : 0;
   const fireGap = Math.max(fireNumber - investable, 0);
 
-  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+  // Compute dynamic insights from real data
+  const insights = [
+    {
+      id: '1',
+      icon: '💰',
+      title: 'Savings Rate',
+      body: `You're saving ${Math.round(((annualIncome - annualSpend) / annualIncome) * 100)}% of your income — ${((annualIncome - annualSpend) / annualIncome) > 0.4 ? 'excellent' : 'good'} for FIRE.`,
+      type: ((annualIncome - annualSpend) / annualIncome) > 0.4 ? 'success' : 'info' as const,
+    },
+    {
+      id: '2',
+      icon: '📊',
+      title: 'Portfolio Status',
+      body: totalInvestment > 0
+        ? `Your connected portfolio is worth ${formatCurrency(totalInvestment)}. ${investable > fireNumber * 0.8 ? 'Getting close to your FIRE number!' : `${formatCurrency(fireGap)} remaining to reach FI.`}`
+        : 'Connect a brokerage account to see your real portfolio data.',
+      type: totalInvestment > 0 ? 'info' : 'warning' as const,
+    },
+    {
+      id: '3',
+      icon: '🔥',
+      title: 'FIRE Trajectory',
+      body: fireGap <= 0
+        ? 'Congratulations! You\'ve reached your FIRE number!'
+        : `At your current savings rate, you have a ${formatCurrency(fireGap)} gap to reach FI.`,
+      type: fireGap <= 0 ? 'success' : 'info' as const,
+    },
+  ];
+
+  if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">
@@ -183,7 +216,7 @@ export default function DashboardPage() {
       <div>
         <h3 className="font-display text-lg text-text-primary mb-3">AI Insights</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {mockInsights.map((insight, i) => (
+          {insights.map((insight, i) => (
             <InsightCard key={insight.id} insight={insight} delay={0.5 + i * 0.1} />
           ))}
         </div>

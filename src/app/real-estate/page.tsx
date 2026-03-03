@@ -7,7 +7,8 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calcRentalMetrics, generateAmortizationSchedule } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { mockRealEstate } from '@/lib/mock-data';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useAuth } from '@clerk/nextjs';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function PropertyCard({ property, delay }: { property: any; delay: number }) {
@@ -170,7 +171,9 @@ function PropertyCard({ property, delay }: { property: any; delay: number }) {
 
 export default function RealEstatePage() {
   const { realEstate, isLoading } = useUserData();
-  const properties = realEstate.length > 0 ? realEstate.map(p => ({
+  const { userId } = useAuth();
+  const { totalInvestment } = useHoldingsCache(userId);
+  const properties = realEstate.map(p => ({
     ...p,
     propertyType: p.property_type,
     purchasePrice: p.purchase_price,
@@ -183,7 +186,7 @@ export default function RealEstatePage() {
     mortgageStartDate: p.mortgage_start_date,
     monthlyPayment: p.monthly_payment,
     monthlyRent: p.monthly_rent,
-  })) : mockRealEstate;
+  }));
 
   const totalPropertyValue = properties.reduce((s, p) => s + p.currentValue, 0);
   const totalMortgageBalance = properties.reduce((s, p) => s + p.mortgageBalance, 0);
@@ -271,7 +274,7 @@ export default function RealEstatePage() {
       <Card delay={0.6} className="border-accent/20">
         <p className="text-sm text-text-secondary leading-relaxed">
           <span className="text-text-primary font-medium">Your real estate equity of {formatCurrency(totalEquity)}</span> represents{' '}
-          {((totalEquity / 3960000) * 100).toFixed(1)}% of your net worth. Primary residence equity is excluded from your investable FIRE number by default.
+          {((totalEquity / Math.max(totalEquity + totalInvestment, 1)) * 100).toFixed(1)}% of your net worth. Primary residence equity is excluded from your investable FIRE number by default.
         </p>
         <div className="flex items-center gap-3 mt-3">
           <span className="text-xs text-text-secondary">Include home equity in FIRE number:</span>
