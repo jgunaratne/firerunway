@@ -1,8 +1,18 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useUser } from '@clerk/nextjs';
 import * as mockDataModule from '@/lib/mock-data';
+
+// Safe useUser hook that returns null when Clerk isn't available
+function useSafeUser() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useUser } = require('@clerk/nextjs');
+    return useUser();
+  } catch {
+    return { user: null, isLoaded: true };
+  }
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -103,7 +113,7 @@ export function useUserData() {
 // ─── Provider ───────────────────────────────────────────────────────
 
 export function UserDataProvider({ children }: { children: ReactNode }) {
-  const { user, isLoaded: clerkLoaded } = useUser();
+  const { user, isLoaded: clerkLoaded } = useSafeUser();
   const [data, setData] = useState<Omit<UserData, 'refresh'>>({
     profile: null,
     rsuGrants: [],

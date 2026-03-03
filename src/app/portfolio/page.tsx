@@ -11,7 +11,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { mockETFRecommendations } from '@/lib/mock-data';
 import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
+import { useSafeAuth } from '@/hooks/useSafeAuth';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
@@ -19,7 +19,7 @@ const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
 
 function HoldingsTab() {
-  const { userId } = useAuth();
+  const { userId } = useSafeAuth();
   const { positions, totalInvestment, loading } = useHoldingsCache(userId);
 
   if (loading) {
@@ -108,7 +108,7 @@ function HoldingsTab() {
 const DONUT_COLORS = ['#6366f1', '#818cf8', '#10b981', '#8888aa', '#f59e0b'];
 
 function AllocationTab() {
-  const { userId } = useAuth();
+  const { userId } = useSafeAuth();
   const { positions, totalInvestment, loading } = useHoldingsCache(userId);
 
   // Compute allocation from positions
@@ -243,7 +243,7 @@ function AllocationTab() {
 
 
 function PerformanceTab() {
-  const { userId } = useAuth();
+  const { userId } = useSafeAuth();
   const { totalInvestment, loading } = useHoldingsCache(userId);
 
   if (loading) return <div className="text-center py-10 text-text-secondary text-sm">Loading performance...</div>;
@@ -292,7 +292,7 @@ interface ConnectedAccount {
 }
 
 function AccountsTab() {
-  const { userId } = useAuth();
+  const { userId } = useSafeAuth();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);

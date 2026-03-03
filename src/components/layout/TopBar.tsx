@@ -2,19 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserButton, SignedIn } from '@clerk/nextjs';
+import dynamic from 'next/dynamic';
+
+// Only load Clerk components when configured
+const ClerkButtons = dynamic(() =>
+  import('@clerk/nextjs').then(mod => {
+    const { UserButton, SignedIn } = mod;
+    return { default: () => <SignedIn><UserButton afterSignOutUrl="/sign-in" appearance={{ elements: { avatarBox: 'w-8 h-8' } }} /></SignedIn> };
+  }), { ssr: false, loading: () => null }
+);
 import AnimatedNumber from '../shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
-import { useAuth } from '@clerk/nextjs';
+import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 export default function TopBar() {
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
   const { profile, rsuGrants, realEstate, isLoading } = useUserData();
-  const { userId } = useAuth();
+  const { userId } = useSafeAuth();
   const { totalInvestment } = useHoldingsCache(userId);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -69,16 +77,7 @@ export default function TopBar() {
 
         {/* User / Sign Out */}
         <div className="flex items-center gap-3">
-          <SignedIn>
-            <UserButton
-              afterSignOutUrl="/sign-in"
-              appearance={{
-                elements: {
-                  avatarBox: 'w-8 h-8',
-                },
-              }}
-            />
-          </SignedIn>
+          <ClerkButtons />
         </div>
       </div>
     </header>
