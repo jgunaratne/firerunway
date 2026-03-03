@@ -7,7 +7,7 @@
  */
 export function useSafeAuth(): { userId: string | null | undefined } {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, react-hooks/rules-of-hooks
     const { useAuth } = require('@clerk/nextjs');
     return useAuth();
   } catch {

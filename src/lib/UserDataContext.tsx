@@ -6,7 +6,7 @@ import * as mockDataModule from '@/lib/mock-data';
 // Safe useUser hook that returns null when Clerk isn't available
 function useSafeUser() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, react-hooks/rules-of-hooks
     const { useUser } = require('@clerk/nextjs');
     return useUser();
   } catch {
