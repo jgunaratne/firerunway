@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllHoldings } from '@/lib/snaptrade';
 import { createServerClient } from '@/lib/supabase';
