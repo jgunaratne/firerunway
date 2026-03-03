@@ -16,6 +16,8 @@ export default function TopBar() {
   const { profile, rsuGrants, realEstate, isLoading } = useUserData();
   const { userId } = useAuth();
   const { totalInvestment } = useHoldingsCache(userId);
+  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
+  const stockPrice = useStockPrice(ticker);
 
   if (isOnboarding) return null;
 
@@ -23,8 +25,6 @@ export default function TopBar() {
   const annualSpend = profile?.annual_spend || 120000;
   const annualIncome = profile?.annual_income || 380000;
   const fireNumber = profile?.fire_number || 3000000;
-  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
-  const stockPrice = useStockPrice(ticker);
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
   const investable = totalInvestment > 0 ? totalInvestment : rsuValue;

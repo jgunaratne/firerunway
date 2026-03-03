@@ -136,7 +136,7 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
 }
 
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate, isLoading: dataLoading } = useUserData();
+  const { profile, rsuGrants, realEstate } = useUserData();
   const { userId } = useAuth();
   const { totalInvestment } = useHoldingsCache(userId);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
