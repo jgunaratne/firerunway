@@ -7,7 +7,6 @@ import { calculateFIScore, formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 const milestones = [
   { value: 0, label: 'Starting out' },
@@ -51,8 +50,7 @@ const levers = [
 ];
 
 export default function FireScorePage() {
-  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
-  const { userId } = useSafeAuth();
+  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
 
   const annualSpend = profile?.annual_spend || 120000;

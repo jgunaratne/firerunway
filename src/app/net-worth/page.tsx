@@ -12,7 +12,6 @@ import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
 import Link from 'next/link';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 
 const timeRanges = ['3M', '6M', '1Y', '3Y', 'All'] as const;
@@ -38,8 +37,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 }
 
 export default function NetWorthPage() {
-  const { rsuGrants, realEstate, netWorthHistory, isLoading } = useUserData();
-  const { userId } = useSafeAuth();
+  const { rsuGrants, realEstate, netWorthHistory, isLoading, clerkId: userId } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
   const [timeRange, setTimeRange] = useState<string>('All');
 

@@ -8,7 +8,6 @@ import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
 import Link from 'next/link';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 // Arc Gauge Component
 function ArcGauge({ value, max = 100, size = 160, label }: { value: number; max?: number; size?: number; label: string }) {
@@ -101,8 +100,7 @@ function InsightCard({ insight, delay }: { insight: { icon: string; title: strin
 }
 
 export default function DashboardPage() {
-  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
-  const { userId } = useSafeAuth();
+  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
 
   const annualSpend = profile?.annual_spend || 120000;

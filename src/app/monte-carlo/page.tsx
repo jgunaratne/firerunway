@@ -11,7 +11,6 @@ import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 interface LifeEvent {
   id: string;
@@ -136,8 +135,7 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
 }
 
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate } = useUserData();
-  const { userId } = useSafeAuth();
+  const { profile, rsuGrants, realEstate, clerkId: userId } = useUserData();
   const { totalInvestment } = useHoldingsCache(userId);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);

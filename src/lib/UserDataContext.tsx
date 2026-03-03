@@ -1,19 +1,11 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { useUser } from '@clerk/nextjs';
 import * as mockDataModule from '@/lib/mock-data';
 
-/* eslint-disable react-hooks/rules-of-hooks */
-function useSafeUser() {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { useUser } = require('@clerk/nextjs');
-    return useUser();
-  } catch {
-    return { user: null, isLoaded: true };
-  }
-}
-/* eslint-enable react-hooks/rules-of-hooks */
+// Resolved at build time — determines if Clerk hooks are called
+const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -78,6 +70,7 @@ interface UserData {
   realEstate: RealEstateProperty[];
   accounts: AccountSnapshot[];
   netWorthHistory: NetWorthEntry[];
+  clerkId: string | null;
   isLoading: boolean;
   isUsingMockData: boolean;
   refresh: () => void;
@@ -102,6 +95,7 @@ const UserDataContext = createContext<UserData>({
   realEstate: [],
   accounts: [],
   netWorthHistory: [],
+  clerkId: null,
   isLoading: true,
   isUsingMockData: true,
   refresh: () => { },
@@ -114,8 +108,13 @@ export function useUserData() {
 // ─── Provider ───────────────────────────────────────────────────────
 
 export function UserDataProvider({ children }: { children: ReactNode }) {
-  const { user, isLoaded: clerkLoaded } = useSafeUser();
-  const [data, setData] = useState<Omit<UserData, 'refresh'>>({
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const clerkData = CLERK_ENABLED ? useUser() : { user: null, isLoaded: true };
+  const user = clerkData.user;
+  const clerkLoaded = clerkData.isLoaded;
+  const clerkId = user?.id ?? null;
+
+  const [data, setData] = useState<Omit<UserData, 'refresh' | 'clerkId'>>({
     profile: null,
     rsuGrants: [],
     realEstate: [],
@@ -203,7 +202,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   }, [clerkLoaded, fetchData]);
 
   return (
-    <UserDataContext.Provider value={{ ...data, refresh: fetchData }}>
+    <UserDataContext.Provider value={{ ...data, clerkId, refresh: fetchData }}>
       {children}
     </UserDataContext.Provider>
   );

@@ -8,7 +8,6 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calcRentalMetrics, generateAmortizationSchedule } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function PropertyCard({ property, delay }: { property: any; delay: number }) {
@@ -170,8 +169,7 @@ function PropertyCard({ property, delay }: { property: any; delay: number }) {
 }
 
 export default function RealEstatePage() {
-  const { realEstate, isLoading, refresh } = useUserData();
-  const { userId } = useSafeAuth();
+  const { realEstate, isLoading, refresh, clerkId: userId } = useUserData();
   const { totalInvestment } = useHoldingsCache(userId);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);

@@ -7,7 +7,6 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number }) {
   const radius = (size - 24) / 2;
@@ -44,8 +43,7 @@ function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number })
 }
 
 export default function EquityPage() {
-  const { rsuGrants, realEstate } = useUserData();
-  const { userId } = useSafeAuth();
+  const { rsuGrants, realEstate, clerkId: userId } = useUserData();
   const { totalInvestment } = useHoldingsCache(userId);
   const [priceAdjust, setPriceAdjust] = useState(0);
   const [currentPrice, setCurrentPrice] = useState(190);

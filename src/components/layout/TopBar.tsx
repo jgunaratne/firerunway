@@ -16,13 +16,11 @@ import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
-import { useSafeAuth } from '@/hooks/useSafeAuth';
 
 export default function TopBar() {
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
-  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
-  const { userId } = useSafeAuth();
+  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
   const { totalInvestment } = useHoldingsCache(userId);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
