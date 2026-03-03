@@ -6,6 +6,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { calculateFIScore, formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useStockPrice } from '@/hooks/useStockPrice';
 import { useAuth } from '@clerk/nextjs';
 
 const milestones = [
@@ -57,7 +58,9 @@ export default function FireScorePage() {
   const annualSpend = profile?.annual_spend || 120000;
   const annualIncome = profile?.annual_income || 380000;
   const fireNumber = profile?.fire_number || 3000000;
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
+  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
+  const stockPrice = useStockPrice(ticker);
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
   const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
   const totalNetWorth = investable + realEstateEquity;

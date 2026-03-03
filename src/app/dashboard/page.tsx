@@ -6,6 +6,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useStockPrice } from '@/hooks/useStockPrice';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
 
@@ -109,7 +110,9 @@ export default function DashboardPage() {
   const fireNumber = profile?.fire_number || 3000000;
 
   // Derive totals from real data
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
+  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
+  const stockPrice = useStockPrice(ticker);
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
   // Use real portfolio value from SnapTrade if available, otherwise fall back to RSU estimate
   const investable = totalInvestment > 0 ? totalInvestment : rsuValue;

@@ -10,6 +10,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useStockPrice } from '@/hooks/useStockPrice';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
 
@@ -43,7 +44,9 @@ export default function NetWorthPage() {
   const [timeRange, setTimeRange] = useState<string>('All');
 
   // Derive totals from context + SnapTrade
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
+  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
+  const stockPrice = useStockPrice(ticker);
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const totalPropertyValue = realEstate.reduce((sum, p) => sum + p.current_value, 0);
   const totalMortgage = realEstate.reduce((sum, p) => sum + p.mortgage_balance, 0);
   const realEstateEquity = totalPropertyValue - totalMortgage;

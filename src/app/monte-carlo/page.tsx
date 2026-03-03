@@ -8,6 +8,10 @@ import {
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
+import { useUserData } from '@/lib/UserDataContext';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useStockPrice } from '@/hooks/useStockPrice';
+import { useAuth } from '@clerk/nextjs';
 
 interface LifeEvent {
   id: string;
@@ -132,17 +136,32 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
 }
 
 export default function MonteCarloPage() {
+  const { profile, rsuGrants, realEstate, isLoading: dataLoading } = useUserData();
+  const { userId } = useAuth();
+  const { totalInvestment } = useHoldingsCache(userId);
+  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
+  const stockPrice = useStockPrice(ticker);
+
+  // Seed defaults from real user data
+  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
+  const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
+  const portfolioValue = totalInvestment > 0 ? totalInvestment + realEstateEquity : rsuValue + realEstateEquity;
+  const annualSpend = profile?.annual_spend || 120000;
+  const annualIncome = profile?.annual_income || 380000;
+  const fireNumber = profile?.fire_number || 3000000;
+  const savingsRate = annualIncome > 0 ? (annualIncome - annualSpend) / annualIncome : 0.3;
+
   const [events, setEvents] = useState<LifeEvent[]>([]);
   const [params, setParams] = useState<SimParams>({
-    startingPortfolio: 3360000,
-    annualContribution: 85000,
-    annualSpend: 120000,
-    retirementSpend: 96000,
+    startingPortfolio: portfolioValue || 500000,
+    annualContribution: Math.round(annualIncome * savingsRate),
+    annualSpend,
+    retirementSpend: Math.round(annualSpend * 0.8),
     equityPct: 0.8,
     bondPct: 0.2,
     inflationRate: 0.03,
     years: 25,
-    fireNumber: 3000000,
+    fireNumber: fireNumber,
     lifeEvents: [],
   });
   const [showVariables, setShowVariables] = useState(false);
