@@ -9,86 +9,105 @@ import {
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
-import { mockAccounts, mockAllocation, mockPortfolioHistory, mockETFRecommendations } from '@/lib/mock-data';
+import { mockAllocation, mockPortfolioHistory, mockETFRecommendations } from '@/lib/mock-data';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
-function AccountBucket({ title, account, delay }: { title: string; account: { type: string; name: string; totalValue: number; holdings: { ticker: string; name: string; shares: number; price: number; value: number; costBasis: number; change1d: number }[] }; delay: number }) {
-  const [expanded, setExpanded] = useState(true);
-  const totalGain = account.holdings.reduce((sum, h) => sum + (h.value - h.costBasis), 0);
 
-  return (
-    <Card delay={delay} className="overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between">
-        <div>
-          <h4 className="text-sm font-semibold text-text-primary">{title}</h4>
-          <p className="text-xs text-text-secondary">{account.name}</p>
-        </div>
-        <div className="text-right">
-          <p className="number-display text-lg font-bold text-text-primary">{formatCurrency(account.totalValue)}</p>
-          <p className={`number-display text-xs ${totalGain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {totalGain >= 0 ? '+' : ''}{formatCurrency(totalGain)} total
+
+function HoldingsTab() {
+  const { userId } = useAuth();
+  const [positions, setPositions] = useState<{
+    ticker: string; name: string; shares: number; price: number; value: number;
+    accountName: string; accountType: string;
+  }[]>([]);
+  const [totalInvestment, setTotalInvestment] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/snaptrade/holdings?clerkId=${userId}`);
+        const data = await res.json();
+        setPositions(data.positions || []);
+        setTotalInvestment(data.totalInvestment || 0);
+      } catch {
+        console.error('Failed to fetch holdings');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [userId]);
+
+  if (loading) {
+    return <div className="text-center py-10 text-text-secondary text-sm">Loading holdings...</div>;
+  }
+
+  if (positions.length === 0) {
+    return (
+      <Card delay={0.1}>
+        <div className="text-center py-8">
+          <p className="text-text-secondary text-sm">No holdings found.</p>
+          <p className="text-text-secondary/60 text-xs mt-2">
+            Connect a brokerage account in the Accounts tab to see your real holdings.
           </p>
         </div>
-      </button>
+      </Card>
+    );
+  }
 
-      {expanded && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="mt-4"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-text-secondary border-b border-border">
-                  <th className="text-left pb-2 font-medium">Ticker</th>
-                  <th className="text-right pb-2 font-medium">Shares</th>
-                  <th className="text-right pb-2 font-medium">Price</th>
-                  <th className="text-right pb-2 font-medium">Value</th>
-                  <th className="text-right pb-2 font-medium hidden md:table-cell">Gain/Loss</th>
-                  <th className="text-right pb-2 font-medium hidden md:table-cell">1D</th>
-                </tr>
-              </thead>
-              <tbody>
-                {account.holdings.map((h) => {
-                  const gain = h.value - h.costBasis;
-                  return (
-                    <tr key={h.ticker} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
+  // Group positions by account
+  const grouped = positions.reduce((acc, pos) => {
+    const key = pos.accountName || 'Unknown Account';
+    if (!acc[key]) acc[key] = { name: key, type: pos.accountType, holdings: [] };
+    acc[key].holdings.push(pos);
+    return acc;
+  }, {} as Record<string, { name: string; type: string; holdings: typeof positions }>);
+
+  return (
+    <div className="space-y-4">
+      {Object.entries(grouped).map(([name, group], i) => {
+        const accountTotal = group.holdings.reduce((sum, h) => sum + h.value, 0);
+        return (
+          <Card key={name} delay={0.1 * (i + 1)} className="overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
+                <p className="text-xs text-text-secondary">{group.type}</p>
+              </div>
+              <p className="number-display text-lg font-bold text-text-primary">{formatCurrency(accountTotal)}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-text-secondary border-b border-border">
+                    <th className="text-left pb-2 font-medium">Ticker</th>
+                    <th className="text-right pb-2 font-medium">Shares</th>
+                    <th className="text-right pb-2 font-medium">Price</th>
+                    <th className="text-right pb-2 font-medium">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.holdings.map((h, j) => (
+                    <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
                       <td className="py-2">
                         <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
                         <p className="text-xs text-text-secondary hidden md:block">{h.name}</p>
                       </td>
-                      <td className="text-right number-display py-2">{h.shares.toLocaleString()}</td>
+                      <td className="text-right number-display py-2">{h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
                       <td className="text-right number-display py-2">${h.price.toFixed(2)}</td>
                       <td className="text-right number-display font-medium py-2">{formatCurrency(h.value)}</td>
-                      <td className={`text-right number-display py-2 hidden md:table-cell ${gain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {gain >= 0 ? '+' : ''}{formatCurrency(gain)}
-                      </td>
-                      <td className={`text-right number-display py-2 hidden md:table-cell ${h.change1d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {h.change1d >= 0 ? '+' : ''}{h.change1d.toFixed(1)}%
-                      </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
-    </Card>
-  );
-}
-
-function HoldingsTab() {
-  return (
-    <div className="space-y-4">
-      <AccountBucket title="Taxable Brokerage" account={mockAccounts.brokerage} delay={0.1} />
-      <AccountBucket title="Tax-Advantaged (401k)" account={mockAccounts.retirement401k} delay={0.2} />
-      <AccountBucket title="Roth IRA" account={mockAccounts.rothIRA} delay={0.3} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        );
+      })}
 
       {/* Totals bar */}
       <Card delay={0.4} className="bg-accent/5 border-accent/20">
@@ -96,7 +115,7 @@ function HoldingsTab() {
           <span className="text-sm font-semibold text-text-primary">Total Portfolio Value</span>
           <div className="text-right">
             <p className="number-display text-xl font-bold text-text-primary">
-              <AnimatedNumber value={3080000} format={(n) => formatCurrency(n)} />
+              <AnimatedNumber value={totalInvestment} format={(n) => formatCurrency(n)} />
             </p>
             <p className="text-xs text-text-secondary">Last synced: just now</p>
           </div>
@@ -332,16 +351,30 @@ function AccountsTab() {
       if (connectData.redirectURI) {
         // Open SnapTrade portal in popup
         const popup = window.open(connectData.redirectURI, 'snaptrade-connect', 'width=600,height=700');
-        // Poll for popup close
+
+        // Listen for completion message from callback page
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data?.type === 'SNAPTRADE_CONNECTED') {
+            window.removeEventListener('message', handleMessage);
+            clearInterval(interval);
+            setConnecting(false);
+            fetchAccounts();
+            popup?.close();
+          }
+        };
+        window.addEventListener('message', handleMessage);
+
+        // Also poll for popup close as fallback
         const interval = setInterval(() => {
           if (popup?.closed) {
             clearInterval(interval);
+            window.removeEventListener('message', handleMessage);
             setConnecting(false);
-            fetchAccounts(); // Refresh account list
+            fetchAccounts();
           }
         }, 1000);
       } else {
-        setError('Failed to get connection URL');
+        setError(connectData.error || 'Failed to get connection URL');
         setConnecting(false);
       }
     } catch (err) {

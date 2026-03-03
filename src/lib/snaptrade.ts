@@ -33,18 +33,28 @@ export async function deleteUser(userId: string) {
 }
 
 /**
+ * Reset a SnapTrade user's secret. Use when the user already exists
+ * but we don't have their secret stored locally.
+ */
+export async function resetUserSecret(userId: string) {
+  const res = await getClient().authentication.resetSnapTradeUserSecret({ userId });
+  return res.data;
+}
+
+/**
  * Generate a redirect URL for the SnapTrade Connection Portal.
  */
 export async function generateConnectionPortalUrl(
   userId: string,
   userSecret: string,
-  opts?: { broker?: string; reconnect?: string }
+  opts?: { broker?: string; reconnect?: string; customRedirect?: string }
 ) {
   const res = await getClient().authentication.loginSnapTradeUser({
     userId,
     userSecret,
     broker: opts?.broker,
     reconnect: opts?.reconnect,
+    customRedirect: opts?.customRedirect,
   });
   return res.data;
 }
