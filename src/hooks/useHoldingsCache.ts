@@ -20,6 +20,18 @@ interface CachedHoldings {
 }
 
 /**
+ * Clear the SnapTrade holdings cache from localStorage.
+ * Can be called from anywhere (no hook required).
+ */
+export function clearHoldingsCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // SSR or localStorage unavailable — no-op
+  }
+}
+
+/**
  * Shared hook for fetching and caching SnapTrade holdings in localStorage.
  * All tabs share the same cache so the API is only called once until TTL expires.
  */
@@ -73,6 +85,12 @@ export function useHoldingsCache(clerkId: string | null | undefined) {
     }
   }, [clerkId, fetchAndCache]);
 
+  /** Clear localStorage cache, then re-fetch fresh data from the API. */
+  const forceRefresh = useCallback(async () => {
+    clearHoldingsCache();
+    await refresh();
+  }, [refresh]);
+
   useEffect(() => {
     if (!clerkId) return;
 
@@ -99,5 +117,5 @@ export function useHoldingsCache(clerkId: string | null | undefined) {
     })();
   }, [clerkId, loadFromCache, fetchAndCache]);
 
-  return { positions, totalInvestment, loading, refresh };
+  return { positions, totalInvestment, loading, refresh, forceRefresh };
 }

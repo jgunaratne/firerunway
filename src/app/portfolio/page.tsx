@@ -292,7 +292,8 @@ interface ConnectedAccount {
 }
 
 function AccountsTab() {
-  const { clerkId: userId } = useUserData();
+  const { clerkId: userId, refresh: refreshUserData } = useUserData();
+  const { forceRefresh: refreshHoldings } = useHoldingsCache(userId);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -347,6 +348,8 @@ function AccountsTab() {
             clearInterval(interval);
             setConnecting(false);
             fetchAccounts();
+            refreshHoldings();
+            refreshUserData();
             popup?.close();
           }
         };
@@ -359,6 +362,8 @@ function AccountsTab() {
             window.removeEventListener('message', handleMessage);
             setConnecting(false);
             fetchAccounts();
+            refreshHoldings();
+            refreshUserData();
           }
         }, 1000);
       } else {
@@ -381,6 +386,8 @@ function AccountsTab() {
         body: JSON.stringify({ clerkId: userId, authorizationId }),
       });
       fetchAccounts();
+      refreshHoldings();
+      refreshUserData();
     } catch {
       console.error('Disconnect error');
     }

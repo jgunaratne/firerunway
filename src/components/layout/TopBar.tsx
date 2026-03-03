@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 // Only load Clerk components when configured
@@ -14,18 +15,34 @@ const ClerkButtons = dynamic(() =>
 import AnimatedNumber from '../shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useHoldingsCache, clearHoldingsCache } from '@/hooks/useHoldingsCache';
 import { useStockPrice } from '@/hooks/useStockPrice';
 
 export default function TopBar() {
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
-  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
-  const { totalInvestment } = useHoldingsCache(userId);
+  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId, refresh: refreshUserData } = useUserData();
+  const { totalInvestment, forceRefresh: refreshHoldings } = useHoldingsCache(userId);
+  const [refreshing, setRefreshing] = useState(false);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
 
   if (isOnboarding) return null;
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    // Clear all localStorage caches
+    clearHoldingsCache();
+    try {
+      const keys = Object.keys(localStorage);
+      for (const key of keys) {
+        if (key.startsWith('stock_price_cache_')) localStorage.removeItem(key);
+      }
+    } catch { /* SSR guard */ }
+    // Re-fetch fresh data
+    await Promise.all([refreshHoldings(), refreshUserData()]);
+    setRefreshing(false);
+  };
 
   // Derive FI Score + Net Worth from context + SnapTrade
   const annualSpend = profile?.annual_spend || 120000;
@@ -71,6 +88,28 @@ export default function TopBar() {
               <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} />
             </span>
           </div>
+          <div className="w-px h-6 bg-border" />
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh all data"
+            className="p-1.5 rounded-md text-text-secondary hover:text-accent hover:bg-white/5 transition-all disabled:opacity-50"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={refreshing ? 'animate-spin' : ''}
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+            </svg>
+          </button>
         </div>
 
         {/* User / Sign Out */}
