@@ -6,26 +6,31 @@ import { UserButton, SignedIn } from '@clerk/nextjs';
 import AnimatedNumber from '../shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useAuth } from '@clerk/nextjs';
 
 export default function TopBar() {
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
   const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+  const { userId } = useAuth();
+  const { totalInvestment } = useHoldingsCache(userId);
 
   if (isOnboarding) return null;
 
-  // Derive FI Score + Net Worth from context
+  // Derive FI Score + Net Worth from context + SnapTrade
   const annualSpend = profile?.annual_spend || 120000;
   const annualIncome = profile?.annual_income || 380000;
   const fireNumber = profile?.fire_number || 3000000;
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
-  const totalNetWorth = rsuValue + realEstateEquity;
+  const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
+  const totalNetWorth = investable + realEstateEquity;
 
   const fiScore = isLoading ? 0 : calculateFIScore({
-    currentInvestableAssets: rsuValue,
+    currentInvestableAssets: investable,
     fireNumber,
-    liquidAssets: rsuValue,
+    liquidAssets: investable,
     annualSpend,
     employerStockValue: rsuValue,
     totalNetWorth,

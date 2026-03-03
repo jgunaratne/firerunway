@@ -5,6 +5,8 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { calculateFIScore, formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useAuth } from '@clerk/nextjs';
 
 const milestones = [
   { value: 0, label: 'Starting out' },
@@ -49,18 +51,21 @@ const levers = [
 
 export default function FireScorePage() {
   const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+  const { userId } = useAuth();
+  const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
 
   const annualSpend = profile?.annual_spend || 120000;
   const annualIncome = profile?.annual_income || 380000;
   const fireNumber = profile?.fire_number || 3000000;
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * 190, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
-  const totalNetWorth = rsuValue + realEstateEquity;
+  const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
+  const totalNetWorth = investable + realEstateEquity;
 
   const fiData = calculateFIScore({
-    currentInvestableAssets: rsuValue,
+    currentInvestableAssets: investable,
     fireNumber,
-    liquidAssets: rsuValue,
+    liquidAssets: investable,
     annualSpend,
     employerStockValue: rsuValue,
     totalNetWorth,
@@ -70,7 +75,7 @@ export default function FireScorePage() {
 
   const score = fiData.total;
 
-  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+  if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">
