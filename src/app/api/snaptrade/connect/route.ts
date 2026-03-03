@@ -35,9 +35,12 @@ export async function POST(req: NextRequest) {
       user.snaptrade_user_secret,
       { broker }
     );
+    // The SDK returns a union type; extract redirectURI from the response
+    const loginResult = result as Record<string, unknown>;
+    const redirectURI = loginResult.redirectURI || loginResult.loginLink;
 
     return NextResponse.json({
-      redirectURI: result.redirectURI || result.loginLink,
+      redirectURI,
     });
   } catch (err) {
     console.error('SnapTrade connect error:', err);

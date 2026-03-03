@@ -42,14 +42,18 @@ export async function GET(req: NextRequest) {
 
       for (const account of holdings) {
         const acctName = account.account?.name || 'Unknown';
-        const acctType = account.account?.type || 'unknown';
+        const acctType = String(account.account?.type || 'unknown');
         if (Array.isArray(account.positions)) {
           for (const pos of account.positions) {
             const value = (pos.units || 0) * (pos.price || 0);
             totalInvestment += value;
+            // pos.symbol can be string | UniversalSymbol
+            const sym = pos.symbol;
+            const ticker = typeof sym === 'string' ? sym : (sym?.symbol || sym?.description || 'N/A');
+            const name = typeof sym === 'string' ? sym : (sym?.description || sym?.symbol || 'Unknown');
             allPositions.push({
-              ticker: pos.symbol?.symbol || pos.symbol?.description || 'N/A',
-              name: pos.symbol?.description || pos.symbol?.symbol || 'Unknown',
+              ticker: String(ticker),
+              name: String(name),
               shares: pos.units || 0,
               price: pos.price || 0,
               value,

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_id text UNIQUE NOT NULL,
   email text,
+  snaptrade_user_secret text,
   created_at timestamptz DEFAULT now()
 );
 
