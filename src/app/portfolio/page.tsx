@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/calculations';
 import { mockETFRecommendations } from '@/lib/mock-data';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { useHoldingsCache } from '@/hooks/useHoldingsCache';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
@@ -19,28 +20,7 @@ const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
 function HoldingsTab() {
   const { userId } = useAuth();
-  const [positions, setPositions] = useState<{
-    ticker: string; name: string; shares: number; price: number; value: number;
-    accountName: string; accountType: string;
-  }[]>([]);
-  const [totalInvestment, setTotalInvestment] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/snaptrade/holdings?clerkId=${userId}`);
-        const data = await res.json();
-        setPositions(data.positions || []);
-        setTotalInvestment(data.totalInvestment || 0);
-      } catch {
-        console.error('Failed to fetch holdings');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId]);
+  const { positions, totalInvestment, loading } = useHoldingsCache(userId);
 
   if (loading) {
     return <div className="text-center py-10 text-text-secondary text-sm">Loading holdings...</div>;
@@ -129,41 +109,26 @@ const DONUT_COLORS = ['#6366f1', '#818cf8', '#10b981', '#8888aa', '#f59e0b'];
 
 function AllocationTab() {
   const { userId } = useAuth();
-  const [allocationData, setAllocationData] = useState<{ name: string; value: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { positions, totalInvestment, loading } = useHoldingsCache(userId);
 
-  useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/snaptrade/holdings?clerkId=${userId}`);
-        const data = await res.json();
-        const positions = data.positions || [];
-        const total = data.totalInvestment || 0;
-
-        if (total > 0 && positions.length > 0) {
-          const byTicker: Record<string, number> = {};
-          for (const pos of positions) {
-            const key = pos.ticker || 'Other';
-            byTicker[key] = (byTicker[key] || 0) + pos.value;
-          }
-          const sorted = Object.entries(byTicker).sort((a, b) => b[1] - a[1]);
-          const topN = sorted.slice(0, 8);
-          const rest = sorted.slice(8).reduce((s, [, v]) => s + v, 0);
-          const chartData = topN.map(([name, value]) => ({
-            name,
-            value: Math.round((value / total) * 1000) / 10,
-          }));
-          if (rest > 0) chartData.push({ name: 'Other', value: Math.round((rest / total) * 1000) / 10 });
-          setAllocationData(chartData);
-        }
-      } catch {
-        console.error('Failed to fetch allocation');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId]);
+  // Compute allocation from positions
+  const allocationData = (() => {
+    if (totalInvestment <= 0 || positions.length === 0) return [];
+    const byTicker: Record<string, number> = {};
+    for (const pos of positions) {
+      const key = pos.ticker || 'Other';
+      byTicker[key] = (byTicker[key] || 0) + pos.value;
+    }
+    const sorted = Object.entries(byTicker).sort((a, b) => b[1] - a[1]);
+    const topN = sorted.slice(0, 8);
+    const rest = sorted.slice(8).reduce((s, [, v]) => s + v, 0);
+    const chartData = topN.map(([name, value]) => ({
+      name,
+      value: Math.round((value / totalInvestment) * 1000) / 10,
+    }));
+    if (rest > 0) chartData.push({ name: 'Other', value: Math.round((rest / totalInvestment) * 1000) / 10 });
+    return chartData;
+  })();
 
   const recommendedData = [
     { name: 'US Equity', value: 53.2 },
@@ -279,23 +244,7 @@ function AllocationTab() {
 
 function PerformanceTab() {
   const { userId } = useAuth();
-  const [totalValue, setTotalValue] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/snaptrade/holdings?clerkId=${userId}`);
-        const data = await res.json();
-        setTotalValue(data.totalInvestment || 0);
-      } catch {
-        console.error('Failed to fetch performance data');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId]);
+  const { totalInvestment, loading } = useHoldingsCache(userId);
 
   if (loading) return <div className="text-center py-10 text-text-secondary text-sm">Loading performance...</div>;
 
@@ -306,7 +255,7 @@ function PerformanceTab() {
         <div className="text-center py-8">
           <p className="text-text-secondary/60 text-xs uppercase tracking-wider mb-2">Current Portfolio Value</p>
           <p className="number-display text-3xl font-bold text-text-primary">
-            {totalValue !== null ? <AnimatedNumber value={totalValue} format={(n) => formatCurrency(n)} /> : '—'}
+            {totalInvestment > 0 ? <AnimatedNumber value={totalInvestment} format={(n) => formatCurrency(n)} /> : '—'}
           </p>
           <p className="text-xs text-text-secondary mt-2">as of {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
         </div>
