@@ -3,16 +3,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import * as mockDataModule from '@/lib/mock-data';
 
-// Safe useUser hook that returns null when Clerk isn't available
+/* eslint-disable react-hooks/rules-of-hooks */
 function useSafeUser() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, react-hooks/rules-of-hooks
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useUser } = require('@clerk/nextjs');
     return useUser();
   } catch {
     return { user: null, isLoaded: true };
   }
 }
+/* eslint-enable react-hooks/rules-of-hooks */
 
 // ─── Types ──────────────────────────────────────────────────────────
 

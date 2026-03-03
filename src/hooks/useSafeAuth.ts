@@ -5,12 +5,14 @@
  * Returns { userId: null } when ClerkProvider is not available
  * (e.g., when NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set).
  */
+/* eslint-disable react-hooks/rules-of-hooks */
 export function useSafeAuth(): { userId: string | null | undefined } {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, react-hooks/rules-of-hooks
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useAuth } = require('@clerk/nextjs');
     return useAuth();
   } catch {
     return { userId: null };
   }
 }
+/* eslint-enable react-hooks/rules-of-hooks */
