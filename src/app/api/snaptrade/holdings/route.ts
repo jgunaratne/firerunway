@@ -47,13 +47,27 @@ export async function GET(req: NextRequest) {
           for (const pos of account.positions) {
             const value = (pos.units || 0) * (pos.price || 0);
             totalInvestment += value;
-            // pos.symbol can be string | UniversalSymbol
-            const sym = pos.symbol;
-            const ticker = typeof sym === 'string' ? sym : (sym?.symbol || sym?.description || 'N/A');
-            const name = typeof sym === 'string' ? sym : (sym?.description || sym?.symbol || 'Unknown');
+            // Extract ticker and name from potentially nested symbol objects
+            const sym = pos.symbol as Record<string, unknown> | string | undefined;
+            let ticker = 'N/A';
+            let name = 'Unknown';
+            if (typeof sym === 'string') {
+              ticker = sym;
+              name = sym;
+            } else if (sym) {
+              // sym.symbol could be a string or another object with its own .symbol
+              const rawTicker = sym.symbol;
+              ticker = typeof rawTicker === 'string' ? rawTicker
+                : (typeof rawTicker === 'object' && rawTicker !== null && 'symbol' in rawTicker)
+                  ? String((rawTicker as Record<string, unknown>).symbol)
+                  : String(rawTicker || sym.description || 'N/A');
+              name = typeof sym.description === 'string' ? sym.description
+                : typeof sym.name === 'string' ? sym.name
+                  : ticker;
+            }
             allPositions.push({
-              ticker: String(ticker),
-              name: String(name),
+              ticker,
+              name,
               shares: pos.units || 0,
               price: pos.price || 0,
               value,

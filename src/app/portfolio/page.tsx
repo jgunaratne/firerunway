@@ -9,7 +9,7 @@ import {
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
-import { mockAllocation, mockPortfolioHistory, mockETFRecommendations } from '@/lib/mock-data';
+import { mockETFRecommendations } from '@/lib/mock-data';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 
@@ -128,39 +128,73 @@ function HoldingsTab() {
 const DONUT_COLORS = ['#6366f1', '#818cf8', '#10b981', '#8888aa', '#f59e0b'];
 
 function AllocationTab() {
-  const currentData = [
-    { name: 'US Equity', value: mockAllocation.current.usEquity },
-    { name: 'Intl Equity', value: mockAllocation.current.intlEquity },
-    { name: 'Bonds', value: mockAllocation.current.bonds },
-    { name: 'Cash', value: mockAllocation.current.cash },
-    { name: 'Employer Stock', value: mockAllocation.current.employerStock },
-  ];
+  const { userId } = useAuth();
+  const [allocationData, setAllocationData] = useState<{ name: string; value: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/snaptrade/holdings?clerkId=${userId}`);
+        const data = await res.json();
+        const positions = data.positions || [];
+        const total = data.totalInvestment || 0;
+
+        if (total > 0 && positions.length > 0) {
+          const byTicker: Record<string, number> = {};
+          for (const pos of positions) {
+            const key = pos.ticker || 'Other';
+            byTicker[key] = (byTicker[key] || 0) + pos.value;
+          }
+          const sorted = Object.entries(byTicker).sort((a, b) => b[1] - a[1]);
+          const topN = sorted.slice(0, 8);
+          const rest = sorted.slice(8).reduce((s, [, v]) => s + v, 0);
+          const chartData = topN.map(([name, value]) => ({
+            name,
+            value: Math.round((value / total) * 1000) / 10,
+          }));
+          if (rest > 0) chartData.push({ name: 'Other', value: Math.round((rest / total) * 1000) / 10 });
+          setAllocationData(chartData);
+        }
+      } catch {
+        console.error('Failed to fetch allocation');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [userId]);
+
   const recommendedData = [
-    { name: 'US Equity', value: mockAllocation.recommended.usEquity },
-    { name: 'Intl Equity', value: mockAllocation.recommended.intlEquity },
-    { name: 'Bonds', value: mockAllocation.recommended.bonds },
-    { name: 'Cash', value: mockAllocation.recommended.cash },
+    { name: 'US Equity', value: 53.2 },
+    { name: 'Intl Equity', value: 22.8 },
+    { name: 'Bonds', value: 19 },
+    { name: 'Cash', value: 5 },
   ];
 
-  const gapData = [
-    { name: 'US Equity', current: 72, recommended: 53.2, gap: 72 - 53.2 },
-    { name: 'Intl Equity', current: 8, recommended: 22.8, gap: 8 - 22.8 },
-    { name: 'Bonds', current: 3, recommended: 19, gap: 3 - 19 },
-    { name: 'Cash', current: 5, recommended: 5, gap: 0 },
-    { name: 'Employer Stock', current: 12, recommended: 0, gap: 12 },
-  ];
+  if (loading) return <div className="text-center py-10 text-text-secondary text-sm">Loading allocation...</div>;
+
+  if (allocationData.length === 0) {
+    return (
+      <Card delay={0.1}>
+        <div className="text-center py-8">
+          <p className="text-text-secondary text-sm">No allocation data available.</p>
+          <p className="text-text-secondary/60 text-xs mt-2">Connect a brokerage in the Accounts tab.</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Donut charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card delay={0.1}>
           <h4 className="text-sm font-semibold text-text-primary mb-2">Your Current Allocation</h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={currentData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" animationDuration={1000}>
-                  {currentData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+                <Pie data={allocationData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" animationDuration={1000}>
+                  {allocationData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v) => `${v}%`} contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} />
                 <Legend wrapperStyle={{ fontSize: 12, color: '#8888aa' }} />
@@ -186,26 +220,26 @@ function AllocationTab() {
         </Card>
       </div>
 
-      {/* Gap Analysis */}
       <Card delay={0.3}>
-        <h4 className="text-sm font-semibold text-text-primary mb-4">Allocation Gap Analysis</h4>
-        <div className="h-60">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={gapData} layout="vertical">
-              <XAxis type="number" tick={{ fill: '#8888aa', fontSize: 11 }} tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}%`} domain={[-20, 20]} />
-              <YAxis type="category" dataKey="name" tick={{ fill: '#8888aa', fontSize: 11 }} width={100} />
-              <Tooltip formatter={(v) => `${Number(v) > 0 ? '+' : ''}${Number(v).toFixed(1)}%`} contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} />
-              <Bar dataKey="gap" animationDuration={800}>
-                {gapData.map((entry, i) => (
-                  <Cell key={i} fill={entry.gap > 0 ? '#10b981' : entry.gap < 0 ? '#ef4444' : '#8888aa'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <h4 className="text-sm font-semibold text-text-primary mb-4">Allocation Breakdown</h4>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-text-secondary border-b border-border">
+              <th className="text-left pb-2 font-medium">Holding</th>
+              <th className="text-right pb-2 font-medium">% of Portfolio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allocationData.map((item) => (
+              <tr key={item.name} className="border-b border-border/50">
+                <td className="py-2 font-medium text-text-primary">{item.name}</td>
+                <td className="text-right number-display py-2">{item.value.toFixed(1)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
 
-      {/* ETF Recommendations */}
       <Card delay={0.4}>
         <h4 className="text-sm font-semibold text-text-primary mb-4">Recommended Low-Cost ETFs</h4>
         {Object.entries(mockETFRecommendations).map(([category, etfs]) => (
@@ -213,29 +247,27 @@ function AllocationTab() {
             <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">
               {category === 'usEquity' ? 'US Equity' : category === 'intlEquity' ? 'International Equity' : 'Bonds'}
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-text-secondary border-b border-border/50">
-                    <th className="text-left pb-1 font-medium">ETF</th>
-                    <th className="text-right pb-1 font-medium">Expense Ratio</th>
-                    <th className="text-right pb-1 font-medium">10yr Return</th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-text-secondary border-b border-border/50">
+                  <th className="text-left pb-1 font-medium">ETF</th>
+                  <th className="text-right pb-1 font-medium">Expense Ratio</th>
+                  <th className="text-right pb-1 font-medium">10yr Return</th>
+                </tr>
+              </thead>
+              <tbody>
+                {etfs.map((etf) => (
+                  <tr key={etf.ticker} className="border-b border-border/30">
+                    <td className="py-1.5">
+                      <span className="number-display font-semibold text-text-primary">{etf.ticker}</span>
+                      <span className="text-text-secondary ml-2 text-xs">{etf.name}</span>
+                    </td>
+                    <td className="text-right number-display text-emerald-400">{etf.expenseRatio}%</td>
+                    <td className="text-right number-display">{etf.return10yr}%</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {etfs.map((etf) => (
-                    <tr key={etf.ticker} className="border-b border-border/30">
-                      <td className="py-1.5">
-                        <span className="number-display font-semibold text-text-primary">{etf.ticker}</span>
-                        <span className="text-text-secondary ml-2 text-xs">{etf.name}</span>
-                      </td>
-                      <td className="text-right number-display text-emerald-400">{etf.expenseRatio}%</td>
-                      <td className="text-right number-display">{etf.return10yr}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         ))}
         <p className="text-[10px] text-text-secondary/50 mt-3 italic">This is educational information, not personalized investment advice.</p>
@@ -244,43 +276,50 @@ function AllocationTab() {
   );
 }
 
+
 function PerformanceTab() {
-  const [timeRange, setTimeRange] = useState('1Y');
-  const ranges = ['1M', '3M', '6M', '1Y', 'All'];
+  const { userId } = useAuth();
+  const [totalValue, setTotalValue] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const now = new Date('2026-02-27');
-  const cutoffs: Record<string, Date> = {
-    '1M': new Date(now.getTime() - 30 * 86400000),
-    '3M': new Date(now.getTime() - 90 * 86400000),
-    '6M': new Date(now.getTime() - 180 * 86400000),
-    '1Y': new Date(now.getTime() - 365 * 86400000),
-    'All': new Date('2023-03-01'),
-  };
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/snaptrade/holdings?clerkId=${userId}`);
+        const data = await res.json();
+        setTotalValue(data.totalInvestment || 0);
+      } catch {
+        console.error('Failed to fetch performance data');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [userId]);
 
-  const data = mockPortfolioHistory.filter(d => new Date(d.date) >= cutoffs[timeRange]);
+  if (loading) return <div className="text-center py-10 text-text-secondary text-sm">Loading performance...</div>;
 
   return (
     <div className="space-y-4">
       <Card delay={0.1}>
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-semibold text-text-primary">Portfolio Performance</h4>
-          <div className="flex gap-1">
-            {ranges.map((r) => (
-              <button key={r} onClick={() => setTimeRange(r)} className={`tab-button text-xs px-3 py-1 ${timeRange === r ? 'active' : ''}`}>{r}</button>
-            ))}
-          </div>
+        <h4 className="text-sm font-semibold text-text-primary mb-4">Portfolio Performance</h4>
+        <div className="text-center py-8">
+          <p className="text-text-secondary/60 text-xs uppercase tracking-wider mb-2">Current Portfolio Value</p>
+          <p className="number-display text-3xl font-bold text-text-primary">
+            {totalValue !== null ? <AnimatedNumber value={totalValue} format={(n) => formatCurrency(n)} /> : '—'}
+          </p>
+          <p className="text-xs text-text-secondary mt-2">as of {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
         </div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <XAxis dataKey="date" stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short' })} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11, fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
-              <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} formatter={(v) => formatCurrency(Number(v))} />
-              <Line type="monotone" dataKey="portfolio" stroke="#6366f1" strokeWidth={2} dot={false} animationDuration={1200} name="Your Portfolio" />
-              <Line type="monotone" dataKey="sp500" stroke="#8888aa" strokeWidth={1} strokeDasharray="4 4" dot={false} animationDuration={1200} name="S&P 500" />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-            </LineChart>
-          </ResponsiveContainer>
+      </Card>
+
+      <Card delay={0.2} className="border-accent/20">
+        <div className="text-center py-6">
+          <span className="text-2xl mb-2 block">📈</span>
+          <h4 className="text-sm font-semibold text-text-primary mb-2">Performance History Coming Soon</h4>
+          <p className="text-xs text-text-secondary max-w-md mx-auto">
+            Historical portfolio tracking will build automatically as daily snapshots are collected.
+            Check back in a few days to see your portfolio performance over time.
+          </p>
         </div>
       </Card>
     </div>
