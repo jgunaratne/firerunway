@@ -73,7 +73,7 @@ interface UserData {
   clerkId: string | null;
   isLoading: boolean;
   isUsingMockData: boolean;
-  refresh: () => void;
+  refresh: () => Promise<void>;
 }
 
 const defaultProfile: UserProfile = {
@@ -98,7 +98,7 @@ const UserDataContext = createContext<UserData>({
   clerkId: null,
   isLoading: true,
   isUsingMockData: true,
-  refresh: () => { },
+  refresh: () => Promise.resolve(),
 });
 
 export function useUserData() {

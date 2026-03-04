@@ -119,6 +119,25 @@ CREATE TABLE IF NOT EXISTS net_worth_history (
   UNIQUE(user_id, recorded_date)
 );
 
+-- Income tax records (W-2 / 1099 uploads)
+CREATE TABLE IF NOT EXISTS income_tax (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  tax_year int NOT NULL DEFAULT 0,
+  filename text NOT NULL DEFAULT '',
+  document_type text NOT NULL DEFAULT 'w2',
+  employer text NOT NULL DEFAULT '',
+  income_breakdown jsonb NOT NULL DEFAULT '{}',
+  total_income numeric NOT NULL DEFAULT 0,
+  tax_breakdown jsonb NOT NULL DEFAULT '{}',
+  total_tax numeric NOT NULL DEFAULT 0,
+  effective_tax_rate numeric NOT NULL DEFAULT 0,
+  extraction_confidence text NOT NULL DEFAULT 'low',
+  extraction_notes text,
+  pdf_storage_path text,
+  created_at timestamptz DEFAULT now()
+);
+
 -- Row Level Security policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -129,7 +148,9 @@ ALTER TABLE account_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE real_estate_properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE property_value_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE net_worth_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE income_tax ENABLE ROW LEVEL SECURITY;
 
 -- Note: RLS policies should be configured based on your auth setup.
 -- The service role key (used in API routes) bypasses RLS.
 -- For client-side access, add policies that check auth.uid() matches user_id.
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
@@ -135,7 +135,7 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
 }
 
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate, clerkId: userId } = useUserData();
+  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
   const { totalInvestment } = useHoldingsCache(userId);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -162,8 +162,24 @@ export default function MonteCarloPage() {
     fireNumber: fireNumber,
     lifeEvents: [],
   });
+  const [dataSeeded, setDataSeeded] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
   const [scenarios, setScenarios] = useState<{ name: string; result: SimResult }[]>([]);
+
+  // Sync params when real data finishes loading
+  useEffect(() => {
+    if (!isLoading && !dataSeeded && (portfolioValue > 0 || profile)) {
+      setParams(prev => ({
+        ...prev,
+        startingPortfolio: portfolioValue || prev.startingPortfolio,
+        annualContribution: Math.round(annualIncome * savingsRate),
+        annualSpend,
+        retirementSpend: Math.round(annualSpend * 0.8),
+        fireNumber,
+      }));
+      setDataSeeded(true);
+    }
+  }, [isLoading, dataSeeded, portfolioValue, annualIncome, annualSpend, savingsRate, fireNumber, profile]);
 
   const result = useMemo(() => runMonteCarloSync({ ...params, lifeEvents: events }), [params, events]);
 

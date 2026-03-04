@@ -11,6 +11,8 @@ const navItems = [
   { href: '/equity', icon: '💼', label: 'Equity / RSUs' },
   { href: '/fire-score', icon: '🔥', label: 'FIRE Score' },
   { href: '/monte-carlo', icon: '📊', label: 'Monte Carlo' },
+  { href: '/statements', icon: '📄', label: 'Statements' },
+  { href: '/income-tax', icon: '💰', label: 'Income & Tax' },
   { href: '/portfolio?tab=accounts', icon: '🔗', label: 'Accounts' },
 ];
 

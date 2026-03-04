@@ -214,9 +214,9 @@ export default function RealEstatePage() {
         }),
       });
       if (res.ok) {
+        await refresh(); // Wait for fresh data from Supabase
         setShowForm(false);
         setForm({ address: '', property_type: 'primary', purchase_price: '', purchase_date: '', current_value: '', original_loan_amount: '', mortgage_balance: '', mortgage_rate: '', mortgage_term_months: '360', mortgage_start_date: '', monthly_payment: '', monthly_rent: '' });
-        refresh(); // Reload from Supabase
       }
     } catch (err) {
       console.error('Failed to save property:', err);

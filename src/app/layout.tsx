@@ -4,6 +4,8 @@ import { dark } from "@clerk/themes";
 import "./globals.css";
 import TopBar from "@/components/layout/TopBar";
 import Sidebar from "@/components/layout/Sidebar";
+import { UploadProvider } from "@/components/upload/UploadProvider";
+import UploadNotification from "@/components/upload/UploadNotification";
 
 export const metadata: Metadata = {
   title: "FireRunway — Financial Independence Dashboard",
@@ -20,13 +22,16 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <body className="antialiased">
         <UserDataProvider>
-          <TopBar />
-          <Sidebar />
-          <main className="pt-14 lg:pl-56 min-h-screen pb-20 lg:pb-0">
-            <div className="max-w-[1400px] mx-auto p-4 lg:p-6">
-              {children}
-            </div>
-          </main>
+          <UploadProvider>
+            <TopBar />
+            <Sidebar />
+            <main className="pt-14 lg:pl-56 min-h-screen pb-20 lg:pb-0">
+              <div className="max-w-[1400px] mx-auto p-4 lg:p-6">
+                {children}
+              </div>
+            </main>
+            <UploadNotification />
+          </UploadProvider>
         </UserDataProvider>
       </body>
     </html>
