@@ -194,7 +194,14 @@ export default function RealEstatePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!userId || !form.address || !form.current_value) return;
+    if (!userId) {
+      setSaveError('Not logged in. Please sign in first.');
+      return;
+    }
+    if (!form.address.trim()) {
+      setSaveError('Please enter an address.');
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -203,17 +210,17 @@ export default function RealEstatePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clerkId: userId,
-          address: form.address,
-          property_type: form.property_type,
-          purchase_price: Number(form.purchase_price) || 0,
+          address: form.address.trim(),
+          property_type: form.property_type || 'primary',
+          purchase_price: Number(form.purchase_price) || null,
           purchase_date: form.purchase_date || null,
-          current_value: Number(form.current_value) || 0,
-          original_loan_amount: Number(form.original_loan_amount) || 0,
-          mortgage_balance: Number(form.mortgage_balance) || 0,
-          mortgage_rate: Number(form.mortgage_rate) || 0,
-          mortgage_term_months: Number(form.mortgage_term_months) || 360,
+          current_value: Number(form.current_value) || null,
+          original_loan_amount: Number(form.original_loan_amount) || null,
+          mortgage_balance: Number(form.mortgage_balance) || null,
+          mortgage_rate: Number(form.mortgage_rate) || null,
+          mortgage_term_months: Number(form.mortgage_term_months) || null,
           mortgage_start_date: form.mortgage_start_date || null,
-          monthly_payment: Number(form.monthly_payment) || 0,
+          monthly_payment: Number(form.monthly_payment) || null,
           monthly_rent: form.monthly_rent ? Number(form.monthly_rent) : null,
         }),
       });
