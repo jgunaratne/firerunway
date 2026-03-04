@@ -15,14 +15,14 @@ const ClerkButtons = dynamic(() =>
 import AnimatedNumber from '../shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useHoldingsCache, clearHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useBrokerageData, clearBrokerageCache } from '@/lib/BrokerageDataContext';
 import { useStockPrice } from '@/hooks/useStockPrice';
 
 export default function TopBar() {
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
   const { profile, rsuGrants, realEstate, isLoading, clerkId: userId, refresh: refreshUserData } = useUserData();
-  const { totalInvestment, forceRefresh: refreshHoldings } = useHoldingsCache(userId);
+  const { totalInvestment, forceRefresh: refreshHoldings } = useBrokerageData();
   const [refreshing, setRefreshing] = useState(false);
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -32,7 +32,7 @@ export default function TopBar() {
   const handleRefresh = async () => {
     setRefreshing(true);
     // Clear all localStorage caches
-    clearHoldingsCache();
+    clearBrokerageCache();
     try {
       const keys = Object.keys(localStorage);
       for (const key of keys) {
@@ -45,9 +45,9 @@ export default function TopBar() {
   };
 
   // Derive FI Score + Net Worth from context + SnapTrade
-  const annualSpend = profile?.annual_spend || 120000;
-  const annualIncome = profile?.annual_income || 380000;
-  const fireNumber = profile?.fire_number || 3000000;
+  const annualSpend = profile?.annual_spend || 0;
+  const annualIncome = profile?.annual_income || 0;
+  const fireNumber = profile?.fire_number || 0;
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
   const investable = totalInvestment > 0 ? totalInvestment : rsuValue;

@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 const CACHE_KEY = 'snaptrade_brokerage_data';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// ─── Types ──────────────────────────────────────────────────────────
 
 export interface BrokerageAccount {
   id: string;
@@ -34,6 +36,30 @@ interface CachedBrokerageData {
   cachedAt: number;
 }
 
+interface BrokerageDataContextType {
+  accounts: BrokerageAccount[];
+  positions: BrokeragePosition[];
+  totalInvestment: number;
+  loading: boolean;
+  refresh: () => Promise<void>;
+  forceRefresh: () => Promise<void>;
+}
+
+// ─── Context ────────────────────────────────────────────────────────
+
+const BrokerageDataContext = createContext<BrokerageDataContextType>({
+  accounts: [],
+  positions: [],
+  totalInvestment: 0,
+  loading: true,
+  refresh: () => Promise.resolve(),
+  forceRefresh: () => Promise.resolve(),
+});
+
+export function useBrokerageData() {
+  return useContext(BrokerageDataContext);
+}
+
 /**
  * Clear the brokerage data cache from localStorage.
  * Can be called from anywhere (no hook required).
@@ -46,16 +72,12 @@ export function clearBrokerageCache() {
   }
 }
 
-// Re-export old name for backwards compat (TopBar, etc.)
+// Re-export old name for backwards compat
 export const clearHoldingsCache = clearBrokerageCache;
 
-/**
- * Unified hook for all brokerage data: accounts, balances, holdings.
- * Fetches both /api/snaptrade/accounts and /api/snaptrade/holdings in parallel,
- * merges them into a single cached data structure in localStorage.
- * All pages share the same cache so APIs are only called once per TTL window.
- */
-export function useBrokerageData(clerkId: string | null | undefined) {
+// ─── Provider ───────────────────────────────────────────────────────
+
+export function BrokerageDataProvider({ clerkId, children }: { clerkId: string | null; children: ReactNode }) {
   const [accounts, setAccounts] = useState<BrokerageAccount[]>([]);
   const [positions, setPositions] = useState<BrokeragePosition[]>([]);
   const [totalInvestment, setTotalInvestment] = useState(0);
@@ -105,7 +127,7 @@ export function useBrokerageData(clerkId: string | null | undefined) {
       meta: a.meta,
     }));
 
-    // Build positions with institution name from accounts or from holdings data
+    // Build positions
     const holdPositions: BrokeragePosition[] = (holdData.positions || []).map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => ({
@@ -150,14 +172,16 @@ export function useBrokerageData(clerkId: string | null | undefined) {
     }
   }, [clerkId, fetchAndCache, applyCache]);
 
-  /** Clear localStorage cache, then re-fetch fresh data from the APIs. */
   const forceRefresh = useCallback(async () => {
     clearBrokerageCache();
     await refresh();
   }, [refresh]);
 
   useEffect(() => {
-    if (!clerkId) return;
+    if (!clerkId) {
+      setLoading(false);
+      return;
+    }
 
     // Try cache first
     const cached = loadFromCache();
@@ -180,14 +204,9 @@ export function useBrokerageData(clerkId: string | null | undefined) {
     })();
   }, [clerkId, loadFromCache, fetchAndCache, applyCache]);
 
-  return { accounts, positions, totalInvestment, loading, refresh, forceRefresh };
-}
-
-/**
- * Backwards-compatible hook alias.
- * Returns the same shape as the old useHoldingsCache for existing consumers.
- */
-export function useHoldingsCache(clerkId: string | null | undefined) {
-  const { positions, totalInvestment, loading, refresh, forceRefresh } = useBrokerageData(clerkId);
-  return { positions, totalInvestment, loading, refresh, forceRefresh };
+  return (
+    <BrokerageDataContext.Provider value={{ accounts, positions, totalInvestment, loading, refresh, forceRefresh }}>
+      {children}
+    </BrokerageDataContext.Provider>
+  );
 }

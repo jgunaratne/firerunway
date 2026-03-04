@@ -5,7 +5,7 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useStockPrice } from '@/hooks/useStockPrice';
 import Link from 'next/link';
 
@@ -101,11 +101,11 @@ function InsightCard({ insight, delay }: { insight: { icon: string; title: strin
 
 export default function DashboardPage() {
   const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
-  const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
+  const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
 
-  const annualSpend = profile?.annual_spend || 120000;
-  const annualIncome = profile?.annual_income || 380000;
-  const fireNumber = profile?.fire_number || 3000000;
+  const annualSpend = profile?.annual_spend || 0;
+  const annualIncome = profile?.annual_income || 0;
+  const fireNumber = profile?.fire_number || 0;
 
   // Derive totals from real data
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';

@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
-import * as mockDataModule from '@/lib/mock-data';
 
 // Resolved at build time — determines if Clerk hooks are called
 const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -72,20 +71,8 @@ interface UserData {
   netWorthHistory: NetWorthEntry[];
   clerkId: string | null;
   isLoading: boolean;
-  isUsingMockData: boolean;
   refresh: () => Promise<void>;
 }
-
-const defaultProfile: UserProfile = {
-  annual_income: 380000,
-  annual_spend: 120000,
-  retirement_spend: 96000,
-  state_of_residence: 'WA',
-  filing_status: 'single',
-  fire_number: 3000000,
-  fire_target_year: 2028,
-  swr: 0.04,
-};
 
 // ─── Context ────────────────────────────────────────────────────────
 
@@ -97,7 +84,6 @@ const UserDataContext = createContext<UserData>({
   netWorthHistory: [],
   clerkId: null,
   isLoading: true,
-  isUsingMockData: true,
   refresh: () => Promise.resolve(),
 });
 
@@ -121,51 +107,18 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     accounts: [],
     netWorthHistory: [],
     isLoading: true,
-    isUsingMockData: true,
   });
 
   const fetchData = useCallback(async () => {
     if (!user?.id) {
-      // No user logged in — use mock data
+      // No user logged in — show empty state (no mock data)
       setData({
-        profile: defaultProfile,
-        rsuGrants: mockDataModule.mockRSUGrants.map((g, i) => ({
-          id: `mock-${i}`,
-          company_ticker: g.companyTicker,
-          grant_date: g.grantDate,
-          total_shares: g.totalShares,
-          vested_shares: g.vestedShares,
-          cliff_months: 12,
-          vest_period_months: 48,
-          vest_frequency: 'quarterly',
-        })),
-        realEstate: mockDataModule.mockRealEstate.map((p, i) => ({
-          id: `mock-${i}`,
-          address: p.address,
-          property_type: p.propertyType,
-          purchase_price: p.purchasePrice,
-          purchase_date: p.purchaseDate,
-          current_value: p.currentValue,
-          original_loan_amount: p.originalLoanAmount,
-          mortgage_balance: p.mortgageBalance,
-          mortgage_rate: p.mortgageRate,
-          mortgage_term_months: p.mortgageTermMonths,
-          mortgage_start_date: p.mortgageStartDate,
-          monthly_payment: p.monthlyPayment,
-          monthly_rent: p.monthlyRent ?? null,
-          include_equity_in_fire: false,
-        })),
+        profile: null,
+        rsuGrants: [],
+        realEstate: [],
         accounts: [],
-        netWorthHistory: mockDataModule.mockNetWorthHistory.map(h => ({
-          recorded_date: h.date,
-          total_net_worth: h.totalNetWorth,
-          investment_value: h.investmentValue,
-          retirement_value: h.retirementValue,
-          rsu_value: h.rsuValue,
-          real_estate_equity: h.realEstateEquity,
-        })),
+        netWorthHistory: [],
         isLoading: false,
-        isUsingMockData: true,
       });
       return;
     }
@@ -174,27 +127,22 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`/api/user/data?clerkId=${user.id}`);
       if (res.ok) {
         const json = await res.json();
-        const hasRealData = json.profile || json.rsuGrants?.length > 0 || json.realEstate?.length > 0;
-
-        if (hasRealData) {
-          setData({
-            profile: json.profile || defaultProfile,
-            rsuGrants: json.rsuGrants ?? [],
-            realEstate: json.realEstate ?? [],
-            accounts: json.accounts ?? [],
-            netWorthHistory: json.netWorthHistory ?? [],
-            isLoading: false,
-            isUsingMockData: false,
-          });
-          return;
-        }
+        setData({
+          profile: json.profile || null,
+          rsuGrants: json.rsuGrants ?? [],
+          realEstate: json.realEstate ?? [],
+          accounts: json.accounts ?? [],
+          netWorthHistory: json.netWorthHistory ?? [],
+          isLoading: false,
+        });
+        return;
       }
     } catch (err) {
       console.error('Failed to fetch user data:', err);
     }
 
-    // Fallback to mock data
-    setData(prev => ({ ...prev, profile: defaultProfile, isLoading: false, isUsingMockData: true }));
+    // Fallback — empty data, not mock
+    setData(prev => ({ ...prev, isLoading: false }));
   }, [user?.id]);
 
   useEffect(() => {

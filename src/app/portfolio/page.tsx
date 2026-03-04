@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -9,9 +9,8 @@ import {
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
-import { mockETFRecommendations } from '@/lib/mock-data';
 import { useSearchParams } from 'next/navigation';
-import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useBrokerageData, BrokerageAccount } from '@/lib/BrokerageDataContext';
 import { useUserData } from '@/lib/UserDataContext';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
@@ -19,8 +18,7 @@ const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
 
 function HoldingsTab() {
-  const { clerkId: userId } = useUserData();
-  const { positions, totalInvestment, loading } = useHoldingsCache(userId);
+  const { positions, totalInvestment, loading } = useBrokerageData();
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
   if (loading) {
@@ -147,8 +145,7 @@ function HoldingsTab() {
 const DONUT_COLORS = ['#6366f1', '#818cf8', '#10b981', '#8888aa', '#f59e0b'];
 
 function AllocationTab() {
-  const { clerkId: userId } = useUserData();
-  const { positions, totalInvestment, loading } = useHoldingsCache(userId);
+  const { positions, totalInvestment, loading } = useBrokerageData();
 
   // Compute allocation from positions
   const allocationData = (() => {
@@ -244,13 +241,31 @@ function AllocationTab() {
         </table>
       </Card>
 
-      <Card delay={0.4}>
+      <Card>
         <h4 className="text-sm font-semibold text-text-primary mb-4">Recommended Low-Cost ETFs</h4>
-        {Object.entries(mockETFRecommendations).map(([category, etfs]) => (
+        {[
+          {
+            category: 'US Equity', etfs: [
+              { ticker: 'VTI', name: 'Vanguard Total Stock Market', expenseRatio: '0.03', return10yr: '11.8' },
+              { ticker: 'VOO', name: 'Vanguard S&P 500', expenseRatio: '0.03', return10yr: '12.5' },
+              { ticker: 'SWTSX', name: 'Schwab Total Stock Market', expenseRatio: '0.03', return10yr: '11.7' },
+            ]
+          },
+          {
+            category: 'International Equity', etfs: [
+              { ticker: 'VXUS', name: 'Vanguard Total International', expenseRatio: '0.07', return10yr: '5.2' },
+              { ticker: 'IXUS', name: 'iShares Core MSCI Total Intl', expenseRatio: '0.07', return10yr: '5.1' },
+            ]
+          },
+          {
+            category: 'Bonds', etfs: [
+              { ticker: 'BND', name: 'Vanguard Total Bond Market', expenseRatio: '0.03', return10yr: '1.5' },
+              { ticker: 'AGG', name: 'iShares Core US Aggregate Bond', expenseRatio: '0.03', return10yr: '1.4' },
+            ]
+          },
+        ].map(({ category, etfs }) => (
           <div key={category} className="mb-4 last:mb-0">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">
-              {category === 'usEquity' ? 'US Equity' : category === 'intlEquity' ? 'International Equity' : 'Bonds'}
-            </p>
+            <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">{category}</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-text-secondary border-b border-border/50">
@@ -282,8 +297,7 @@ function AllocationTab() {
 
 
 function PerformanceTab() {
-  const { clerkId: userId } = useUserData();
-  const { totalInvestment, loading } = useHoldingsCache(userId);
+  const { totalInvestment, loading } = useBrokerageData();
 
   if (loading) return <div className="text-center py-10 text-text-secondary text-sm">Loading performance...</div>;
 
@@ -333,29 +347,17 @@ interface ConnectedAccount {
 
 function AccountsTab() {
   const { clerkId: userId, refresh: refreshUserData } = useUserData();
-  const { forceRefresh: refreshHoldings } = useHoldingsCache(userId);
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { accounts: cachedAccounts, forceRefresh: refreshBrokerage, loading: brokerageLoading } = useBrokerageData();
   const [connecting, setConnecting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAccounts = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/snaptrade/accounts?clerkId=${userId}`);
-      const data = await res.json();
-      setAccounts(data.accounts || []);
-    } catch {
-      console.error('Failed to fetch accounts');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+  const handleRefreshData = async () => {
+    setRefreshing(true);
+    await refreshBrokerage();
+    await refreshUserData();
+    setRefreshing(false);
+  };
 
   const connectBrokerage = async (brokerId?: string) => {
     if (!userId) return;
@@ -387,8 +389,7 @@ function AccountsTab() {
             window.removeEventListener('message', handleMessage);
             clearInterval(interval);
             setConnecting(false);
-            fetchAccounts();
-            refreshHoldings();
+            refreshBrokerage();
             refreshUserData();
             popup?.close();
           }
@@ -401,8 +402,7 @@ function AccountsTab() {
             clearInterval(interval);
             window.removeEventListener('message', handleMessage);
             setConnecting(false);
-            fetchAccounts();
-            refreshHoldings();
+            refreshBrokerage();
             refreshUserData();
           }
         }, 1000);
@@ -425,8 +425,7 @@ function AccountsTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clerkId: userId, authorizationId }),
       });
-      fetchAccounts();
-      refreshHoldings();
+      refreshBrokerage();
       refreshUserData();
     } catch {
       console.error('Disconnect error');
@@ -436,26 +435,42 @@ function AccountsTab() {
   return (
     <div className="space-y-6">
       {/* Connected Accounts */}
-      {accounts.length > 0 && (
-        <Card delay={0.1}>
-          <h4 className="text-sm font-semibold text-text-primary mb-4">Connected Accounts</h4>
+      {cachedAccounts.length > 0 && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-text-primary">Connected Accounts</h4>
+            <button
+              onClick={handleRefreshData}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80 transition-colors font-medium disabled:opacity-50"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className={refreshing ? 'animate-spin' : ''}
+              >
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+              </svg>
+              {refreshing ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+          </div>
           <div className="space-y-3">
-            {accounts.map((acct) => (
+            {cachedAccounts.map((acct) => (
               <div key={acct.id} className="flex items-center justify-between p-3 glass-card rounded-lg">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">🏦</span>
                   <div>
                     <p className="text-sm font-medium text-text-primary">{acct.institution_name || acct.name}</p>
                     <p className="text-xs text-text-secondary">{acct.name} • ****{acct.number?.slice(-4)}</p>
-                    {acct.meta?.type && (
-                      <p className="text-xs text-text-secondary/60">{acct.meta.type}</p>
+                    {acct.type && (
+                      <p className="text-xs text-text-secondary/60">{acct.type}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  {acct.balance?.total?.amount != null && (
+                  {acct.balance > 0 && (
                     <p className="number-display text-sm font-bold text-text-primary">
-                      {formatCurrency(acct.balance.total.amount)}
+                      {formatCurrency(acct.balance)}
                     </p>
                   )}
                   <button
@@ -526,7 +541,7 @@ function AccountsTab() {
         </div>
       </Card>
 
-      {loading && (
+      {brokerageLoading && (
         <div className="text-center py-10 text-text-secondary text-sm">Loading accounts...</div>
       )}
     </div>
