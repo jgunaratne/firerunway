@@ -31,6 +31,7 @@ interface SimParams {
   inflationRate: number;
   years: number;
   fireNumber: number;
+  includeRealEstate: boolean;
   lifeEvents: LifeEvent[];
 }
 
@@ -40,8 +41,46 @@ interface SimResult {
   medianFinalValue: number;
 }
 
+// ─── localStorage persistence ───────────────────────────────────────
+
+const STORAGE_KEY = 'firerunway_mc_params';
+const EVENTS_KEY = 'firerunway_mc_events';
+
+function loadSavedParams(): Partial<SimParams> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveParams(params: SimParams) {
+  if (typeof window === 'undefined') return;
+  try {
+    // Save only the user-adjustable fields, not lifeEvents (separate key)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { lifeEvents, ...toSave } = params;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch { /* quota exceeded, ignore */ }
+}
+
+function loadSavedEvents(): LifeEvent[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(EVENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveEvents(events: LifeEvent[]) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(EVENTS_KEY, JSON.stringify(events)); } catch { /* ignore */ }
+}
+
+// ─── Simulation engine ──────────────────────────────────────────────
+
 function runMonteCarloSync(params: SimParams): SimResult {
-  const NUM_SIMS = 2000; // Reduced for client-side perf
+  const NUM_SIMS = 2000;
   const EQUITY_MEAN = 0.10, EQUITY_STD = 0.17;
   const BOND_MEAN = 0.04, BOND_STD = 0.06;
 
@@ -68,7 +107,7 @@ function runMonteCarloSync(params: SimParams): SimResult {
       let contrib = isRetired ? 0 : params.annualContribution;
       let yearSpend = isRetired ? params.retirementSpend : spend;
 
-      const currentYear = 2026 + year;
+      const currentYear = new Date().getFullYear() + year;
       for (const evt of params.lifeEvents) {
         if (evt.year === currentYear) {
           if (evt.type === 'quit' || evt.type === 'layoff') {
@@ -110,6 +149,8 @@ function runMonteCarloSync(params: SimParams): SimResult {
   return { percentiles, successRate: successes / NUM_SIMS, medianFinalValue: percentiles.p50[params.years] };
 }
 
+// ─── Constants ──────────────────────────────────────────────────────
+
 const eventTypes = [
   { type: 'quit', emoji: '💼', label: 'Quit / Retire' },
   { type: 'college', emoji: '🏫', label: 'Child College' },
@@ -118,6 +159,8 @@ const eventTypes = [
   { type: 'expense', emoji: '🏥', label: 'Major Expense' },
   { type: 'purchase', emoji: '🏠', label: 'Home Purchase' },
 ] as const;
+
+// ─── Tooltip ────────────────────────────────────────────────────────
 
 function CustomFanTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string }>; label?: string }) {
   if (!active || !payload?.length) return null;
@@ -134,16 +177,18 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
   );
 }
 
+// ─── Main Page ──────────────────────────────────────────────────────
+
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
+  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
   const { totalInvestment } = useBrokerageData();
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
 
-  // Seed defaults from real user data
+  // Compute base values from real data
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
-  const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
-  const portfolioValue = totalInvestment > 0 ? totalInvestment + realEstateEquity : rsuValue + realEstateEquity;
+  const realEstateEquity = realEstate.reduce((sum, p) => sum + ((p.current_value ?? 0) - (p.mortgage_balance ?? 0)), 0);
+  const basePortfolio = totalInvestment > 0 ? totalInvestment : rsuValue;
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
   const fireNumber = profile?.fire_number || 0;
@@ -151,7 +196,7 @@ export default function MonteCarloPage() {
 
   const [events, setEvents] = useState<LifeEvent[]>([]);
   const [params, setParams] = useState<SimParams>({
-    startingPortfolio: portfolioValue || 500000,
+    startingPortfolio: basePortfolio || 500000,
     annualContribution: Math.round(annualIncome * savingsRate),
     annualSpend,
     retirementSpend: Math.round(annualSpend * 0.8),
@@ -160,34 +205,88 @@ export default function MonteCarloPage() {
     inflationRate: 0.03,
     years: 25,
     fireNumber: fireNumber,
+    includeRealEstate: true,
     lifeEvents: [],
   });
   const [dataSeeded, setDataSeeded] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
   const [scenarios, setScenarios] = useState<{ name: string; result: SimResult }[]>([]);
+  const [savedIndicator, setSavedIndicator] = useState(false);
 
-  // Sync params when real data finishes loading
+  // Load saved params from localStorage on mount
   useEffect(() => {
-    if (!isLoading && !dataSeeded && (portfolioValue > 0 || profile)) {
-      setParams(prev => ({
-        ...prev,
-        startingPortfolio: portfolioValue || prev.startingPortfolio,
-        annualContribution: Math.round(annualIncome * savingsRate),
-        annualSpend,
-        retirementSpend: Math.round(annualSpend * 0.8),
-        fireNumber,
-      }));
+    const saved = loadSavedParams();
+    const savedEvts = loadSavedEvents();
+    if (saved) {
+      setParams(prev => ({ ...prev, ...saved }));
+    }
+    if (savedEvts.length > 0) {
+      setEvents(savedEvts);
+    }
+  }, []);
+
+  // Sync params when real data finishes loading (only if not already seeded AND no saved params)
+  useEffect(() => {
+    if (!isLoading && !dataSeeded && (basePortfolio > 0 || profile)) {
+      const saved = loadSavedParams();
+      if (!saved) {
+        // No saved params — seed from real data
+        setParams(prev => ({
+          ...prev,
+          startingPortfolio: (basePortfolio + realEstateEquity) || prev.startingPortfolio,
+          annualContribution: Math.round(annualIncome * savingsRate),
+          annualSpend,
+          retirementSpend: Math.round(annualSpend * 0.8),
+          fireNumber,
+          includeRealEstate: true,
+        }));
+      } else {
+        // Has saved params — only update the startingPortfolio to reflect current real data
+        const reComputed = saved.includeRealEstate !== false
+          ? basePortfolio + realEstateEquity
+          : basePortfolio;
+        setParams(prev => ({
+          ...prev,
+          startingPortfolio: reComputed || prev.startingPortfolio,
+        }));
+      }
       setDataSeeded(true);
     }
-  }, [isLoading, dataSeeded, portfolioValue, annualIncome, annualSpend, savingsRate, fireNumber, profile]);
+  }, [isLoading, dataSeeded, basePortfolio, realEstateEquity, annualIncome, annualSpend, savingsRate, fireNumber, profile]);
+
+  // Recompute startingPortfolio when real estate toggle changes
+  useEffect(() => {
+    if (dataSeeded) {
+      setParams(prev => ({
+        ...prev,
+        startingPortfolio: prev.includeRealEstate
+          ? basePortfolio + realEstateEquity
+          : basePortfolio,
+      }));
+    }
+  }, [params.includeRealEstate, dataSeeded, basePortfolio, realEstateEquity]);
+
+  // Auto-save params to localStorage whenever they change
+  useEffect(() => {
+    if (dataSeeded) {
+      saveParams(params);
+    }
+  }, [params, dataSeeded]);
+
+  // Auto-save events to localStorage whenever they change
+  useEffect(() => {
+    saveEvents(events);
+  }, [events]);
 
   const result = useMemo(() => runMonteCarloSync({ ...params, lifeEvents: events }), [params, events]);
+
+  const currentYear = new Date().getFullYear();
 
   const chartData = useMemo(() => {
     const data = [];
     for (let y = 0; y <= params.years; y++) {
       data.push({
-        year: 2026 + y,
+        year: currentYear + y,
         p10: result.percentiles.p10[y],
         p25: result.percentiles.p25[y],
         p50: result.percentiles.p50[y],
@@ -196,22 +295,22 @@ export default function MonteCarloPage() {
       });
     }
     return data;
-  }, [result, params.years]);
+  }, [result, params.years, currentYear]);
 
   // Find intersection year for base case
   const fireYear = useMemo(() => {
     for (let y = 0; y <= params.years; y++) {
-      if (result.percentiles.p50[y] >= params.fireNumber) return 2026 + y;
+      if (result.percentiles.p50[y] >= params.fireNumber) return currentYear + y;
     }
     return null;
-  }, [result, params.years, params.fireNumber]);
+  }, [result, params.years, params.fireNumber, currentYear]);
 
   const conservativeFireYear = useMemo(() => {
     for (let y = 0; y <= params.years; y++) {
-      if (result.percentiles.p25[y] >= params.fireNumber) return 2026 + y;
+      if (result.percentiles.p25[y] >= params.fireNumber) return currentYear + y;
     }
     return null;
-  }, [result, params.years, params.fireNumber]);
+  }, [result, params.years, params.fireNumber, currentYear]);
 
   const addEvent = useCallback((type: string) => {
     const eventMeta = eventTypes.find(e => e.type === type)!;
@@ -220,7 +319,7 @@ export default function MonteCarloPage() {
       type: type as LifeEvent['type'],
       label: eventMeta.label,
       emoji: eventMeta.emoji,
-      year: 2030,
+      year: currentYear + 4,
       params: type === 'college' ? { annualCost: 55000, plan529: 20000 } :
         type === 'windfall' ? { amount: 100000 } :
           type === 'expense' ? { amount: 50000 } :
@@ -229,7 +328,7 @@ export default function MonteCarloPage() {
                 { severance: 50000 },
     };
     setEvents(prev => [...prev, newEvent]);
-  }, []);
+  }, [currentYear]);
 
   const removeEvent = useCallback((id: string) => {
     setEvents(prev => prev.filter(e => e.id !== id));
@@ -243,6 +342,21 @@ export default function MonteCarloPage() {
     const name = `Scenario ${scenarios.length + 1}${events.length > 0 ? ` (${events.map(e => e.label).join(', ')})` : ''}`;
     setScenarios(prev => [...prev, { name, result: { ...result } }]);
   }, [scenarios, events, result]);
+
+  const handleSaveParams = useCallback(() => {
+    saveParams(params);
+    saveEvents(events);
+    setSavedIndicator(true);
+    setTimeout(() => setSavedIndicator(false), 2000);
+  }, [params, events]);
+
+  const handleResetParams = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(EVENTS_KEY);
+    setDataSeeded(false);
+    setEvents([]);
+    // Will re-seed from real data on next render cycle
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -263,7 +377,7 @@ export default function MonteCarloPage() {
         {/* Main content */}
         <div className="flex-1 space-y-6 min-w-0">
           {/* Fan Chart */}
-          <Card delay={0.1}>
+          <Card>
             <h3 className="font-display text-lg text-text-primary mb-4">Portfolio Projections — {params.years} Years</h3>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
@@ -302,25 +416,25 @@ export default function MonteCarloPage() {
 
           {/* Outcome Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card delay={0.2} className="text-center">
+            <Card className="text-center">
               <p className="text-xs text-text-secondary">Success Rate</p>
               <p className="number-display text-2xl font-bold text-emerald-400">
                 <AnimatedNumber value={Math.round(result.successRate * 100)} suffix="%" />
               </p>
             </Card>
-            <Card delay={0.25} className="text-center">
+            <Card className="text-center">
               <p className="text-xs text-text-secondary">Median at Yr {params.years}</p>
               <p className="number-display text-2xl font-bold text-text-primary">
                 <AnimatedNumber value={result.medianFinalValue} format={(n) => formatCurrency(n, true)} />
               </p>
             </Card>
-            <Card delay={0.3} className="text-center">
+            <Card className="text-center">
               <p className="text-xs text-text-secondary">Conservative FI</p>
               <p className="number-display text-2xl font-bold text-accent-amber">
                 {conservativeFireYear || 'N/A'}
               </p>
             </Card>
-            <Card delay={0.35} className="text-center">
+            <Card className="text-center">
               <p className="text-xs text-text-secondary">Base Case FI</p>
               <p className="number-display text-2xl font-bold text-accent">
                 {fireYear || 'N/A'}
@@ -329,7 +443,7 @@ export default function MonteCarloPage() {
           </div>
 
           {/* Life Events Timeline */}
-          <Card delay={0.4}>
+          <Card>
             <h3 className="font-display text-lg text-text-primary mb-2">Life Events</h3>
             <p className="text-xs text-text-secondary mb-4">Add events to see how they affect your projections</p>
 
@@ -364,8 +478,8 @@ export default function MonteCarloPage() {
                       <label className="text-xs text-text-secondary">Year:</label>
                       <input
                         type="number"
-                        min={2026}
-                        max={2026 + params.years}
+                        min={currentYear}
+                        max={currentYear + params.years}
                         value={evt.year}
                         onChange={(e) => updateEventYear(evt.id, Number(e.target.value))}
                         className="w-20 bg-bg-elevated border border-border rounded px-2 py-1 text-xs number-display text-text-primary"
@@ -379,7 +493,7 @@ export default function MonteCarloPage() {
           </Card>
 
           {/* Scenario Manager */}
-          <Card delay={0.5}>
+          <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-lg text-text-primary">Scenario Manager</h3>
               <button onClick={saveScenario} className="text-xs px-3 py-1.5 bg-accent/15 text-accent border border-accent/30 rounded-md hover:bg-accent/25 transition-colors">
@@ -423,12 +537,15 @@ export default function MonteCarloPage() {
           </Card>
 
           {/* AI Interpretation */}
-          <Card delay={0.6} className="border-accent/20">
+          <Card className="border-accent/20">
             <h3 className="font-display text-lg text-text-primary mb-2">AI Interpretation</h3>
             <p className="text-sm text-text-secondary leading-relaxed italic">
               &ldquo;Your {(result.successRate * 100).toFixed(0)}% success rate is {result.successRate >= 0.85 ? 'solid' : result.successRate >= 0.70 ? 'moderate — consider increasing your savings rate' : 'concerning — review your spending and investment strategy'}.
-              The primary risk in your 10th percentile scenario is a severe market downturn in the first 3 years of retirement combined with high employer stock concentration.
-              Diversifying 15% of your Amazon position over the next 2 vesting cycles would improve your worst-case outcome by approximately $340,000 at year {params.years}.&rdquo;
+              {params.includeRealEstate && realEstateEquity > 0 && ` Real estate equity of ${formatCurrency(realEstateEquity, true)} is included in your starting portfolio.`}
+              {!params.includeRealEstate && realEstateEquity > 0 && ` Real estate equity of ${formatCurrency(realEstateEquity, true)} is excluded from projections.`}
+              The primary risk in your 10th percentile scenario is a severe market downturn in the first 3 years combined with sustained inflation.
+              {fireYear && ` At current trajectory, you could reach FIRE by ${fireYear} (base case).`}
+              &rdquo;
             </p>
           </Card>
         </div>
@@ -441,15 +558,35 @@ export default function MonteCarloPage() {
             exit={{ width: 0, opacity: 0 }}
             className="hidden lg:block flex-shrink-0"
           >
-            <Card delay={0.1} className="sticky top-20 space-y-5 text-sm">
-              <h4 className="font-display text-base text-text-primary">Variables</h4>
+            <Card className="sticky top-20 space-y-5 text-sm">
+              <div className="flex items-center justify-between">
+                <h4 className="font-display text-base text-text-primary">Variables</h4>
+                <div className="flex items-center gap-2">
+                  {savedIndicator && (
+                    <span className="text-xs text-emerald-400">✓ Saved</span>
+                  )}
+                  <button
+                    onClick={handleSaveParams}
+                    className="text-[10px] px-2 py-1 bg-accent/15 text-accent border border-accent/30 rounded hover:bg-accent/25 transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleResetParams}
+                    className="text-[10px] px-2 py-1 text-text-secondary border border-border rounded hover:text-text-primary transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
 
               <div>
                 <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">Portfolio</p>
                 <div className="space-y-2">
                   <div>
                     <label className="text-xs text-text-secondary">Starting value</label>
-                    <input type="text" value={formatCurrency(params.startingPortfolio)} readOnly className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5" />
+                    <input type="text" value={formatCurrency(params.startingPortfolio)} readOnly className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5 opacity-60" />
+                    <p className="text-[10px] text-text-secondary/60 mt-0.5">Auto-calculated from your accounts</p>
                   </div>
                   <div>
                     <label className="text-xs text-text-secondary">Annual contribution</label>
@@ -463,6 +600,27 @@ export default function MonteCarloPage() {
                     <label className="text-xs text-text-secondary">Inflation: {(params.inflationRate * 100).toFixed(1)}%</label>
                     <input type="range" min={1} max={6} step={0.5} value={params.inflationRate * 100} onChange={e => setParams(p => ({ ...p, inflationRate: Number(e.target.value) / 100 }))} className="w-full accent-accent" />
                   </div>
+                </div>
+              </div>
+
+              {/* Real Estate Toggle */}
+              <div className="border-t border-border pt-4">
+                <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">Real Estate</p>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] border border-border/50">
+                  <div>
+                    <p className="text-xs text-text-primary font-medium">Include equity</p>
+                    <p className="text-[10px] text-text-secondary">{formatCurrency(realEstateEquity, true)}</p>
+                  </div>
+                  <button
+                    onClick={() => setParams(p => ({ ...p, includeRealEstate: !p.includeRealEstate }))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${params.includeRealEstate ? 'bg-accent' : 'bg-white/10'
+                      }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${params.includeRealEstate ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                    />
+                  </button>
                 </div>
               </div>
 
