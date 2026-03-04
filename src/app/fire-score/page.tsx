@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
@@ -18,6 +18,69 @@ const milestones = [
   { value: 75, label: 'Approaching FI' },
   { value: 100, label: 'Financially independent' },
 ];
+
+// ─── Editable currency field ────────────────────────────────────────
+
+function EditableAmount({
+  label,
+  value,
+  onSave,
+  placeholder = 'Click to set',
+}: {
+  label: string;
+  value: number;
+  onSave: (val: number) => void;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const startEdit = () => {
+    setDraft(value > 0 ? value.toString() : '');
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    const num = parseInt(draft.replace(/\D/g, '')) || 0;
+    if (num !== value) onSave(num);
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') commitEdit();
+    if (e.key === 'Escape') setEditing(false);
+  };
+
+  return (
+    <div className="text-center">
+      <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">{label}</p>
+      {editing ? (
+        <input
+          autoFocus
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          placeholder="e.g. 3000000"
+          className="w-full text-center bg-bg-elevated border border-accent/50 rounded px-2 py-1 text-xl font-bold number-display text-text-primary focus:outline-none focus:border-accent"
+        />
+      ) : (
+        <button
+          onClick={startEdit}
+          className="w-full group"
+        >
+          <p className={`number-display text-xl font-bold ${value > 0 ? 'text-text-primary' : 'text-text-secondary/50'}`}>
+            {value > 0 ? formatCurrency(value, true) : placeholder}
+          </p>
+          <p className="text-[10px] text-text-secondary/40 opacity-0 group-hover:opacity-100 transition-opacity">
+            click to edit
+          </p>
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ─── Projection calculator ─────────────────────────────────────────
 
@@ -60,10 +123,9 @@ function computeProjections(
   });
 }
 
-// ─── Dynamic recommendations based on actual data ───────────────────
+// ─── Dynamic recommendations ────────────────────────────────────────
 
 function generateRecommendations(
-  fiData: ReturnType<typeof calculateFIScore>,
   savingsRate: number,
   concentrationPct: number,
   fundingRatio: number,
@@ -72,7 +134,6 @@ function generateRecommendations(
 ) {
   const recs: { action: string; impact: string; icon: string; priority: number }[] = [];
 
-  // High concentration risk
   if (concentrationPct > 0.25) {
     const potentialGain = Math.round(concentrationPct * 10);
     recs.push({
@@ -83,7 +144,6 @@ function generateRecommendations(
     });
   }
 
-  // Low savings rate
   if (savingsRate < 0.3 && annualIncome > 0) {
     const targetIncrease = Math.round((0.35 - savingsRate) * annualIncome);
     recs.push({
@@ -101,7 +161,6 @@ function generateRecommendations(
     });
   }
 
-  // Low funding ratio
   if (fundingRatio < 0.5 && fireNumber > 0) {
     recs.push({
       action: `You're ${Math.round(fundingRatio * 100)}% to your FIRE number — maximizing tax-advantaged accounts (401k/IRA) would accelerate progress`,
@@ -111,17 +170,24 @@ function generateRecommendations(
     });
   }
 
-  // No FIRE number set
   if (fireNumber <= 0) {
     recs.push({
-      action: 'Set your FIRE number in your profile to get accurate projections and tracking',
+      action: 'Set your FIRE number above to get accurate projections and tracking',
       impact: '—',
       icon: '🎯',
       priority: 0,
     });
   }
 
-  // Already close to FI
+  if (annualIncome <= 0) {
+    recs.push({
+      action: 'Set your annual income to calculate savings rate and contribution projections',
+      impact: '—',
+      icon: '💵',
+      priority: 0,
+    });
+  }
+
   if (fundingRatio >= 0.9 && fireNumber > 0) {
     recs.push({
       action: `You're ${Math.round(fundingRatio * 100)}% funded! Consider building a 2-year cash buffer before transitioning`,
@@ -131,11 +197,10 @@ function generateRecommendations(
     });
   }
 
-  // Sort by priority
   return recs.sort((a, b) => a.priority - b.priority).slice(0, 4);
 }
 
-// ─── Score gauge color ──────────────────────────────────────────────
+// ─── Score helpers ──────────────────────────────────────────────────
 
 function getScoreColor(score: number) {
   if (score >= 80) return 'text-emerald-400';
@@ -155,8 +220,9 @@ function getScoreLabel(score: number) {
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function FireScorePage() {
-  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId, refresh } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
+  const [saving, setSaving] = useState(false);
 
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
@@ -193,18 +259,42 @@ export default function FireScorePage() {
 
   // Dynamic recommendations
   const recommendations = useMemo(
-    () => generateRecommendations(fiData, savingsRate, concentrationPct, fundingRatio, annualIncome, fireNumber),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => generateRecommendations(savingsRate, concentrationPct, fundingRatio, annualIncome, fireNumber),
     [savingsRate, concentrationPct, fundingRatio, annualIncome, fireNumber]
   );
+
+  // Save profile field to API
+  const updateProfileField = useCallback(async (field: string, value: number) => {
+    if (!userId) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clerkId: userId, [field]: value }),
+      });
+      if (res.ok) {
+        await refresh();
+      } else {
+        console.error('Failed to update profile:', await res.text());
+      }
+    } catch (err) {
+      console.error('Profile update error:', err);
+    } finally {
+      setSaving(false);
+    }
+  }, [userId, refresh]);
 
   if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">FIRE Score</h1>
-        <p className="text-sm text-text-secondary mt-1">A single, honest answer to &quot;am I financially independent?&quot;</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl lg:text-3xl text-text-primary">FIRE Score</h1>
+          <p className="text-sm text-text-secondary mt-1">A single, honest answer to &quot;am I financially independent?&quot;</p>
+        </div>
+        {saving && <span className="text-xs text-accent animate-pulse">Saving...</span>}
       </div>
 
       {/* Score Hero */}
@@ -241,29 +331,62 @@ export default function FireScorePage() {
         </div>
       </Card>
 
-      {/* Key Metrics */}
+      {/* Editable Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="text-center">
           <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Investable Assets</p>
           <p className="number-display text-xl font-bold text-text-primary">{formatCurrency(investable, true)}</p>
+          <p className="text-[10px] text-text-secondary/40 mt-0.5">from linked accounts</p>
         </Card>
-        <Card className="text-center">
-          <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">FIRE Number</p>
-          <p className="number-display text-xl font-bold text-accent">{fireNumber > 0 ? formatCurrency(fireNumber, true) : '—'}</p>
+        <Card>
+          <EditableAmount
+            label="FIRE Number"
+            value={fireNumber}
+            onSave={(val) => updateProfileField('fire_number', val)}
+            placeholder="Click to set"
+          />
         </Card>
-        <Card className="text-center">
-          <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Savings Rate</p>
-          <p className={`number-display text-xl font-bold ${savingsRate >= 0.3 ? 'text-emerald-400' : 'text-amber-400'}`}>
-            {annualIncome > 0 ? `${Math.round(savingsRate * 100)}%` : '—'}
-          </p>
+        <Card>
+          <EditableAmount
+            label="Annual Income"
+            value={annualIncome}
+            onSave={(val) => updateProfileField('annual_income', val)}
+            placeholder="Click to set"
+          />
         </Card>
-        <Card className="text-center">
-          <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Progress</p>
-          <p className={`number-display text-xl font-bold ${fundingRatio >= 0.75 ? 'text-emerald-400' : 'text-text-primary'}`}>
-            {fireNumber > 0 ? `${Math.round(fundingRatio * 100)}%` : '—'}
-          </p>
+        <Card>
+          <EditableAmount
+            label="Annual Spend"
+            value={annualSpend}
+            onSave={(val) => updateProfileField('annual_spend', val)}
+            placeholder="Click to set"
+          />
         </Card>
       </div>
+
+      {/* Derived Metrics */}
+      {(fireNumber > 0 || annualIncome > 0) && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="text-center">
+            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Progress</p>
+            <p className={`number-display text-2xl font-bold ${fundingRatio >= 0.75 ? 'text-emerald-400' : fundingRatio >= 0.5 ? 'text-accent' : 'text-text-primary'}`}>
+              {fireNumber > 0 ? `${Math.round(fundingRatio * 100)}%` : '—'}
+            </p>
+          </Card>
+          <Card className="text-center">
+            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Savings Rate</p>
+            <p className={`number-display text-2xl font-bold ${savingsRate >= 0.3 ? 'text-emerald-400' : savingsRate > 0 ? 'text-amber-400' : 'text-text-primary'}`}>
+              {annualIncome > 0 && annualSpend > 0 ? `${Math.round(savingsRate * 100)}%` : '—'}
+            </p>
+          </Card>
+          <Card className="text-center">
+            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Runway</p>
+            <p className="number-display text-2xl font-bold text-text-primary">
+              {annualSpend > 0 ? `${(investable / annualSpend).toFixed(1)} yrs` : '—'}
+            </p>
+          </Card>
+        </div>
+      )}
 
       {/* Score Breakdown */}
       <Card>
@@ -309,7 +432,7 @@ export default function FireScorePage() {
         <div>
           <h3 className="font-display text-lg text-text-primary mb-3">Timeline Projections</h3>
           <p className="text-xs text-text-secondary mb-4">
-            Based on your current portfolio of {formatCurrency(investable, true)} and annual savings of {formatCurrency(annualSavings, true)}
+            Based on your portfolio of {formatCurrency(investable, true)} and annual savings of {formatCurrency(annualSavings, true)}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {projections.map((proj, i) => (
@@ -335,24 +458,6 @@ export default function FireScorePage() {
             ))}
           </div>
         </div>
-      )}
-
-      {/* Missing data prompt */}
-      {(fireNumber <= 0 || annualSavings <= 0) && (
-        <Card className="border-amber-500/20">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <p className="text-sm font-medium text-text-primary">Complete your profile for projections</p>
-              <p className="text-xs text-text-secondary mt-1">
-                {fireNumber <= 0 && 'Set your FIRE number (target portfolio size). '}
-                {annualIncome <= 0 && 'Add your annual income. '}
-                {annualSpend <= 0 && 'Add your annual spending. '}
-                These are needed to calculate your timeline to financial independence.
-              </p>
-            </div>
-          </div>
-        </Card>
       )}
 
       {/* What Moves Your Score */}
@@ -381,46 +486,46 @@ export default function FireScorePage() {
       )}
 
       {/* Net Worth Composition */}
-      <Card>
-        <h3 className="font-display text-lg text-text-primary mb-4">Net Worth Composition</h3>
-        <div className="space-y-3">
-          {[
-            { label: 'Investment Portfolio', value: totalInvestment, color: 'bg-accent' },
-            { label: 'RSU / Employer Stock', value: rsuValue, color: 'bg-amber-400' },
-            { label: 'Real Estate Equity', value: realEstateEquity, color: 'bg-emerald-400' },
-          ]
-            .filter((item) => item.value > 0)
-            .map((item) => {
-              const pct = totalNetWorth > 0 ? (item.value / totalNetWorth) * 100 : 0;
-              return (
-                <div key={item.label}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-text-secondary">{item.label}</span>
-                    <span className="number-display text-text-primary font-medium">
-                      {formatCurrency(item.value, true)} ({pct.toFixed(1)}%)
-                    </span>
+      {totalNetWorth > 0 && (
+        <Card>
+          <h3 className="font-display text-lg text-text-primary mb-4">Net Worth Composition</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'Investment Portfolio', value: totalInvestment, color: 'bg-accent' },
+              { label: 'RSU / Employer Stock', value: rsuValue, color: 'bg-amber-400' },
+              { label: 'Real Estate Equity', value: realEstateEquity, color: 'bg-emerald-400' },
+            ]
+              .filter((item) => item.value > 0)
+              .map((item) => {
+                const pct = totalNetWorth > 0 ? (item.value / totalNetWorth) * 100 : 0;
+                return (
+                  <div key={item.label}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-text-secondary">{item.label}</span>
+                      <span className="number-display text-text-primary font-medium">
+                        {formatCurrency(item.value, true)} ({pct.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${item.color}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <motion.div
-                      className={`h-full rounded-full ${item.color}`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          {totalNetWorth > 0 && (
+                );
+              })}
             <div className="pt-2 border-t border-border">
               <div className="flex justify-between text-sm">
                 <span className="text-text-primary font-medium">Total Net Worth</span>
                 <span className="number-display text-text-primary font-bold">{formatCurrency(totalNetWorth, true)}</span>
               </div>
             </div>
-          )}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      )}
 
       <div className="disclaimer">
         FireRunway provides financial information for educational purposes only. Nothing on this platform constitutes personalized investment advice.
