@@ -52,13 +52,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verification: query all properties for this user
-    const { data: allProps, error: verifyErr } = await supabase
-      .from('real_estate_properties')
-      .select('id, address')
-      .eq('user_id', user.id);
-    console.log('[POST /real-estate] Inserted for user_id:', user.id, '| Inserted:', data?.address, '| All properties now:', allProps?.length, allProps?.map(p => p.address), '| Verify error:', verifyErr);
-
     return NextResponse.json({ property: data });
   } catch (error) {
     console.error('Real estate API error:', error);

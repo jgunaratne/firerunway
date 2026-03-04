@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_id', userId);
 
-    console.log('[/api/user/data] userId:', userId, 'properties:', properties?.length, 'propError:', propError);
+
+
 
     // Fetch remaining data in parallel
     const [profileRes, grantsRes, accountsRes, historyRes] = await Promise.all([

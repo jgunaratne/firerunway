@@ -129,7 +129,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       });
       if (res.ok) {
         const json = await res.json();
-        console.log('[UserData] Refreshed. realEstate count:', json.realEstate?.length, json.realEstate?.map((p: { address: string }) => p.address));
+
         setData({
           profile: json.profile || null,
           rsuGrants: json.rsuGrants ?? [],
