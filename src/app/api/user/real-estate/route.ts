@@ -59,6 +59,64 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT /api/user/real-estate — update an existing property
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { clerkId, propertyId, ...fields } = body;
+
+    if (!clerkId || !propertyId) {
+      return NextResponse.json({ error: 'clerkId and propertyId are required' }, { status: 400 });
+    }
+
+    const supabase = createServerClient();
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const { data, error } = await supabase
+      .from('real_estate_properties')
+      .update({
+        address: fields.address,
+        property_type: fields.property_type,
+        purchase_price: fields.purchase_price,
+        purchase_date: fields.purchase_date,
+        current_value: fields.current_value,
+        original_loan_amount: fields.original_loan_amount,
+        mortgage_balance: fields.mortgage_balance,
+        mortgage_rate: fields.mortgage_rate,
+        mortgage_term_months: fields.mortgage_term_months,
+        mortgage_start_date: fields.mortgage_start_date,
+        monthly_payment: fields.monthly_payment,
+        monthly_rent: fields.monthly_rent,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', propertyId)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Update error:', error);
+      return NextResponse.json(
+        { error: `Failed to update: ${error.message || error.code}`, details: error },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ property: data });
+  } catch (error) {
+    console.error('Real estate PUT error:', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
 // DELETE /api/user/real-estate?clerkId=xxx&propertyId=xxx
 export async function DELETE(request: NextRequest) {
   const clerkId = request.nextUrl.searchParams.get('clerkId');
