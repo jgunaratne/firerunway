@@ -55,9 +55,9 @@ export default function TopBar() {
 
   const rawFiScore = isLoading ? 0 : calculateFIScore({
     currentInvestableAssets: investable,
-    fireNumber: fireNumber || 1, // avoid division by zero
+    fireNumber,
     liquidAssets: investable,
-    annualSpend: annualSpend || 1, // avoid division by zero
+    annualSpend,
     employerStockValue: rsuValue,
     totalNetWorth,
     isEmployed: true,

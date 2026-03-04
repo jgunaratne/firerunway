@@ -15,18 +15,18 @@ export function calculateFIScore(data: UserFinancialData): {
   total: number;
   breakdown: { factor: string; value: string; weight: number; points: number }[];
 } {
-  const fundingRatio = data.currentInvestableAssets / data.fireNumber;
+  const fundingRatio = data.fireNumber > 0 ? data.currentInvestableAssets / data.fireNumber : 0;
   const fundingScore = Math.min(fundingRatio * 40, 40);
 
-  const runwayYears = data.liquidAssets / data.annualSpend;
+  const runwayYears = data.annualSpend > 0 ? data.liquidAssets / data.annualSpend : 0;
   const runwayScore = Math.min((runwayYears / 20) * 25, 25);
 
-  const concentrationPct = data.employerStockValue / data.totalNetWorth;
+  const concentrationPct = data.totalNetWorth > 0 ? data.employerStockValue / data.totalNetWorth : 0;
   const concentrationScore = Math.max(15 - concentrationPct * 30, 0);
 
   const employmentScore = data.isEmployed ? 10 : 0;
 
-  const savingsRate = (data.annualIncome - data.annualSpend) / data.annualIncome;
+  const savingsRate = data.annualIncome > 0 ? (data.annualIncome - data.annualSpend) / data.annualIncome : 0;
   const savingsScore = Math.min((savingsRate / 0.5) * 10, 10);
 
   const total = Math.round(
