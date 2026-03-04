@@ -191,9 +191,12 @@ export default function RealEstatePage() {
     monthly_rent: '',
   });
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleSave = async () => {
     if (!userId || !form.address || !form.current_value) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch('/api/user/real-estate', {
         method: 'POST',
@@ -218,9 +221,14 @@ export default function RealEstatePage() {
         await refresh(); // Wait for fresh data from Supabase
         setShowForm(false);
         setForm({ address: '', property_type: 'primary', purchase_price: '', purchase_date: '', current_value: '', original_loan_amount: '', mortgage_balance: '', mortgage_rate: '', mortgage_term_months: '360', mortgage_start_date: '', monthly_payment: '', monthly_rent: '' });
+      } else {
+        const errBody = await res.text();
+        console.error('Save property failed:', res.status, errBody);
+        setSaveError(`Failed to save (${res.status}): ${errBody}`);
       }
     } catch (err) {
       console.error('Failed to save property:', err);
+      setSaveError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setSaving(false);
     }
@@ -440,6 +448,12 @@ export default function RealEstatePage() {
                 </div>
               )}
             </div>
+
+            {saveError && (
+              <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {saveError}
+              </div>
+            )}
 
             <div className="flex gap-3 mt-6">
               <button

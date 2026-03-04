@@ -39,11 +39,14 @@ export async function GET(req: NextRequest) {
         value: number;
         accountName: string;
         accountType: string;
+        institutionName: string;
       }> = [];
 
       for (const account of holdings) {
-        const acctName = account.account?.name || 'Unknown';
-        const acctType = String(account.account?.type || 'unknown');
+        const acctObj = account.account as Record<string, unknown> | undefined;
+        const institutionName = String(acctObj?.institution_name || acctObj?.name || 'Unknown');
+        const acctName = String(acctObj?.name || institutionName);
+        const acctType = String(acctObj?.type || 'unknown');
         if (Array.isArray(account.positions)) {
           for (const pos of account.positions) {
             const value = (pos.units || 0) * (pos.price || 0);
@@ -74,6 +77,7 @@ export async function GET(req: NextRequest) {
               value,
               accountName: acctName,
               accountType: acctType,
+              institutionName,
             });
           }
         }

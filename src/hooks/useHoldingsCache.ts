@@ -14,6 +14,7 @@ interface CachedHoldings {
     value: number;
     accountName: string;
     accountType: string;
+    institutionName?: string;
   }[];
   totalInvestment: number;
   cachedAt: number;

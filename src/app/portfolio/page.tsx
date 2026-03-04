@@ -21,6 +21,7 @@ const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 function HoldingsTab() {
   const { clerkId: userId } = useUserData();
   const { positions, totalInvestment, loading } = useHoldingsCache(userId);
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
   if (loading) {
     return <div className="text-center py-10 text-text-secondary text-sm">Loading holdings...</div>;
@@ -41,56 +42,94 @@ function HoldingsTab() {
 
   // Group positions by account
   const grouped = positions.reduce((acc, pos) => {
-    const key = pos.accountName || 'Unknown Account';
-    if (!acc[key]) acc[key] = { name: key, type: pos.accountType, holdings: [] };
+    const key = pos.institutionName || pos.accountName || 'Unknown Account';
+    if (!acc[key]) acc[key] = { name: key, accountName: pos.accountName, type: pos.accountType, holdings: [] };
     acc[key].holdings.push(pos);
     return acc;
-  }, {} as Record<string, { name: string; type: string; holdings: typeof positions }>);
+  }, {} as Record<string, { name: string; accountName: string; type: string; holdings: typeof positions }>);
+
+  const accountKeys = Object.keys(grouped);
+  const allExpanded = accountKeys.every(k => expandedAccounts.has(k));
+
+  const toggleAll = () => {
+    if (allExpanded) {
+      setExpandedAccounts(new Set());
+    } else {
+      setExpandedAccounts(new Set(accountKeys));
+    }
+  };
+
+  const toggleAccount = (key: string) => {
+    setExpandedAccounts(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-4">
-      {Object.entries(grouped).map(([name, group], i) => {
+      {/* Expand/Collapse All + Total */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={toggleAll}
+          className="text-xs text-accent hover:text-accent/80 transition-colors font-medium"
+        >
+          {allExpanded ? '▾ Collapse All' : '▸ Expand All'}
+        </button>
+      </div>
+
+      {Object.entries(grouped).map(([name, group]) => {
         const accountTotal = group.holdings.reduce((sum, h) => sum + h.value, 0);
+        const isExpanded = expandedAccounts.has(name);
         return (
-          <Card key={name} delay={0.1 * (i + 1)} className="overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
-                <p className="text-xs text-text-secondary">{group.type}</p>
+          <Card key={name} className="overflow-hidden">
+            <button onClick={() => toggleAccount(name)} className="w-full text-left flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-accent text-xs">{isExpanded ? '▾' : '▸'}</span>
+                <div>
+                  <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
+                  <p className="text-xs text-text-secondary">
+                    {group.accountName !== name ? `${group.accountName} · ` : ''}{group.type} · {group.holdings.length} positions
+                  </p>
+                </div>
               </div>
               <p className="number-display text-lg font-bold text-text-primary">{formatCurrency(accountTotal)}</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-text-secondary border-b border-border">
-                    <th className="text-left pb-2 font-medium">Ticker</th>
-                    <th className="text-right pb-2 font-medium">Shares</th>
-                    <th className="text-right pb-2 font-medium">Price</th>
-                    <th className="text-right pb-2 font-medium">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.holdings.map((h, j) => (
-                    <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
-                      <td className="py-2">
-                        <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
-                        <p className="text-xs text-text-secondary hidden md:block">{h.name}</p>
-                      </td>
-                      <td className="text-right number-display py-2">{h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
-                      <td className="text-right number-display py-2">${h.price.toFixed(2)}</td>
-                      <td className="text-right number-display font-medium py-2">{formatCurrency(h.value)}</td>
+            </button>
+            {isExpanded && (
+              <div className="overflow-x-auto mt-4 border-t border-border pt-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-text-secondary border-b border-border">
+                      <th className="text-left pb-2 font-medium">Ticker</th>
+                      <th className="text-right pb-2 font-medium">Shares</th>
+                      <th className="text-right pb-2 font-medium">Price</th>
+                      <th className="text-right pb-2 font-medium">Value</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {group.holdings.map((h, j) => (
+                      <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
+                        <td className="py-2">
+                          <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
+                          <p className="text-xs text-text-secondary hidden md:block">{h.name}</p>
+                        </td>
+                        <td className="text-right number-display py-2">{h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                        <td className="text-right number-display py-2">${h.price.toFixed(2)}</td>
+                        <td className="text-right number-display font-medium py-2">{formatCurrency(h.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         );
       })}
 
       {/* Totals bar */}
-      <Card delay={0.4} className="bg-accent/5 border-accent/20">
+      <Card className="bg-accent/5 border-accent/20">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-text-primary">Total Portfolio Value</span>
           <div className="text-right">
