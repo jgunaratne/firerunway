@@ -8,6 +8,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calcRentalMetrics, generateAmortizationSchedule } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import AddressAutocomplete from '@/components/shared/AddressAutocomplete';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function PropertyCard({ property, delay }: { property: any; delay: number }) {
@@ -366,7 +367,12 @@ export default function RealEstatePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="text-xs text-text-secondary block mb-1">Address</label>
-                <input className={inputClass} placeholder="123 Main St, City, State ZIP" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+                <AddressAutocomplete
+                  className={inputClass}
+                  placeholder="Start typing an address..."
+                  value={form.address}
+                  onChange={(val) => setForm(f => ({ ...f, address: val }))}
+                />
               </div>
 
               <div>
