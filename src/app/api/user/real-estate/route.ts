@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Insert error:', error);
-      return NextResponse.json({ error: 'Failed to add property' }, { status: 500 });
+      return NextResponse.json(
+        { error: `Failed to add property: ${error.message || error.code || 'Unknown error'}`, details: error },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ property: data });
