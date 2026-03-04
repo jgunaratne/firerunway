@@ -290,11 +290,11 @@ export default function MonteCarloPage() {
                   {events.map(evt => (
                     <ReferenceLine key={evt.id} x={evt.year} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} label={{ value: evt.emoji, position: 'top', fontSize: 16 }} />
                   ))}
-                  <Area type="monotone" dataKey="p90" stroke="none" fill="url(#p90grad)" name="90th pctile" animationDuration={1000} />
-                  <Area type="monotone" dataKey="p75" stroke="none" fill="url(#p75grad)" name="75th pctile" animationDuration={1000} />
-                  <Area type="monotone" dataKey="p50" stroke="#6366f1" strokeWidth={2.5} fill="url(#p50grad)" name="Median" animationDuration={1000} />
-                  <Area type="monotone" dataKey="p25" stroke="none" fill="rgba(99,102,241,0.06)" name="25th pctile" animationDuration={1000} />
-                  <Area type="monotone" dataKey="p10" stroke="rgba(99,102,241,0.3)" strokeWidth={1} strokeDasharray="4 4" fill="none" name="10th pctile" animationDuration={1000} />
+                  <Area type="monotone" dataKey="p90" stroke="none" fill="url(#p90grad)" name="90th pctile" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="p75" stroke="none" fill="url(#p75grad)" name="75th pctile" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="p50" stroke="#6366f1" strokeWidth={2.5} fill="url(#p50grad)" name="Median" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="p25" stroke="none" fill="rgba(99,102,241,0.06)" name="25th pctile" isAnimationActive={false} />
+                  <Area type="monotone" dataKey="p10" stroke="rgba(99,102,241,0.3)" strokeWidth={1} strokeDasharray="4 4" fill="none" name="10th pctile" isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
