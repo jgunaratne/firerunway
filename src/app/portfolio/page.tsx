@@ -328,6 +328,7 @@ interface ConnectedAccount {
   number: string;
   institution_name: string;
   meta?: { type?: string };
+  balance?: { total?: { amount?: number; currency?: string } };
 }
 
 function AccountsTab() {
@@ -451,12 +452,19 @@ function AccountsTab() {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => disconnectAccount(acct.id)}
-                  className="text-xs text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
-                >
-                  Disconnect
-                </button>
+                <div className="flex items-center gap-4">
+                  {acct.balance?.total?.amount != null && (
+                    <p className="number-display text-sm font-bold text-text-primary">
+                      {formatCurrency(acct.balance.total.amount)}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => disconnectAccount(acct.id)}
+                    className="text-xs text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
             ))}
           </div>
