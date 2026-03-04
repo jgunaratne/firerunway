@@ -15,14 +15,8 @@ export const metadata: Metadata = {
 // Force dynamic rendering so pages aren't prerendered during build
 // (Clerk requires publishableKey at render time)
 export const dynamic = 'force-dynamic';
-import { UserDataProvider, useUserData } from "@/lib/UserDataContext";
-import { BrokerageDataProvider } from "@/lib/BrokerageDataContext";
-
-function BrokerageWrapper({ children }: { children: React.ReactNode }) {
-  'use client';
-  const { clerkId } = useUserData();
-  return <BrokerageDataProvider clerkId={clerkId}>{children}</BrokerageDataProvider>;
-}
+import { UserDataProvider } from "@/lib/UserDataContext";
+import BrokerageWrapper from "@/components/layout/BrokerageWrapper";
 
 function AppShell({ children }: { children: React.ReactNode }) {
   return (
