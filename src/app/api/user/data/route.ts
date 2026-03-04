@@ -27,8 +27,16 @@ export async function GET(request: NextRequest) {
 
     const userId = user.id;
 
-    // Fetch all data in parallel
-    const [profileRes, grantsRes, propertiesRes, accountsRes, historyRes] = await Promise.all([
+    // Fetch real estate separately to avoid any potential interference
+    const { data: properties, error: propError } = await supabase
+      .from('real_estate_properties')
+      .select('*')
+      .eq('user_id', userId);
+
+    console.log('[/api/user/data] userId:', userId, 'properties:', properties?.length, 'propError:', propError);
+
+    // Fetch remaining data in parallel
+    const [profileRes, grantsRes, accountsRes, historyRes] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('*')
@@ -36,10 +44,6 @@ export async function GET(request: NextRequest) {
         .single(),
       supabase
         .from('rsu_grants')
-        .select('*')
-        .eq('user_id', userId),
-      supabase
-        .from('real_estate_properties')
         .select('*')
         .eq('user_id', userId),
       supabase
@@ -54,15 +58,18 @@ export async function GET(request: NextRequest) {
         .limit(365),
     ]);
 
-    console.log('[/api/user/data] userId:', userId, 'propertiesRes:', propertiesRes.data?.length, 'error:', propertiesRes.error);
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       profile: profileRes.data,
       rsuGrants: grantsRes.data ?? [],
-      realEstate: propertiesRes.data ?? [],
+      realEstate: properties ?? [],
       accounts: accountsRes.data ?? [],
       netWorthHistory: historyRes.data ?? [],
     });
+
+    // Prevent ALL caching
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    return response;
   } catch (error) {
     console.error('User data fetch error:', error);
     return NextResponse.json(
