@@ -23,5 +23,11 @@ export function createServerClient(): SupabaseClient {
   if (!url || !serviceRoleKey) {
     throw new Error('Missing Supabase server environment variables. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
-  return createClient(url, serviceRoleKey);
+  return createClient(url, serviceRoleKey, {
+    global: {
+      // Next.js 14 caches all fetch() calls by default.
+      // Override to disable caching so Supabase queries always return fresh data.
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
+  });
 }
