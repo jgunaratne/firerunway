@@ -53,16 +53,17 @@ export default function TopBar() {
   const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
   const totalNetWorth = investable + realEstateEquity;
 
-  const fiScore = isLoading ? 0 : calculateFIScore({
+  const rawFiScore = isLoading ? 0 : calculateFIScore({
     currentInvestableAssets: investable,
-    fireNumber,
+    fireNumber: fireNumber || 1, // avoid division by zero
     liquidAssets: investable,
-    annualSpend,
+    annualSpend: annualSpend || 1, // avoid division by zero
     employerStockValue: rsuValue,
     totalNetWorth,
     isEmployed: true,
     annualIncome,
   }).total;
+  const fiScore = Number.isFinite(rawFiScore) ? rawFiScore : 0;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-bg-primary/80 backdrop-blur-xl">

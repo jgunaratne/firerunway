@@ -167,10 +167,35 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
       }
     );
 
+    // Find accounts that have no positions from the holdings API
+    // and create a synthetic "Cash / Other Assets" entry for each
+    const accountsWithPositions = new Set(holdPositions.map(p => p.accountName));
+    for (const acct of brokerageAccounts) {
+      if (!accountsWithPositions.has(acct.name) && acct.balance > 0) {
+        holdPositions.push({
+          ticker: '—',
+          name: 'Cash / Other Assets',
+          shares: 1,
+          price: acct.balance,
+          value: acct.balance,
+          accountId: acct.id,
+          accountName: acct.name,
+          accountType: acct.type,
+          institutionName: acct.institution_name,
+        });
+      }
+    }
+
+    // Use the sum of all account balances as totalInvestment
+    // This is more accurate because some accounts have only cash (no stock positions)
+    const totalFromBalances = brokerageAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalFromPositions = holdData.totalInvestment || 0;
+    const totalInvestment = Math.max(totalFromBalances, totalFromPositions);
+
     const cached: CachedBrokerageData = {
       accounts: brokerageAccounts,
       positions: holdPositions,
-      totalInvestment: holdData.totalInvestment || 0,
+      totalInvestment,
       cachedAt: Date.now(),
     };
 
