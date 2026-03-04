@@ -100,7 +100,7 @@ function InsightCard({ insight, delay }: { insight: { icon: string; title: strin
 }
 
 export default function DashboardPage() {
-  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId } = useUserData();
+  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
 
   const annualSpend = profile?.annual_spend || 0;
@@ -129,6 +129,16 @@ export default function DashboardPage() {
 
   const runway = annualSpend > 0 ? investable / annualSpend : 0;
   const fireGap = Math.max(fireNumber - investable, 0);
+  const targetYear = profile?.fire_target_year;
+
+  // Layoff readiness metrics
+  const totalMonthlyMortgage = realEstate.reduce((sum, p) => sum + (p.monthly_payment ?? 0), 0);
+  const monthlySpend = annualSpend > 0 ? annualSpend / 12 : 0;
+  const mortgageCoverageYears = totalMonthlyMortgage > 0 ? investable / (totalMonthlyMortgage * 12) : 0;
+  const emergencyMonths = monthlySpend > 0 ? investable / monthlySpend : 0;
+  const unvestedShares = rsuGrants.reduce((sum, g) => sum + Math.max(g.total_shares - g.vested_shares, 0), 0);
+  const unvestedValue = unvestedShares * stockPrice;
+  const savingsRate = annualIncome > 0 ? (annualIncome - annualSpend) / annualIncome : 0;
 
   // Compute dynamic insights from real data
   const insights = [
@@ -136,8 +146,10 @@ export default function DashboardPage() {
       id: '1',
       icon: '💰',
       title: 'Savings Rate',
-      body: `You're saving ${Math.round(((annualIncome - annualSpend) / annualIncome) * 100)}% of your income — ${((annualIncome - annualSpend) / annualIncome) > 0.4 ? 'excellent' : 'good'} for FIRE.`,
-      type: ((annualIncome - annualSpend) / annualIncome) > 0.4 ? 'success' : 'info' as const,
+      body: annualIncome > 0
+        ? `You're saving ${Math.round(savingsRate * 100)}% of your income — ${savingsRate > 0.4 ? 'excellent' : savingsRate > 0.25 ? 'good' : 'keep building'} for FIRE.`
+        : 'Set your income and spending in the onboarding profile to see your savings rate.',
+      type: savingsRate > 0.4 ? 'success' : savingsRate > 0.25 ? 'info' : 'warning' as const,
     },
     {
       id: '2',
@@ -198,7 +210,7 @@ export default function DashboardPage() {
             <p className="text-lg text-text-secondary">away</p>
           </div>
           <p className="text-xs text-text-secondary mt-3 uppercase tracking-wider">FIRE Gap</p>
-          <p className="text-xs text-text-secondary">Base case: 2028</p>
+          <p className="text-xs text-text-secondary">{targetYear ? `Target: ${targetYear}` : 'Set target in profile'}</p>
         </Card>
       </div>
 
@@ -206,10 +218,26 @@ export default function DashboardPage() {
       <Card delay={0.4}>
         <h3 className="font-display text-lg text-text-primary mb-4">If Laid Off Tomorrow</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
-          <LayoffItem status="green" label="Mortgage covered: 14+ years" detail="Liquid assets cover 14.2 years of mortgage payments" />
-          <LayoffItem status="green" label="Emergency fund: 18 months liquid" detail="$120K in cash and equivalents" />
-          <LayoffItem status="amber" label="Unvested RSUs at risk: $180,000" detail="375 unvested shares across 2 grants" />
-          <LayoffItem status="amber" label="Healthcare gap: COBRA ~$1,800/mo" detail="Until Medicare eligibility or marketplace enrollment" />
+          <LayoffItem
+            status={mortgageCoverageYears >= 5 ? 'green' : mortgageCoverageYears >= 2 ? 'amber' : 'red'}
+            label={totalMonthlyMortgage > 0 ? `Mortgage covered: ${mortgageCoverageYears >= 1 ? `${mortgageCoverageYears.toFixed(1)}+ years` : `${Math.round(mortgageCoverageYears * 12)} months`}` : 'No mortgage debt'}
+            detail={totalMonthlyMortgage > 0 ? `${formatCurrency(totalMonthlyMortgage)}/mo across ${realEstate.filter(p => (p.monthly_payment ?? 0) > 0).length} mortgage(s)` : 'No properties with mortgages'}
+          />
+          <LayoffItem
+            status={emergencyMonths >= 12 ? 'green' : emergencyMonths >= 6 ? 'amber' : 'red'}
+            label={monthlySpend > 0 ? `Emergency fund: ${emergencyMonths >= 12 ? `${Math.round(emergencyMonths)} months` : `${emergencyMonths.toFixed(1)} months`}` : 'Set spending to calculate'}
+            detail={investable > 0 ? `${formatCurrency(investable)} in investable assets` : 'No investable assets tracked'}
+          />
+          <LayoffItem
+            status={unvestedValue <= 0 ? 'green' : unvestedValue < 100000 ? 'amber' : 'red'}
+            label={unvestedShares > 0 ? `Unvested RSUs at risk: ${formatCurrency(unvestedValue)}` : 'No unvested RSUs'}
+            detail={unvestedShares > 0 ? `${unvestedShares.toLocaleString()} unvested shares across ${rsuGrants.filter(g => g.total_shares - g.vested_shares > 0).length} grant(s)` : 'All grants fully vested or no RSU data'}
+          />
+          <LayoffItem
+            status="amber"
+            label="Healthcare gap: COBRA ~$1,800/mo"
+            detail="Until marketplace enrollment or new employer coverage"
+          />
         </div>
       </Card>
 

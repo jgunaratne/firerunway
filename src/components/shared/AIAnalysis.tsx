@@ -5,7 +5,7 @@ import Card from '@/components/shared/Card';
 import { useUserData } from '@/lib/UserDataContext';
 
 interface AIAnalysisProps {
-  type: 'portfolio' | 'fire' | 'income_tax';
+  type: 'portfolio' | 'fire' | 'income_tax' | 'net_worth' | 'real_estate' | 'monte_carlo';
   onAnalyze: () => Promise<{ analysis: string }>;
   ready: boolean;
 }
@@ -74,6 +74,7 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!clerkId) return;
     let cancelled = false;
     async function loadSaved() {
       try {
@@ -81,6 +82,9 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
           portfolio: '/api/portfolio/analyze',
           fire: '/api/fire/analyze',
           income_tax: '/api/income-tax/analyze',
+          net_worth: '/api/net-worth/analyze',
+          real_estate: '/api/real-estate/analyze',
+          monte_carlo: '/api/monte-carlo/analyze',
         };
         const res = await fetch(`${prefixMap[type]}?clerkId=${clerkId}`);
         if (res.ok) {
@@ -96,7 +100,7 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
     }
     loadSaved();
     return () => { cancelled = true; };
-  }, [type]);
+  }, [type, clerkId]);
 
   const handleAnalyze = useCallback(async () => {
     setLoading(true);
@@ -112,7 +116,7 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
     }
   }, [onAnalyze]);
 
-  const labelMap: Record<string, string> = { portfolio: 'Portfolio', fire: 'Retirement', income_tax: 'Income & Tax' };
+  const labelMap: Record<string, string> = { portfolio: 'Portfolio', fire: 'Retirement', income_tax: 'Income & Tax', net_worth: 'Net Worth', real_estate: 'Real Estate', monte_carlo: 'Monte Carlo' };
   const label = labelMap[type] ?? type;
   const sections = analysis ? parseAnalysis(analysis) : [];
 

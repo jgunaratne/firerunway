@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
+import AIAnalysis from '@/components/shared/AIAnalysis';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
@@ -358,6 +359,29 @@ export default function MonteCarloPage() {
     // Will re-seed from real data on next render cycle
   }, []);
 
+  const handleAnalyze = useCallback(async () => {
+    const res = await fetch('/api/monte-carlo/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        params,
+        result: {
+          successRate: result.successRate,
+          medianFinalValue: result.medianFinalValue,
+          p10End: result.percentiles.p10[params.years],
+          p25End: result.percentiles.p25[params.years],
+          p75End: result.percentiles.p75[params.years],
+          p90End: result.percentiles.p90[params.years],
+        },
+        fireYear,
+        conservativeFireYear,
+        lifeEvents: events,
+      }),
+    });
+    if (!res.ok) throw new Error('Analysis failed');
+    return res.json();
+  }, [params, result, fireYear, conservativeFireYear, events]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -536,18 +560,8 @@ export default function MonteCarloPage() {
             )}
           </Card>
 
-          {/* AI Interpretation */}
-          <Card className="border-accent/20">
-            <h3 className="font-display text-lg text-text-primary mb-2">AI Interpretation</h3>
-            <p className="text-sm text-text-secondary leading-relaxed italic">
-              &ldquo;Your {(result.successRate * 100).toFixed(0)}% success rate is {result.successRate >= 0.85 ? 'solid' : result.successRate >= 0.70 ? 'moderate — consider increasing your savings rate' : 'concerning — review your spending and investment strategy'}.
-              {params.includeRealEstate && realEstateEquity > 0 && ` Real estate equity of ${formatCurrency(realEstateEquity, true)} is included in your starting portfolio.`}
-              {!params.includeRealEstate && realEstateEquity > 0 && ` Real estate equity of ${formatCurrency(realEstateEquity, true)} is excluded from projections.`}
-              The primary risk in your 10th percentile scenario is a severe market downturn in the first 3 years combined with sustained inflation.
-              {fireYear && ` At current trajectory, you could reach FIRE by ${fireYear} (base case).`}
-              &rdquo;
-            </p>
-          </Card>
+          {/* AI Analysis */}
+          <AIAnalysis type="monte_carlo" onAnalyze={handleAnalyze} ready={result.successRate > 0} />
         </div>
 
         {/* Variables Panel (collapsible sidebar) */}

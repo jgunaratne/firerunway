@@ -49,7 +49,7 @@ Data:
 ${summaryLines.join('\n\n')}`;
 
     const analysis = await analyzeWithGemini(prompt);
-    await saveAnalysis(userId, 'income_tax', analysis, { records: records.length });
+    try { await saveAnalysis(userId, 'income_tax', analysis, { records: records.length }); } catch (saveErr) { console.warn('[Tax Analyze] Save failed (non-blocking):', saveErr); }
     return NextResponse.json({ analysis });
   } catch (e) {
     console.error('[Tax Analyze] Error:', e);

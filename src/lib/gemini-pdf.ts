@@ -5,9 +5,9 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-const MODEL = 'gemini-2.5-flash';
+export const MODEL = 'gemini-2.5-flash';
 
-function getClient(): GoogleGenAI {
+export function getClient(): GoogleGenAI {
   const project = process.env.GCP_PROJECT_ID ?? '';
   const location = process.env.GCP_LOCATION ?? 'us-central1';
 
@@ -293,13 +293,17 @@ export async function parseTaxPdf(pdfBuffer: Buffer, filename: string = ''): Pro
   }
 }
 
-export async function analyzeWithGemini(prompt: string): Promise<string> {
+export async function analyzeWithGemini(prompt: string, systemPrompt?: string): Promise<string> {
   const client = getClient();
   try {
     const response = await client.models.generateContent({
       model: MODEL,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 4096, temperature: 0.3 },
+      config: {
+        maxOutputTokens: 4096,
+        temperature: 0.3,
+        ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
+      },
     });
     return response.text ?? 'Analysis unavailable.';
   } catch (e) {

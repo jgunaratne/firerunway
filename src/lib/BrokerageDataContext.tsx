@@ -9,6 +9,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface BrokerageAccount {
   id: string;
+  authorization_id: string;
   name: string;
   number: string;
   institution_name: string;
@@ -119,6 +120,7 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const brokerageAccounts: BrokerageAccount[] = rawAccounts.map((a: any) => ({
       id: a.id || '',
+      authorization_id: a.brokerage_authorization || '',
       name: a.name || '',
       number: a.number || '',
       institution_name: a.institution_name || a.name || 'Unknown',
@@ -127,17 +129,20 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
       meta: a.meta,
     }));
 
-    // Build lookup: account name → institution name from accounts API
+    // Build lookup: account name/id → institution name from accounts API
     // The holdings API often doesn't return institution_name, so we cross-reference
     const nameToInstitution: Record<string, string> = {};
+    const idToInstitution: Record<string, string> = {};
     for (const acct of brokerageAccounts) {
-      if (acct.name) {
-        nameToInstitution[acct.name] = acct.institution_name;
-      }
-      // Also map by last 4 digits of account number for fuzzy matching
-      if (acct.number) {
-        const last4 = acct.number.slice(-4);
-        if (last4) nameToInstitution[`****${last4}`] = acct.institution_name;
+      const inst = acct.institution_name !== 'Unknown' ? acct.institution_name : '';
+      if (inst) {
+        if (acct.name) nameToInstitution[acct.name] = inst;
+        if (acct.id) idToInstitution[acct.id] = inst;
+        // Also map by last 4 digits of account number for fuzzy matching
+        if (acct.number) {
+          const last4 = acct.number.slice(-4);
+          if (last4) nameToInstitution[`****${last4}`] = inst;
+        }
       }
     }
 
@@ -151,7 +156,8 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
         const institutionName =
           (p.institutionName && p.institutionName !== 'Unknown' ? p.institutionName : null) ||
           nameToInstitution[rawAccountName] ||
-          'Unknown';
+          idToInstitution[p.accountId || ''] ||
+          '';
 
         return {
           ticker: p.ticker || 'N/A',

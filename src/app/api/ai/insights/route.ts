@@ -1,26 +1,20 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { getClient, MODEL } from '@/lib/gemini-pdf';
 
-// AI provider abstraction — Gemini default, Claude fallback
+// AI provider abstraction — Gemini/Vertex AI default, Claude fallback
 async function callGemini(prompt: string, systemPrompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    }
-  );
-
-  if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const client = getClient(); // Uses Vertex AI if GCP_PROJECT_ID is set, else GEMINI_API_KEY
+  const response = await client.models.generateContent({
+    model: MODEL,
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: {
+      maxOutputTokens: 1024,
+      temperature: 0.3,
+      systemInstruction: systemPrompt,
+    },
+  });
+  return response.text ?? '';
 }
 
 async function callClaude(prompt: string, systemPrompt: string): Promise<string> {
@@ -82,7 +76,7 @@ Return valid JSON when asked for structured output.`;
 // POST /api/ai/insights
 // Generate AI-powered financial insights
 export async function POST(request: NextRequest) {
-  const hasAnyKey = process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const hasAnyKey = process.env.GCP_PROJECT_ID || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
 
   if (!hasAnyKey) {
     // Return mock insights when no AI provider is configured

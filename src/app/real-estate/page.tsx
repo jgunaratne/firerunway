@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import Card from '@/components/shared/Card';
+import AIAnalysis from '@/components/shared/AIAnalysis';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calcRentalMetrics, generateAmortizationSchedule } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
@@ -390,6 +391,12 @@ export default function RealEstatePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
+    const res = await fetch(`/api/real-estate/analyze?clerkId=${userId}`, { method: 'POST' });
+    if (!res.ok) throw new Error('Analysis failed');
+    return res.json();
+  }, [userId]);
+
   // ─── Handlers ─────────────────────────────────────────────────────
 
   const openAddForm = () => {
@@ -632,6 +639,15 @@ export default function RealEstatePage() {
             {((totalEquity / Math.max(totalEquity + totalInvestment, 1)) * 100).toFixed(1)}% of your net worth. Primary residence equity is excluded from your investable FIRE number by default.
           </p>
         </Card>
+      )}
+
+      {/* AI Analysis */}
+      {realEstate.length > 0 && (
+        <AIAnalysis
+          type="real_estate"
+          onAnalyze={handleAnalyze}
+          ready={realEstate.length > 0}
+        />
       )}
 
       <div className="disclaimer">

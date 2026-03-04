@@ -7,6 +7,7 @@ import {
   Legend,
 } from 'recharts';
 import Card from '@/components/shared/Card';
+import AIAnalysis from '@/components/shared/AIAnalysis';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
@@ -89,7 +90,7 @@ function HoldingsTab() {
                 <div>
                   <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
                   <p className="text-xs text-text-secondary">
-                    {group.institutionName !== name ? `${group.institutionName} · ` : ''}{group.type} · {group.holdings.length} positions
+                    {group.institutionName && group.institutionName !== name && group.institutionName.toLowerCase() !== 'unknown' ? `${group.institutionName} · ` : ''}{group.type ? `${group.type} · ` : ''}{group.holdings.length} positions
                   </p>
                 </div>
               </div>
@@ -474,7 +475,7 @@ function AccountsTab() {
                     </p>
                   )}
                   <button
-                    onClick={() => disconnectAccount(acct.id)}
+                    onClick={() => disconnectAccount(acct.authorization_id || acct.id)}
                     className="text-xs text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
                   >
                     Disconnect
@@ -552,6 +553,14 @@ export default function PortfolioPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'accounts' ? 'Accounts' : 'Holdings';
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>(initialTab);
+  const { clerkId } = useUserData();
+  const { positions } = useBrokerageData();
+
+  const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
+    const res = await fetch(`/api/portfolio/analyze?clerkId=${clerkId}`, { method: 'POST' });
+    if (!res.ok) throw new Error('Analysis failed');
+    return res.json();
+  }, [clerkId]);
 
   return (
     <div className="space-y-6">
@@ -581,6 +590,13 @@ export default function PortfolioPage() {
         {activeTab === 'Performance' && <PerformanceTab />}
         {activeTab === 'Accounts' && <AccountsTab />}
       </motion.div>
+
+      {/* AI Analysis */}
+      <AIAnalysis
+        type="portfolio"
+        onAnalyze={handleAnalyze}
+        ready={positions.length > 0}
+      />
 
       <div className="disclaimer">
         FireRunway provides financial information for educational purposes only. Nothing on this platform constitutes personalized investment advice.

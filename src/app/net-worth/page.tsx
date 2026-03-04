@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import Card from '@/components/shared/Card';
+import AIAnalysis from '@/components/shared/AIAnalysis';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
@@ -59,7 +60,14 @@ export default function NetWorthPage() {
 
   const chartData = getFilteredHistory(timeRange, historyData);
 
+  const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
+    const res = await fetch(`/api/net-worth/analyze?clerkId=${userId}`, { method: 'POST' });
+    if (!res.ok) throw new Error('Analysis failed');
+    return res.json();
+  }, [userId]);
+
   if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+
 
   const assetClasses = [
     { key: 'investmentValue', label: 'Investment Accounts', value: investmentAccounts, color: '#6366f1', pct: totalAssets > 0 ? Math.round(investmentAccounts / totalAssets * 100 * 10) / 10 : 0, icon: '📈', href: '/portfolio' },
@@ -219,6 +227,13 @@ export default function NetWorthPage() {
           </Link>
         ))}
       </div>
+
+      {/* AI Analysis */}
+      <AIAnalysis
+        type="net_worth"
+        onAnalyze={handleAnalyze}
+        ready={netWorth > 0}
+      />
 
       <div className="disclaimer">
         FireRunway provides financial information for educational purposes only. Nothing on this platform constitutes personalized investment advice.
