@@ -127,20 +127,44 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
       meta: a.meta,
     }));
 
-    // Build positions
+    // Build lookup: account name → institution name from accounts API
+    // The holdings API often doesn't return institution_name, so we cross-reference
+    const nameToInstitution: Record<string, string> = {};
+    for (const acct of brokerageAccounts) {
+      if (acct.name) {
+        nameToInstitution[acct.name] = acct.institution_name;
+      }
+      // Also map by last 4 digits of account number for fuzzy matching
+      if (acct.number) {
+        const last4 = acct.number.slice(-4);
+        if (last4) nameToInstitution[`****${last4}`] = acct.institution_name;
+      }
+    }
+
+    // Build positions, enriching with institution name from accounts API
     const holdPositions: BrokeragePosition[] = (holdData.positions || []).map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (p: any) => ({
-        ticker: p.ticker || 'N/A',
-        name: p.name || p.ticker || '',
-        shares: p.shares || 0,
-        price: p.price || 0,
-        value: p.value || 0,
-        accountId: p.accountId || '',
-        accountName: p.accountName || '',
-        accountType: p.accountType || '',
-        institutionName: p.institutionName || p.accountName || 'Unknown',
-      })
+      (p: any) => {
+        const rawAccountName = p.accountName || '';
+        // Try to find institution name: first from the position itself,
+        // then cross-reference with accounts data
+        const institutionName =
+          (p.institutionName && p.institutionName !== 'Unknown' ? p.institutionName : null) ||
+          nameToInstitution[rawAccountName] ||
+          'Unknown';
+
+        return {
+          ticker: p.ticker || 'N/A',
+          name: p.name || p.ticker || '',
+          shares: p.shares || 0,
+          price: p.price || 0,
+          value: p.value || 0,
+          accountId: p.accountId || '',
+          accountName: rawAccountName,
+          accountType: p.accountType || '',
+          institutionName,
+        };
+      }
     );
 
     const cached: CachedBrokerageData = {

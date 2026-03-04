@@ -38,13 +38,13 @@ function HoldingsTab() {
     );
   }
 
-  // Group positions by account
+  // Group positions by individual account (not institution)
   const grouped = positions.reduce((acc, pos) => {
-    const key = pos.institutionName || pos.accountName || 'Unknown Account';
-    if (!acc[key]) acc[key] = { name: key, accountName: pos.accountName, type: pos.accountType, holdings: [] };
+    const key = pos.accountName || pos.institutionName || 'Unknown Account';
+    if (!acc[key]) acc[key] = { name: key, institutionName: pos.institutionName, type: pos.accountType, holdings: [] };
     acc[key].holdings.push(pos);
     return acc;
-  }, {} as Record<string, { name: string; accountName: string; type: string; holdings: typeof positions }>);
+  }, {} as Record<string, { name: string; institutionName: string; type: string; holdings: typeof positions }>);
 
   const accountKeys = Object.keys(grouped);
   const allExpanded = accountKeys.every(k => expandedAccounts.has(k));
@@ -89,7 +89,7 @@ function HoldingsTab() {
                 <div>
                   <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
                   <p className="text-xs text-text-secondary">
-                    {group.accountName !== name ? `${group.accountName} · ` : ''}{group.type} · {group.holdings.length} positions
+                    {group.institutionName !== name ? `${group.institutionName} · ` : ''}{group.type} · {group.holdings.length} positions
                   </p>
                 </div>
               </div>
