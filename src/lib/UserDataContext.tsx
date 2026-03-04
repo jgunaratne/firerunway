@@ -124,7 +124,9 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const res = await fetch(`/api/user/data?clerkId=${user.id}`);
+      const res = await fetch(`/api/user/data?clerkId=${user.id}&_t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const json = await res.json();
         console.log('[UserData] Refreshed. realEstate count:', json.realEstate?.length, json.realEstate?.map((p: { address: string }) => p.address));

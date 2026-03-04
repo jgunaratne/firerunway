@@ -54,6 +54,8 @@ export async function GET(request: NextRequest) {
         .limit(365),
     ]);
 
+    console.log('[/api/user/data] userId:', userId, 'propertiesRes:', propertiesRes.data?.length, 'error:', propertiesRes.error);
+
     return NextResponse.json({
       profile: profileRes.data,
       rsuGrants: grantsRes.data ?? [],
