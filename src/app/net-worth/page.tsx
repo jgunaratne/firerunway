@@ -9,7 +9,7 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useStockPrice } from '@/hooks/useStockPrice';
 import Link from 'next/link';
 
@@ -38,7 +38,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function NetWorthPage() {
   const { rsuGrants, realEstate, netWorthHistory, isLoading, clerkId: userId } = useUserData();
-  const { totalInvestment, loading: holdingsLoading } = useHoldingsCache(userId);
+  const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
   const [timeRange, setTimeRange] = useState<string>('All');
 
   // Derive totals from context + SnapTrade

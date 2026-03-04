@@ -6,7 +6,7 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useBrokerageData } from '@/lib/BrokerageDataContext';
 
 function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number }) {
   const radius = (size - 24) / 2;
@@ -44,7 +44,7 @@ function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number })
 
 export default function EquityPage() {
   const { rsuGrants, realEstate, clerkId: userId } = useUserData();
-  const { totalInvestment } = useHoldingsCache(userId);
+  const { totalInvestment } = useBrokerageData();
   const [priceAdjust, setPriceAdjust] = useState(0);
   const [currentPrice, setCurrentPrice] = useState(190);
 

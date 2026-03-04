@@ -7,7 +7,7 @@ import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calcRentalMetrics, generateAmortizationSchedule } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useHoldingsCache } from '@/hooks/useHoldingsCache';
+import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import AddressAutocomplete from '@/components/shared/AddressAutocomplete';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,7 +171,7 @@ function PropertyCard({ property, delay }: { property: any; delay: number }) {
 
 export default function RealEstatePage() {
   const { realEstate, isLoading, refresh, clerkId: userId } = useUserData();
-  const { totalInvestment } = useHoldingsCache(userId);
+  const { totalInvestment } = useBrokerageData();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
