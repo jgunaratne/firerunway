@@ -343,9 +343,9 @@ export default function RealEstatePage() {
                     <XAxis dataKey="date" stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                     <YAxis stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11, fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
                     <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} formatter={(v) => formatCurrency(Number(v))} />
-                    <Area type="monotone" dataKey="value" stroke="#6366f1" fill="none" strokeWidth={2} name="Property Value" animationDuration={1200} />
-                    <Area type="monotone" dataKey="equity" stroke="#10b981" fill="url(#eqGrad)" strokeWidth={2} name="Equity" animationDuration={1200} />
-                    <Area type="monotone" dataKey="mortgage" stroke="#ef4444" fill="none" strokeWidth={1} strokeDasharray="4 4" name="Mortgage" animationDuration={1200} />
+                      <Area type="monotone" dataKey="value" stroke="#6366f1" fill="none" strokeWidth={2} name="Property Value" isAnimationActive={false} />
+                      <Area type="monotone" dataKey="equity" stroke="#10b981" fill="url(#eqGrad)" strokeWidth={2} name="Equity" isAnimationActive={false} />
+                      <Area type="monotone" dataKey="mortgage" stroke="#ef4444" fill="none" strokeWidth={1} strokeDasharray="4 4" name="Mortgage" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
