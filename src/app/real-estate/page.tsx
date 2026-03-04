@@ -421,6 +421,7 @@ export default function RealEstatePage() {
   };
 
   const handleSave = async () => {
+    console.log('[RE Save] Starting save. userId:', userId, 'address:', form.address, 'formMode:', formMode);
     if (!userId) { setSaveError('Not logged in.'); return; }
     if (!form.address.trim()) { setSaveError('Please enter an address.'); return; }
 
@@ -443,35 +444,40 @@ export default function RealEstatePage() {
       monthly_rent: form.monthly_rent ? Number(form.monthly_rent) : null,
     };
 
-    try {
-      let res: Response;
-      if (formMode === 'edit' && editingId) {
-        res = await fetch('/api/user/real-estate', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, propertyId: editingId }),
-        });
-      } else {
-        res = await fetch('/api/user/real-estate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      }
+    console.log('[RE Save] Payload:', JSON.stringify(payload));
 
+    try {
+      const method = formMode === 'edit' && editingId ? 'PUT' : 'POST';
+      const body = formMode === 'edit' && editingId
+        ? { ...payload, propertyId: editingId }
+        : payload;
+
+      console.log('[RE Save] Fetching:', method, '/api/user/real-estate');
+      const res = await fetch('/api/user/real-estate', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      console.log('[RE Save] Response status:', res.status);
       if (res.ok) {
+        console.log('[RE Save] Success! Refreshing data...');
         await refresh();
         setFormMode('hidden');
         setForm({ ...emptyForm });
         setEditingId(null);
+        console.log('[RE Save] Done.');
       } else {
         const errBody = await res.text();
-        console.error('Save failed:', res.status, errBody);
+        console.error('[RE Save] Failed:', res.status, errBody);
         setSaveError(`Failed to save (${res.status}): ${errBody}`);
+        alert(`Save failed (${res.status}): ${errBody}`);
       }
     } catch (err) {
-      console.error('Save error:', err);
-      setSaveError(err instanceof Error ? err.message : 'Network error');
+      console.error('[RE Save] Exception:', err);
+      const msg = err instanceof Error ? err.message : 'Network error';
+      setSaveError(msg);
+      alert(`Save error: ${msg}`);
     } finally {
       setSaving(false);
     }
