@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
 
     // Fetch remaining data in parallel
-    const [profileRes, grantsRes, accountsRes, historyRes] = await Promise.all([
+    const [profileRes, grantsRes, accountsRes, historyRes, incomeRes] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('*')
@@ -57,6 +57,11 @@ export async function GET(request: NextRequest) {
         .eq('user_id', userId)
         .order('recorded_date', { ascending: true })
         .limit(365),
+      supabase
+        .from('income_tax')
+        .select('*')
+        .eq('user_id', userId)
+        .order('tax_year', { ascending: false }),
     ]);
 
     const response = NextResponse.json({
@@ -65,6 +70,7 @@ export async function GET(request: NextRequest) {
       realEstate: properties ?? [],
       accounts: accountsRes.data ?? [],
       netWorthHistory: historyRes.data ?? [],
+      incomeTaxRecords: incomeRes.data ?? [],
     });
 
     // Prevent ALL caching

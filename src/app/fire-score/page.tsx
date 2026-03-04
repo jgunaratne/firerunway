@@ -220,12 +220,24 @@ function getScoreLabel(score: number) {
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function FireScorePage() {
-  const { profile, rsuGrants, realEstate, isLoading, clerkId: userId, refresh } = useUserData();
+  const { profile, rsuGrants, realEstate, incomeTaxRecords, isLoading, clerkId: userId, refresh } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
   const [saving, setSaving] = useState(false);
 
+  // Compute income from tax records: sum all records for the most recent tax year
+  const incomeFromTax = useMemo(() => {
+    if (!incomeTaxRecords || incomeTaxRecords.length === 0) return 0;
+    const latestYear = incomeTaxRecords[0].tax_year; // already sorted desc by API
+    return incomeTaxRecords
+      .filter(r => r.tax_year === latestYear)
+      .reduce((sum, r) => sum + (r.total_income || 0), 0);
+  }, [incomeTaxRecords]);
+
   const annualSpend = profile?.annual_spend || 0;
-  const annualIncome = profile?.annual_income || 0;
+  // Use profile income if set, otherwise fall back to income from tax records
+  const profileIncome = profile?.annual_income || 0;
+  const annualIncome = profileIncome > 0 ? profileIncome : incomeFromTax;
+  const isIncomeFromTax = profileIncome === 0 && incomeFromTax > 0;
   const fireNumber = profile?.fire_number || 0;
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -353,6 +365,9 @@ export default function FireScorePage() {
             onSave={(val) => updateProfileField('annual_income', val)}
             placeholder="Click to set"
           />
+          {isIncomeFromTax && (
+            <p className="text-[10px] text-accent/60 text-center mt-0.5">from W-2 ({incomeTaxRecords[0]?.tax_year})</p>
+          )}
         </Card>
         <Card>
           <EditableAmount

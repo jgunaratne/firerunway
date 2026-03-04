@@ -63,12 +63,26 @@ interface NetWorthEntry {
   real_estate_equity: number;
 }
 
+export interface IncomeTaxRecord {
+  id: string;
+  tax_year: number;
+  filename: string;
+  document_type: string;
+  employer: string;
+  income_breakdown: Record<string, number>;
+  total_income: number;
+  tax_breakdown: Record<string, number>;
+  total_tax: number;
+  effective_tax_rate: number;
+}
+
 interface UserData {
   profile: UserProfile | null;
   rsuGrants: RSUGrant[];
   realEstate: RealEstateProperty[];
   accounts: AccountSnapshot[];
   netWorthHistory: NetWorthEntry[];
+  incomeTaxRecords: IncomeTaxRecord[];
   clerkId: string | null;
   isLoading: boolean;
   refresh: () => Promise<void>;
@@ -82,6 +96,7 @@ const UserDataContext = createContext<UserData>({
   realEstate: [],
   accounts: [],
   netWorthHistory: [],
+  incomeTaxRecords: [],
   clerkId: null,
   isLoading: true,
   refresh: () => Promise.resolve(),
@@ -106,6 +121,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     realEstate: [],
     accounts: [],
     netWorthHistory: [],
+    incomeTaxRecords: [],
     isLoading: true,
   });
 
@@ -118,6 +134,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
         realEstate: [],
         accounts: [],
         netWorthHistory: [],
+        incomeTaxRecords: [],
         isLoading: false,
       });
       return;
@@ -136,6 +153,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
           realEstate: json.realEstate ?? [],
           accounts: json.accounts ?? [],
           netWorthHistory: json.netWorthHistory ?? [],
+          incomeTaxRecords: json.incomeTaxRecords ?? [],
           isLoading: false,
         });
         return;
