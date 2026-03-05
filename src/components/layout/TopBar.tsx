@@ -70,7 +70,8 @@ export default function TopBar() {
       <div className="flex items-center justify-between h-full px-4 lg:px-6 max-w-[1400px] mx-auto">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-xl">🔥</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon.png" alt="FireRunway" width={28} height={28} className="rounded-sm" />
           <span className="font-display text-lg text-text-primary tracking-tight">FireRunway</span>
         </Link>
 
