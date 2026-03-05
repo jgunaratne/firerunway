@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
         shares: number;
         price: number;
         value: number;
+        accountId: string;
         accountName: string;
         accountType: string;
         institutionName: string;
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
         const institutionName = String(acctObj?.institution_name || acctObj?.name || 'Unknown');
         const acctName = String(acctObj?.name || institutionName);
         const acctType = String(acctObj?.type || 'unknown');
+        const acctId = String(acctObj?.id || acctObj?.account_id || '');
         if (Array.isArray(account.positions)) {
           for (const pos of account.positions) {
             const value = (pos.units || 0) * (pos.price || 0);
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
               shares: pos.units || 0,
               price: pos.price || 0,
               value,
+              accountId: acctId,
               accountName: acctName,
               accountType: acctType,
               institutionName,

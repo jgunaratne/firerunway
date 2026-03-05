@@ -6,6 +6,9 @@ import { useUser } from '@clerk/nextjs';
 // Resolved at build time — determines if Clerk hooks are called
 const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
+const CACHE_KEY = 'user_data_cache';
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 // ─── Types ──────────────────────────────────────────────────────────
 
 interface UserProfile {
@@ -76,6 +79,16 @@ export interface IncomeTaxRecord {
   effective_tax_rate: number;
 }
 
+interface CachedUserData {
+  profile: UserProfile | null;
+  rsuGrants: RSUGrant[];
+  realEstate: RealEstateProperty[];
+  accounts: AccountSnapshot[];
+  netWorthHistory: NetWorthEntry[];
+  incomeTaxRecords: IncomeTaxRecord[];
+  cachedAt: number;
+}
+
 interface UserData {
   profile: UserProfile | null;
   rsuGrants: RSUGrant[];
@@ -106,6 +119,18 @@ export function useUserData() {
   return useContext(UserDataContext);
 }
 
+/**
+ * Clear the user data cache from localStorage.
+ * Can be called from anywhere (no hook required).
+ */
+export function clearUserDataCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // SSR or localStorage unavailable — no-op
+  }
+}
+
 // ─── Provider ───────────────────────────────────────────────────────
 
 export function UserDataProvider({ children }: { children: ReactNode }) {
@@ -124,6 +149,21 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     incomeTaxRecords: [],
     isLoading: true,
   });
+
+  const loadFromCache = useCallback((): CachedUserData | null => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const cached: CachedUserData = JSON.parse(raw);
+      if (Date.now() - cached.cachedAt > CACHE_TTL_MS) {
+        localStorage.removeItem(CACHE_KEY);
+        return null;
+      }
+      return cached;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!user?.id) {
@@ -147,15 +187,24 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const json = await res.json();
 
-        setData({
+        const userData = {
           profile: json.profile || null,
           rsuGrants: json.rsuGrants ?? [],
           realEstate: json.realEstate ?? [],
           accounts: json.accounts ?? [],
           netWorthHistory: json.netWorthHistory ?? [],
           incomeTaxRecords: json.incomeTaxRecords ?? [],
-          isLoading: false,
-        });
+        };
+
+        // Write to localStorage cache
+        try {
+          const toCache: CachedUserData = { ...userData, cachedAt: Date.now() };
+          localStorage.setItem(CACHE_KEY, JSON.stringify(toCache));
+        } catch {
+          // localStorage full — no-op
+        }
+
+        setData({ ...userData, isLoading: false });
         return;
       }
     } catch (err) {
@@ -166,12 +215,41 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     setData(prev => ({ ...prev, isLoading: false }));
   }, [user?.id]);
 
+  const refresh = useCallback(async () => {
+    // Clear cache so we always fetch fresh after mutations
+    clearUserDataCache();
+    await fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    if (clerkLoaded) fetchData();
-  }, [clerkLoaded, fetchData]);
+    if (!clerkLoaded) return;
+
+    if (!user?.id) {
+      fetchData();
+      return;
+    }
+
+    // Try cache first
+    const cached = loadFromCache();
+    if (cached) {
+      setData({
+        profile: cached.profile,
+        rsuGrants: cached.rsuGrants,
+        realEstate: cached.realEstate,
+        accounts: cached.accounts,
+        netWorthHistory: cached.netWorthHistory,
+        incomeTaxRecords: cached.incomeTaxRecords,
+        isLoading: false,
+      });
+      return;
+    }
+
+    // Cache miss — fetch fresh
+    fetchData();
+  }, [clerkLoaded, user?.id, loadFromCache, fetchData]);
 
   return (
-    <UserDataContext.Provider value={{ ...data, clerkId, refresh: fetchData }}>
+    <UserDataContext.Provider value={{ ...data, clerkId, refresh }}>
       {children}
     </UserDataContext.Provider>
   );

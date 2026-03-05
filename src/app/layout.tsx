@@ -4,6 +4,7 @@ import { dark } from "@clerk/themes";
 import "./globals.css";
 import TopBar from "@/components/layout/TopBar";
 import Sidebar from "@/components/layout/Sidebar";
+import ChatRail from "@/components/layout/ChatRail";
 import { UploadProvider } from "@/components/upload/UploadProvider";
 import UploadNotification from "@/components/upload/UploadNotification";
 
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 // (Clerk requires publishableKey at render time)
 export const dynamic = 'force-dynamic';
 import { UserDataProvider } from "@/lib/UserDataContext";
+import { PageContextProvider } from "@/lib/PageContextProvider";
 import BrokerageWrapper from "@/components/layout/BrokerageWrapper";
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -24,6 +26,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <body className="antialiased">
         <UserDataProvider>
           <BrokerageWrapper>
+            <PageContextProvider>
             <UploadProvider>
               <TopBar />
               <Sidebar />
@@ -33,7 +36,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </main>
               <UploadNotification />
+                <ChatRail />
             </UploadProvider>
+            </PageContextProvider>
           </BrokerageWrapper>
         </UserDataProvider>
       </body>

@@ -19,7 +19,7 @@ const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
 
 function HoldingsTab() {
-  const { positions, totalInvestment, loading } = useBrokerageData();
+  const { positions, totalInvestment, loading, accounts: brokerageAccounts } = useBrokerageData();
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
   if (loading) {
@@ -39,10 +39,39 @@ function HoldingsTab() {
     );
   }
 
+  // Build a resolver: given a position, find the institution name from accounts data
+  const resolveInstitution = (pos: typeof positions[0]): string => {
+    // If the position already has a good institution name, use it
+    if (pos.institutionName && pos.institutionName.toLowerCase() !== 'unknown') {
+      return pos.institutionName;
+    }
+    // Try to find a matching brokerage account by ID, name, or number
+    const match = brokerageAccounts.find(a =>
+      (pos.accountId && a.id === pos.accountId) ||
+      (pos.accountName && a.name === pos.accountName) ||
+      (pos.accountId && a.number === pos.accountId) ||
+      (pos.accountName && a.number === pos.accountName)
+    );
+    if (match && match.institution_name && match.institution_name.toLowerCase() !== 'unknown') {
+      return match.institution_name;
+    }
+    // If only one institution is connected, use it
+    const uniqueInstitutions = new Set(
+      brokerageAccounts
+        .map(a => a.institution_name)
+        .filter(n => n && n.toLowerCase() !== 'unknown')
+    );
+    if (uniqueInstitutions.size === 1) {
+      return Array.from(uniqueInstitutions)[0];
+    }
+    return pos.institutionName || '';
+  };
+
   // Group positions by individual account (not institution)
   const grouped = positions.reduce((acc, pos) => {
-    const key = pos.accountName || pos.institutionName || 'Unknown Account';
-    if (!acc[key]) acc[key] = { name: key, institutionName: pos.institutionName, type: pos.accountType, holdings: [] };
+    const inst = resolveInstitution(pos);
+    const key = pos.accountName || inst || 'Unknown Account';
+    if (!acc[key]) acc[key] = { name: key, institutionName: inst, type: pos.accountType, holdings: [] };
     acc[key].holdings.push(pos);
     return acc;
   }, {} as Record<string, { name: string; institutionName: string; type: string; holdings: typeof positions }>);

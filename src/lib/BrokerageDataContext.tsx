@@ -129,35 +129,73 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
       meta: a.meta,
     }));
 
-    // Build lookup: account name/id → institution name from accounts API
+    // Build lookup: account name/id/number → institution name from accounts API
     // The holdings API often doesn't return institution_name, so we cross-reference
     const nameToInstitution: Record<string, string> = {};
     const idToInstitution: Record<string, string> = {};
+    // Collect all unique non-Unknown institution names for fallback
+    const allInstitutionNames = new Set<string>();
     for (const acct of brokerageAccounts) {
-      const inst = acct.institution_name !== 'Unknown' ? acct.institution_name : '';
+      const inst = acct.institution_name && acct.institution_name.toLowerCase() !== 'unknown' ? acct.institution_name : '';
       if (inst) {
+        allInstitutionNames.add(inst);
         if (acct.name) nameToInstitution[acct.name] = inst;
         if (acct.id) idToInstitution[acct.id] = inst;
-        // Also map by last 4 digits of account number for fuzzy matching
         if (acct.number) {
+          // Map by full account number and last-4 variants
+          nameToInstitution[acct.number] = inst;
           const last4 = acct.number.slice(-4);
-          if (last4) nameToInstitution[`****${last4}`] = inst;
+          if (last4) {
+            nameToInstitution[`****${last4}`] = inst;
+            nameToInstitution[last4] = inst;
+          }
         }
       }
     }
+
+    // If there's only one institution across all accounts, use it as fallback
+    const singleInstitutionFallback = allInstitutionNames.size === 1
+      ? Array.from(allInstitutionNames)[0]
+      : '';
 
     // Build positions, enriching with institution name from accounts API
     const holdPositions: BrokeragePosition[] = (holdData.positions || []).map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (p: any) => {
         const rawAccountName = p.accountName || '';
-        // Try to find institution name: first from the position itself,
-        // then cross-reference with accounts data
-        const institutionName =
-          (p.institutionName && p.institutionName !== 'Unknown' ? p.institutionName : null) ||
+        const rawAccountId = p.accountId || '';
+        // Try to find institution name using multiple strategies:
+        // 1. From position itself (if not "unknown")
+        // 2. By account ID → institution lookup
+        // 3. By account name → institution lookup
+        // 4. Try account ID as name lookup key (sometimes IDs appear as names)
+        // 5. Try account name as ID lookup key
+        // 6. Find any brokerage account whose name matches the position accountName
+        // 7. Single-institution fallback (if user only has one brokerage connected)
+        let institutionName =
+          (p.institutionName && p.institutionName.toLowerCase() !== 'unknown' ? p.institutionName : null) ||
+          idToInstitution[rawAccountId] ||
           nameToInstitution[rawAccountName] ||
-          idToInstitution[p.accountId || ''] ||
-          '';
+          idToInstitution[rawAccountName] ||
+          nameToInstitution[rawAccountId] ||
+          null;
+
+        // If still unresolved, try to find any account that matches this position
+        if (!institutionName) {
+          const matchingAccount = brokerageAccounts.find(a =>
+            (rawAccountId && a.id === rawAccountId) ||
+            (rawAccountName && (a.name === rawAccountName || a.number === rawAccountName)) ||
+            (rawAccountId && (a.name === rawAccountId || a.number === rawAccountId))
+          );
+          if (matchingAccount && matchingAccount.institution_name.toLowerCase() !== 'unknown') {
+            institutionName = matchingAccount.institution_name;
+          }
+        }
+
+        // Last resort: if only one institution is connected, use it
+        if (!institutionName) {
+          institutionName = singleInstitutionFallback;
+        }
 
         return {
           ticker: p.ticker || 'N/A',
@@ -165,10 +203,10 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
           shares: p.shares || 0,
           price: p.price || 0,
           value: p.value || 0,
-          accountId: p.accountId || '',
+          accountId: rawAccountId,
           accountName: rawAccountName,
           accountType: p.accountType || '',
-          institutionName,
+          institutionName: institutionName || '',
         };
       }
     );

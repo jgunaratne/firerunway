@@ -11,6 +11,7 @@ import AIAnalysis from '@/components/shared/AIAnalysis';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
+import { usePageContext } from '@/lib/PageContextProvider';
 import { useStockPrice } from '@/hooks/useStockPrice';
 
 interface LifeEvent {
@@ -181,7 +182,7 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate, isLoading } = useUserData();
+  const { profile, rsuGrants, realEstate, isLoading, clerkId } = useUserData();
   const { totalInvestment } = useBrokerageData();
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -283,6 +284,74 @@ export default function MonteCarloPage() {
 
   const currentYear = new Date().getFullYear();
 
+  // Report simulation data to ChatRail via PageContextProvider
+  const { setPageContext } = usePageContext();
+  useEffect(() => {
+    const parts = [
+      `Monte Carlo Simulation Parameters:`,
+      `  Starting Portfolio: $${params.startingPortfolio.toLocaleString()}`,
+      `  Annual Contribution: $${params.annualContribution.toLocaleString()}`,
+      `  Annual Spend: $${params.annualSpend.toLocaleString()}`,
+      `  Retirement Spend: $${params.retirementSpend.toLocaleString()}`,
+      `  Equity/Bond Split: ${Math.round(params.equityPct * 100)}% / ${Math.round(params.bondPct * 100)}%`,
+      `  Inflation Rate: ${(params.inflationRate * 100).toFixed(1)}%`,
+      `  Projection Years: ${params.years}`,
+      `  FIRE Number: $${params.fireNumber.toLocaleString()}`,
+      `  Include Real Estate Equity: ${params.includeRealEstate}`,
+      ``,
+      `Simulation Results (2,000 runs):`,
+      `  Success Rate: ${(result.successRate * 100).toFixed(1)}%`,
+      `  Median Final Value: $${Math.round(result.medianFinalValue).toLocaleString()}`,
+      `  10th Percentile (worst case): $${Math.round(result.percentiles.p10[params.years]).toLocaleString()}`,
+      `  25th Percentile (conservative): $${Math.round(result.percentiles.p25[params.years]).toLocaleString()}`,
+      `  75th Percentile (optimistic): $${Math.round(result.percentiles.p75[params.years]).toLocaleString()}`,
+      `  90th Percentile (best case): $${Math.round(result.percentiles.p90[params.years]).toLocaleString()}`,
+    ];
+
+    // Add FIRE year info
+    const fireYr = (() => {
+      for (let y = 0; y <= params.years; y++) {
+        if (result.percentiles.p50[y] >= params.fireNumber) return currentYear + y;
+      }
+      return null;
+    })();
+    const consFireYr = (() => {
+      for (let y = 0; y <= params.years; y++) {
+        if (result.percentiles.p25[y] >= params.fireNumber) return currentYear + y;
+      }
+      return null;
+    })();
+    parts.push(`  Base Case FI Year: ${fireYr || 'Not reached'}`);
+    parts.push(`  Conservative FI Year: ${consFireYr || 'Not reached'}`);
+
+    // Year-by-year chart data (sample every N years to keep context manageable)
+    const step = params.years > 30 ? 2 : 1;
+    parts.push(``);
+    parts.push(`Year-by-Year Portfolio Projections (Year | p10 | p25 | Median | p75 | p90):`);
+    for (let y = 0; y <= params.years; y += step) {
+      const yr = currentYear + y;
+      const fmt = (v: number) => `$${Math.round(v).toLocaleString()}`;
+      parts.push(`  ${yr}: ${fmt(result.percentiles.p10[y])} | ${fmt(result.percentiles.p25[y])} | ${fmt(result.percentiles.p50[y])} | ${fmt(result.percentiles.p75[y])} | ${fmt(result.percentiles.p90[y])}`);
+    }
+    // Always include the final year if step skipped it
+    if (params.years % step !== 0) {
+      const y = params.years;
+      const yr = currentYear + y;
+      const fmt = (v: number) => `$${Math.round(v).toLocaleString()}`;
+      parts.push(`  ${yr}: ${fmt(result.percentiles.p10[y])} | ${fmt(result.percentiles.p25[y])} | ${fmt(result.percentiles.p50[y])} | ${fmt(result.percentiles.p75[y])} | ${fmt(result.percentiles.p90[y])}`);
+    }
+
+    if (events.length > 0) {
+      parts.push(``);
+      parts.push(`Life Events (${events.length}):`);
+      events.forEach(e => {
+        parts.push(`  - ${e.emoji} ${e.label} in ${e.year} (${JSON.stringify(e.params)})`);
+      });
+    }
+
+    setPageContext(parts.join('\n'));
+  }, [params, result, events, currentYear, setPageContext]);
+
   const chartData = useMemo(() => {
     const data = [];
     for (let y = 0; y <= params.years; y++) {
@@ -360,7 +429,7 @@ export default function MonteCarloPage() {
   }, []);
 
   const handleAnalyze = useCallback(async () => {
-    const res = await fetch('/api/monte-carlo/analyze', {
+    const res = await fetch(`/api/monte-carlo/analyze?clerkId=${clerkId || ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -380,7 +449,7 @@ export default function MonteCarloPage() {
     });
     if (!res.ok) throw new Error('Analysis failed');
     return res.json();
-  }, [params, result, fireYear, conservativeFireYear, events]);
+  }, [params, result, fireYear, conservativeFireYear, events, clerkId]);
 
   return (
     <div className="space-y-6">
@@ -627,11 +696,11 @@ export default function MonteCarloPage() {
                   </div>
                   <button
                     onClick={() => setParams(p => ({ ...p, includeRealEstate: !p.includeRealEstate }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${params.includeRealEstate ? 'bg-accent' : 'bg-white/10'
+                    className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full transition-colors ${params.includeRealEstate ? 'bg-accent' : 'bg-white/10'
                       }`}
                   >
                     <span
-                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${params.includeRealEstate ? 'translate-x-5' : 'translate-x-0.5'
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 mt-0.5 ${params.includeRealEstate ? 'ml-[22px]' : 'ml-0.5'
                         }`}
                     />
                   </button>
