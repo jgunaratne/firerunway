@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -749,10 +749,17 @@ function AccountsTab() {
 
 export default function PortfolioPage() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'accounts' ? 'Accounts' : 'Holdings';
-  const [activeTab, setActiveTab] = useState<typeof tabs[number]>(initialTab);
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<typeof tabs[number]>(
+    tabParam === 'accounts' ? 'Accounts' : 'Holdings'
+  );
   const { clerkId } = useUserData();
   const { positions } = useBrokerageData();
+
+  // Sync tab state when URL search params change (e.g., sidebar nav click)
+  useEffect(() => {
+    if (tabParam === 'accounts') setActiveTab('Accounts');
+  }, [tabParam]);
 
   const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
     const res = await fetch(`/api/portfolio/analyze?clerkId=${clerkId}`, { method: 'POST' });
