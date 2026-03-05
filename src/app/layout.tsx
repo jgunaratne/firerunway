@@ -11,6 +11,10 @@ import UploadNotification from "@/components/upload/UploadNotification";
 export const metadata: Metadata = {
   title: "FireRunway — Financial Independence Dashboard",
   description: "Know if you're financially independent — before you find out the hard way.",
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 // Force dynamic rendering so pages aren't prerendered during build
