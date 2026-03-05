@@ -770,8 +770,8 @@ export default function PortfolioPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Portfolio</h1>
-        <p className="text-sm text-text-secondary mt-1">All your investments in one place</p>
+        <h1 className="page-title">Portfolio</h1>
+        <p className="page-subtitle">All your investments in one place</p>
       </div>
 
       {/* Tabs */}

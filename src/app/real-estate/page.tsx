@@ -280,7 +280,7 @@ function PropertyFormPanel({
 }) {
   return (
     <Card>
-      <h3 className="font-display text-lg text-text-primary mb-4">{title}</h3>
+      <h3 className="section-title">{title}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
@@ -532,8 +532,8 @@ export default function RealEstatePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Real Estate</h1>
-          <p className="text-sm text-text-secondary mt-1">Property values, mortgages, and equity</p>
+          <h1 className="page-title">Real Estate</h1>
+          <p className="page-subtitle">Property values, mortgages, and equity</p>
         </div>
         {realEstate.length > 0 && formMode === 'hidden' && (
           <button onClick={openAddForm} className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors">
@@ -609,7 +609,7 @@ export default function RealEstatePage() {
       {/* Equity over time chart */}
       {equityData.length > 0 && (
         <Card>
-          <h3 className="font-display text-lg text-text-primary mb-4">Equity Over Time</h3>
+          <h3 className="section-title">Equity Over Time</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={equityData}>

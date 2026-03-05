@@ -178,8 +178,8 @@ export default function SpendingPlanPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Conscious Spending Plan</h1>
-        <p className="text-sm text-text-secondary mt-1">Know exactly where your money goes — so you can spend guilt-free on what you love</p>
+        <h1 className="page-title">Conscious Spending Plan</h1>
+        <p className="page-subtitle">Know exactly where your money goes — so you can spend guilt-free on what you love</p>
       </div>
 
       {/* Four-bucket overview */}
@@ -197,7 +197,7 @@ export default function SpendingPlanPage() {
             transition={{ delay: 0.1 * i }}
             className="glass-card p-4 rounded-xl"
           >
-            <p className="text-xs text-text-secondary uppercase tracking-wider">{bucket.label}</p>
+            <p className="stat-label">{bucket.label}</p>
             <p className="number-display text-2xl font-bold text-text-primary mt-1">{formatCurrency(bucket.amount)}</p>
             <div className="flex items-center gap-2 mt-2">
               <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">

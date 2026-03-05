@@ -93,8 +93,8 @@ export default function StatementsPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Manage Statements</h1>
-        <p className="text-sm text-text-secondary mt-1">Upload and manage your brokerage PDF statements</p>
+        <h1 className="page-title">Manage Statements</h1>
+        <p className="page-subtitle">Upload and manage your brokerage PDF statements</p>
       </div>
 
       {/* Upload zone */}

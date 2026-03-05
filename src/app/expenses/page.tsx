@@ -7,6 +7,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import Card from '@/components/shared/Card';
+import FilterPills from '@/components/shared/FilterPills';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 
@@ -145,8 +146,8 @@ export default function ExpensesPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Expenses</h1>
-          <p className="text-sm text-text-secondary mt-1">Track your spending across all connected accounts</p>
+          <h1 className="page-title">Expenses</h1>
+          <p className="page-subtitle">Track your spending across all connected accounts</p>
         </div>
         <Card className="text-center py-12">
           <span className="text-4xl">💳</span>
@@ -162,48 +163,33 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Expenses</h1>
-          <p className="text-sm text-text-secondary mt-1">Track your spending across all connected accounts</p>
+          <h1 className="page-title">Expenses</h1>
+          <p className="page-subtitle">Track your spending across all connected accounts</p>
         </div>
-        <div className="flex items-center gap-2">
-          {[1, 3, 6, 12].map(m => (
-            <button
-              key={m}
-              onClick={() => setMonths(m)}
-              className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${months === m
-                ? 'border-accent bg-accent/15 text-accent font-semibold'
-                : 'border-border text-text-secondary hover:text-text-primary hover:border-text-secondary'
-                }`}
-            >
-              {m === 1 ? '1M' : m === 3 ? '3M' : m === 6 ? '6M' : '1Y'}
-            </button>
-          ))}
-        </div>
+        <FilterPills
+          options={[{ label: '1M', value: '1' }, { label: '3M', value: '3' }, { label: '6M', value: '6' }, { label: '1Y', value: '12' }]}
+          selected={String(months)}
+          onChange={v => setMonths(Number(v))}
+        />
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card delay={0.1}>
-          <p className="text-xs text-text-secondary uppercase tracking-wider">Total Spending</p>
-          <p className="number-display text-3xl font-bold text-text-primary mt-1">
-            {formatCurrency(totalSpend)}
-          </p>
+          <p className="stat-label">Total Spending</p>
+          <p className="stat-value mt-1">{formatCurrency(totalSpend)}</p>
           <p className="text-xs text-text-secondary mt-1">
             Last {months} month{months > 1 ? 's' : ''}
           </p>
         </Card>
         <Card delay={0.15}>
-          <p className="text-xs text-text-secondary uppercase tracking-wider">Monthly Average</p>
-          <p className="number-display text-3xl font-bold text-accent mt-1">
-            {formatCurrency(avgMonthly)}
-          </p>
+          <p className="stat-label">Monthly Average</p>
+          <p className="stat-value mt-1" style={{ color: 'var(--accent)' }}>{formatCurrency(avgMonthly)}</p>
           <p className="text-xs text-text-secondary mt-1">/month</p>
         </Card>
         <Card delay={0.2}>
-          <p className="text-xs text-text-secondary uppercase tracking-wider">Transactions</p>
-          <p className="number-display text-3xl font-bold text-text-primary mt-1">
-            {expenses.length}
-          </p>
+          <p className="stat-label">Transactions</p>
+          <p className="stat-value mt-1">{expenses.length}</p>
           <p className="text-xs text-text-secondary mt-1">
             {categoryData.length} categories
           </p>
@@ -214,7 +200,7 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly Bar Chart */}
         <Card delay={0.25}>
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Monthly Spending</h3>
+          <h3 className="section-title">Monthly Spending</h3>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
@@ -233,7 +219,7 @@ export default function ExpensesPage() {
 
         {/* Category Pie */}
         <Card delay={0.3}>
-          <h3 className="text-sm font-semibold text-text-primary mb-4">By Category</h3>
+          <h3 className="section-title">By Category</h3>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -264,7 +250,7 @@ export default function ExpensesPage() {
 
       {/* Category Grid */}
       <Card delay={0.35}>
-        <h3 className="text-sm font-semibold text-text-primary mb-4">Category Breakdown</h3>
+        <h3 className="section-title">Category Breakdown</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {categoryData.map((cat, i) => {
             const pct = totalSpend > 0 ? (cat.value / totalSpend) * 100 : 0;
@@ -306,7 +292,7 @@ export default function ExpensesPage() {
       {/* Transaction List */}
       <Card delay={0.4}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-text-primary">
+          <h3 className="section-title mb-0">
             {selectedCategory ? `${formatCategoryName(selectedCategory)} Transactions` : 'All Transactions'}
             <span className="text-text-secondary font-normal ml-2">({filteredTransactions.length})</span>
           </h3>

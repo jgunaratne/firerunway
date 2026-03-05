@@ -455,8 +455,8 @@ export default function MonteCarloPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Monte Carlo Simulator</h1>
-          <p className="text-sm text-text-secondary mt-1">How much longer do you need to keep working?</p>
+          <h1 className="page-title">Monte Carlo Simulator</h1>
+          <p className="page-subtitle">How much longer do you need to keep working?</p>
         </div>
         <button
           onClick={() => setShowVariables(!showVariables)}
@@ -471,7 +471,7 @@ export default function MonteCarloPage() {
         <div className="flex-1 space-y-6 min-w-0">
           {/* Fan Chart */}
           <Card>
-            <h3 className="font-display text-lg text-text-primary mb-4">Portfolio Projections — {params.years} Years</h3>
+            <h3 className="section-title">Portfolio Projections — {params.years} Years</h3>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
@@ -537,7 +537,7 @@ export default function MonteCarloPage() {
 
           {/* Life Events Timeline */}
           <Card>
-            <h3 className="font-display text-lg text-text-primary mb-2">Life Events</h3>
+            <h3 className="section-title">Life Events</h3>
             <p className="text-xs text-text-secondary mb-4">Add events to see how they affect your projections</p>
 
             {/* Event chips */}
@@ -588,7 +588,7 @@ export default function MonteCarloPage() {
           {/* Scenario Manager */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg text-text-primary">Scenario Manager</h3>
+              <h3 className="section-title mb-0">Scenario Manager</h3>
               <button onClick={saveScenario} className="text-xs px-3 py-1.5 bg-accent/15 text-accent border border-accent/30 rounded-md hover:bg-accent/25 transition-colors">
                 Save Current Scenario
               </button>

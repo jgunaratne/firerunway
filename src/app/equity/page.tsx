@@ -112,8 +112,8 @@ export default function EquityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Equity / RSUs</h1>
-        <p className="text-sm text-text-secondary mt-1">Equity compensation — vesting, concentration, and scenarios</p>
+        <h1 className="page-title">Equity / RSUs</h1>
+        <p className="page-subtitle">Equity compensation — vesting, concentration, and scenarios</p>
       </div>
 
       {/* Concentration Gauge */}
@@ -138,7 +138,7 @@ export default function EquityPage() {
 
       {/* Stock Price Scenario Slider */}
       <Card delay={0.2}>
-        <h3 className="font-display text-lg text-text-primary mb-2">Stock Price Scenario</h3>
+        <h3 className="section-title">Stock Price Scenario</h3>
         <p className="text-xs text-text-secondary mb-4">Drag to see how price changes affect your finances</p>
 
         <div className="flex items-center justify-between text-xs text-text-secondary mb-2">
@@ -191,7 +191,7 @@ export default function EquityPage() {
 
       {/* Vesting Timeline */}
       <Card delay={0.3}>
-        <h3 className="font-display text-lg text-text-primary mb-4">Vesting Timeline — Next 24 Months</h3>
+        <h3 className="section-title">Vesting Timeline — Next 24 Months</h3>
 
         <div className="flex gap-3 overflow-x-auto pb-2">
           {adjustedEvents.map((event, i) => (
@@ -227,7 +227,7 @@ export default function EquityPage() {
 
       {/* Grant Summary Table */}
       <Card delay={0.4}>
-        <h3 className="font-display text-lg text-text-primary mb-4">Grant Summary</h3>
+        <h3 className="section-title">Grant Summary</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

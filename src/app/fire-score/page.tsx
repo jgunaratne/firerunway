@@ -303,8 +303,8 @@ export default function FireScorePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl lg:text-3xl text-text-primary">FIRE Score</h1>
-          <p className="text-sm text-text-secondary mt-1">A single, honest answer to &quot;am I financially independent?&quot;</p>
+          <h1 className="page-title">FIRE Score</h1>
+          <p className="page-subtitle">A single, honest answer to &quot;am I financially independent?&quot;</p>
         </div>
         {saving && <span className="text-xs text-accent animate-pulse">Saving...</span>}
       </div>
@@ -405,7 +405,7 @@ export default function FireScorePage() {
 
       {/* Score Breakdown */}
       <Card>
-        <h3 className="font-display text-lg text-text-primary mb-4">Score Breakdown</h3>
+        <h3 className="section-title">Score Breakdown</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -445,7 +445,7 @@ export default function FireScorePage() {
       {/* Timeline Projections */}
       {fireNumber > 0 && annualSavings > 0 && (
         <div>
-          <h3 className="font-display text-lg text-text-primary mb-3">Timeline Projections</h3>
+          <h3 className="section-title">Timeline Projections</h3>
           <p className="text-xs text-text-secondary mb-4">
             Based on your portfolio of {formatCurrency(investable, true)} and annual savings of {formatCurrency(annualSavings, true)}
           </p>
@@ -478,7 +478,7 @@ export default function FireScorePage() {
       {/* What Moves Your Score */}
       {recommendations.length > 0 && (
         <Card>
-          <h3 className="font-display text-lg text-text-primary mb-4">What Moves Your Score</h3>
+          <h3 className="section-title">What Moves Your Score</h3>
           <p className="text-xs text-text-secondary mb-4">Personalized actions based on your current financial data</p>
           <div className="space-y-3">
             {recommendations.map((rec, i) => (
@@ -503,7 +503,7 @@ export default function FireScorePage() {
       {/* Net Worth Composition */}
       {totalNetWorth > 0 && (
         <Card>
-          <h3 className="font-display text-lg text-text-primary mb-4">Net Worth Composition</h3>
+          <h3 className="section-title">Net Worth Composition</h3>
           <div className="space-y-3">
             {[
               { label: 'Investment Portfolio', value: totalInvestment, color: 'bg-accent' },

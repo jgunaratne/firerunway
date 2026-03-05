@@ -87,8 +87,8 @@ export default function NetWorthPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Net Worth</h1>
-        <p className="text-sm text-text-secondary mt-1">Your total financial picture, always current</p>
+        <h1 className="page-title">Net Worth</h1>
+        <p className="page-subtitle">Your total financial picture, always current</p>
       </div>
 
       {/* Hero — Total Net Worth */}
@@ -104,7 +104,7 @@ export default function NetWorthPage() {
 
       {/* Asset Breakdown Bar */}
       <Card delay={0.2}>
-        <h3 className="font-display text-lg text-text-primary mb-4">Asset Breakdown</h3>
+        <h3 className="section-title">Asset Breakdown</h3>
 
         {/* Stacked bar */}
         <div className="h-8 rounded-lg overflow-hidden flex mb-6">
@@ -156,7 +156,7 @@ export default function NetWorthPage() {
       {/* Net Worth Over Time */}
       <Card delay={0.3}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg text-text-primary">Net Worth Over Time</h3>
+          <h3 className="section-title mb-0">Net Worth Over Time</h3>
           <div className="flex gap-1">
             {timeRanges.map((range) => (
               <button

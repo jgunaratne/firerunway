@@ -105,7 +105,7 @@ function ConnectAccountsStep({ onNext }: { onNext: () => void }) {
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-md mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Connect Your Accounts</h2>
-        <p className="text-sm text-text-secondary mt-1">Securely link your brokerage and retirement accounts</p>
+        <p className="page-subtitle">Securely link your brokerage and retirement accounts</p>
       </div>
       <div className="space-y-3">
         {[
@@ -154,7 +154,7 @@ function RSUSetupStep({ onNext, grants, setGrants }: { onNext: () => void; grant
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">RSU / Equity Setup</h2>
-        <p className="text-sm text-text-secondary mt-1">Tell us about your equity compensation</p>
+        <p className="page-subtitle">Tell us about your equity compensation</p>
       </div>
 
       {grants.map((grant, idx) => (
@@ -232,7 +232,7 @@ function RealEstateSetupStep({ onNext, properties, setProperties }: { onNext: ()
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Real Estate</h2>
-        <p className="text-sm text-text-secondary mt-1">Add your properties to get a complete net worth picture</p>
+        <p className="page-subtitle">Add your properties to get a complete net worth picture</p>
       </div>
 
       {properties.map((prop, idx) => (
@@ -322,7 +322,7 @@ function YourNumbersStep({ onNext, profile, setProfile }: { onNext: () => void; 
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Your Numbers</h2>
-        <p className="text-sm text-text-secondary mt-1">We need a few more details to calculate your FIRE score</p>
+        <p className="page-subtitle">We need a few more details to calculate your FIRE score</p>
       </div>
 
       <div className="glass-card p-5 space-y-4">

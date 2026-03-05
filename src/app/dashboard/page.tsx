@@ -179,8 +179,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Dashboard</h1>
-        <p className="text-sm text-text-secondary mt-1">Your financial independence at a glance</p>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">Your financial independence at a glance</p>
       </div>
 
       {/* Hero Row — 3 stat cards */}
@@ -188,7 +188,7 @@ export default function DashboardPage() {
         {/* FI Score */}
         <Card delay={0.1} className="flex flex-col items-center justify-center">
           <ArcGauge value={fiScore.total} label={fiScore.total >= 75 ? 'Approaching independence' : fiScore.total >= 50 ? 'Halfway there' : 'Building your base'} />
-          <p className="text-xs text-text-secondary mt-2 uppercase tracking-wider">FI Score</p>
+          <p className="stat-label mt-2">FI Score</p>
         </Card>
 
         {/* Runway */}
@@ -199,7 +199,7 @@ export default function DashboardPage() {
             </p>
             <p className="text-lg text-text-secondary">years</p>
           </div>
-          <p className="text-xs text-text-secondary mt-3 uppercase tracking-wider">Runway</p>
+          <p className="stat-label mt-3">Runway</p>
           <p className="text-xs text-text-secondary">If income stopped today</p>
         </Card>
 
@@ -211,14 +211,14 @@ export default function DashboardPage() {
             </p>
             <p className="text-lg text-text-secondary">away</p>
           </div>
-          <p className="text-xs text-text-secondary mt-3 uppercase tracking-wider">FIRE Gap</p>
+          <p className="stat-label mt-3">FIRE Gap</p>
           <p className="text-xs text-text-secondary">{targetYear ? `Target: ${targetYear}` : 'Set target in profile'}</p>
         </Card>
       </div>
 
       {/* If Laid Off Tomorrow */}
       <Card delay={0.4}>
-        <h3 className="font-display text-lg text-text-primary mb-4">If Laid Off Tomorrow</h3>
+        <h3 className="section-title">If Laid Off Tomorrow</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
           <LayoffItem
             status={mortgageCoverageYears >= 5 ? 'green' : mortgageCoverageYears >= 2 ? 'amber' : 'red'}
@@ -245,7 +245,7 @@ export default function DashboardPage() {
 
       {/* AI Insights */}
       <div>
-        <h3 className="font-display text-lg text-text-primary mb-3">AI Insights</h3>
+        <h3 className="section-title">AI Insights</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {insights.map((insight, i) => (
             <InsightCard key={insight.id} insight={insight} delay={0.5 + i * 0.1} />

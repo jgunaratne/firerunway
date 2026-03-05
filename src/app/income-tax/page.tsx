@@ -217,16 +217,16 @@ export default function IncomeTaxPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="font-display text-2xl lg:text-3xl text-text-primary">Income & Taxes</h1>
-        <p className="text-sm text-text-secondary mt-1">Upload W-2s and tax documents to track your income and tax burden</p>
+        <h1 className="page-title">Income & Taxes</h1>
+        <p className="page-subtitle">Upload W-2s and tax documents to track your income and tax burden</p>
       </div>
 
       {/* Upload Area */}
       <Card delay={0.1}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg text-text-primary">Upload Tax Document</h3>
-            <p className="text-sm text-text-secondary mt-1">W-2, 1099, pay stub, or tax return (PDF)</p>
+            <h3 className="section-title mb-0">Upload Tax Document</h3>
+            <p className="page-subtitle">W-2, 1099, pay stub, or tax return (PDF)</p>
           </div>
           <label className={`bg-accent/20 text-accent border border-accent/30 rounded-lg px-5 py-2.5 text-sm font-medium cursor-pointer transition-colors ${uploading ? 'opacity-50 cursor-wait' : 'hover:bg-accent/30'}`}>
             {uploading ? (
@@ -294,7 +294,7 @@ export default function IncomeTaxPage() {
           {/* Breakdowns */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card delay={0.25}>
-              <h3 className="font-display text-lg text-text-primary mb-4">Income Breakdown</h3>
+              <h3 className="section-title">Income Breakdown</h3>
               <BreakdownBar items={aggregatedIncome} total={totalIncome} colors={INCOME_COLORS} />
               <div className="mt-4">
                 <BreakdownTable items={aggregatedIncome} labels={INCOME_LABELS} colors={INCOME_COLORS} />
@@ -302,7 +302,7 @@ export default function IncomeTaxPage() {
             </Card>
 
             <Card delay={0.3}>
-              <h3 className="font-display text-lg text-text-primary mb-4">Tax & Deductions Breakdown</h3>
+              <h3 className="section-title">Tax & Deductions Breakdown</h3>
               <BreakdownBar items={aggregatedTax} total={totalTax} colors={TAX_COLORS} />
               <div className="mt-4">
                 <BreakdownTable items={aggregatedTax} labels={TAX_LABELS} colors={TAX_COLORS} />
@@ -312,7 +312,7 @@ export default function IncomeTaxPage() {
 
           {/* Documents List */}
           <Card delay={0.35}>
-            <h3 className="font-display text-lg text-text-primary mb-4">Uploaded Documents</h3>
+            <h3 className="section-title">Uploaded Documents</h3>
             <div className="space-y-3">
               {records.map((r) => (
                 <motion.div
