@@ -171,7 +171,9 @@ export default function DashboardPage() {
     },
   ];
 
-  if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+  // Only show full-page loading if we have NO data at all (first visit, no cache)
+  const hasAnyData = profile || totalInvestment > 0 || rsuGrants.length > 0 || realEstate.length > 0;
+  if ((isLoading || holdingsLoading) && !hasAnyData) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
 
   return (
     <div className="space-y-6">
