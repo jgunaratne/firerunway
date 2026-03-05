@@ -20,6 +20,9 @@ export default async function middleware(request: NextRequest) {
     '/sign-up(.*)',
     '/onboarding(.*)',
     '/api/cron(.*)',
+    '/api/plaid(.*)',
+    '/api/snaptrade(.*)',
+    '/api/ai(.*)',
   ]);
 
   const handler = clerkMiddleware(async (auth, req) => {
