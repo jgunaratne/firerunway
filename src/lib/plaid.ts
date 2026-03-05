@@ -97,3 +97,17 @@ export async function removeItem(accessToken: string) {
   });
   return response.data;
 }
+
+/**
+ * Get transactions for a given date range.
+ */
+export async function getTransactions(accessToken: string, startDate: string, endDate: string) {
+  const client = getClient();
+  const response = await client.transactionsGet({
+    access_token: accessToken,
+    start_date: startDate,
+    end_date: endDate,
+    options: { count: 500, offset: 0 },
+  });
+  return response.data;
+}
