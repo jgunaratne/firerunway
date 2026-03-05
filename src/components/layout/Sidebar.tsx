@@ -14,6 +14,7 @@ const navItems = [
   { href: '/statements', icon: '📄', label: 'Statements' },
   { href: '/income-tax', icon: '💰', label: 'Income & Tax' },
   { href: '/expenses', icon: '🧾', label: 'Expenses' },
+  { href: '/spending-plan', icon: '📋', label: 'Spending Plan' },
   { href: '/portfolio?tab=accounts', icon: '🔗', label: 'Accounts' },
 ];
 
