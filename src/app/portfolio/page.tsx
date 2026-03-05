@@ -377,8 +377,9 @@ interface ConnectedAccount {
 
 function AccountsTab() {
   const { clerkId: userId, refresh: refreshUserData } = useUserData();
-  const { accounts: cachedAccounts, forceRefresh: refreshBrokerage, loading: brokerageLoading } = useBrokerageData();
+  const { accounts: cachedAccounts, plaidAccounts, forceRefresh: refreshBrokerage, loading: brokerageLoading } = useBrokerageData();
   const [connecting, setConnecting] = useState(false);
+  const [connectingPlaid, setConnectingPlaid] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -447,6 +448,72 @@ function AccountsTab() {
     }
   };
 
+  const connectPlaid = async () => {
+    if (!userId) return;
+    setConnectingPlaid(true);
+    setError(null);
+    try {
+      // Get link token from our API
+      const res = await fetch('/api/plaid/link-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clerkId: userId }),
+      });
+      const data = await res.json();
+
+      if (!data.linkToken) {
+        setError(data.error || 'Failed to create Plaid link');
+        setConnectingPlaid(false);
+        return;
+      }
+
+      // Load Plaid Link script if not already loaded
+      if (!(window as unknown as Record<string, unknown>).Plaid) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load Plaid Link'));
+          document.head.appendChild(script);
+        });
+      }
+
+      // Open Plaid Link
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const PlaidLink = (window as any).Plaid;
+      const handler = PlaidLink.create({
+        token: data.linkToken,
+        onSuccess: async (publicToken: string, metadata: { institution?: { name?: string; institution_id?: string } }) => {
+          try {
+            await fetch('/api/plaid/exchange-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                clerkId: userId,
+                publicToken,
+                institutionName: metadata.institution?.name || 'Unknown',
+              }),
+            });
+            refreshBrokerage();
+            refreshUserData();
+          } catch (err) {
+            console.error('Plaid token exchange error:', err);
+            setError('Failed to save connection.');
+          }
+          setConnectingPlaid(false);
+        },
+        onExit: () => {
+          setConnectingPlaid(false);
+        },
+      });
+      handler.open();
+    } catch (err) {
+      console.error('Plaid connect error:', err);
+      setError('Failed to connect with Plaid. Please try again.');
+      setConnectingPlaid(false);
+    }
+  };
+
   const disconnectAccount = async (authorizationId: string) => {
     if (!userId) return;
     try {
@@ -462,13 +529,44 @@ function AccountsTab() {
     }
   };
 
+  const disconnectPlaidItem = async (itemId: string) => {
+    if (!userId) return;
+    try {
+      await fetch('/api/plaid/accounts', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clerkId: userId, itemId }),
+      });
+      refreshBrokerage();
+      refreshUserData();
+    } catch {
+      console.error('Plaid disconnect error');
+    }
+  };
+
+  // Group Plaid accounts by institution
+  const plaidByInstitution = plaidAccounts.reduce((acc, acct) => {
+    const key = `${acct.itemId}::${acct.institutionName}`;
+    if (!acc[key]) acc[key] = { itemId: acct.itemId, institutionName: acct.institutionName, accounts: [] };
+    acc[key].accounts.push(acct);
+    return acc;
+  }, {} as Record<string, { itemId: string; institutionName: string; accounts: typeof plaidAccounts }>);
+
+  const getAccountIcon = (type: string, subtype: string | null) => {
+    if (type === 'credit') return '💳';
+    if (type === 'loan') return '🏦';
+    if (subtype === 'checking') return '✅';
+    if (subtype === 'savings') return '💰';
+    return '🏦';
+  };
+
   return (
     <div className="space-y-6">
-      {/* Connected Accounts */}
+      {/* Connected Brokerage Accounts */}
       {cachedAccounts.length > 0 && (
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-text-primary">Connected Accounts</h4>
+            <h4 className="text-sm font-semibold text-text-primary">Brokerage Accounts</h4>
             <button
               onClick={handleRefreshData}
               disabled={refreshing}
@@ -516,6 +614,55 @@ function AccountsTab() {
         </Card>
       )}
 
+      {/* Connected Plaid Accounts (Banking / Credit Cards) */}
+      {Object.keys(plaidByInstitution).length > 0 && (
+        <Card>
+          <h4 className="text-sm font-semibold text-text-primary mb-4">Banking & Credit Cards</h4>
+          <div className="space-y-4">
+            {Object.values(plaidByInstitution).map((group) => (
+              <div key={group.itemId}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">{group.institutionName}</p>
+                  <button
+                    onClick={() => disconnectPlaidItem(group.itemId)}
+                    className="text-xs text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {group.accounts.map((acct) => (
+                    <div key={acct.id} className="flex items-center justify-between p-3 glass-card rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{getAccountIcon(acct.type, acct.subtype)}</span>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">{acct.officialName || acct.name}</p>
+                          <p className="text-xs text-text-secondary">
+                            {acct.subtype || acct.type}{acct.mask ? ` • ****${acct.mask}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {acct.currentBalance !== null && (
+                          <p className={`number-display text-sm font-bold ${acct.type === 'credit' || acct.type === 'loan' ? 'text-red-400' : 'text-text-primary'}`}>
+                            {acct.type === 'credit' || acct.type === 'loan' ? '-' : ''}{formatCurrency(Math.abs(acct.currentBalance))}
+                          </p>
+                        )}
+                        {acct.type === 'credit' && acct.limit !== null && (
+                          <p className="text-[10px] text-text-secondary">
+                            {formatCurrency(acct.limit - (acct.currentBalance || 0))} available
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Connect New Account */}
       <Card delay={0.2}>
         <h4 className="text-sm font-semibold text-text-primary mb-2">Connect a Brokerage Account</h4>
@@ -552,21 +699,43 @@ function AccountsTab() {
         )}
       </Card>
 
+      {/* Connect Banking / Credit Card */}
+      <Card delay={0.3}>
+        <h4 className="text-sm font-semibold text-text-primary mb-2">Connect Bank or Credit Card</h4>
+        <p className="text-xs text-text-secondary mb-4">
+          Connect your bank accounts, credit cards, and loans for a complete financial picture.
+          Powered by Plaid with bank-level encryption.
+        </p>
+        <button
+          onClick={connectPlaid}
+          disabled={connectingPlaid || !userId}
+          className="w-full glass-card-hover p-4 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="text-2xl">💳</span>
+          <span className="text-sm font-medium text-text-primary">
+            {connectingPlaid ? 'Opening Plaid...' : 'Connect with Plaid'}
+          </span>
+        </button>
+        <p className="text-[10px] text-text-secondary/50 mt-2 text-center">
+          Supports Amex, Chase, Bank of America, Capital One, and 10,000+ institutions
+        </p>
+      </Card>
+
       {/* How It Works */}
-      <Card delay={0.3} className="border-accent/20">
+      <Card delay={0.4} className="border-accent/20">
         <h4 className="text-sm font-semibold text-text-primary mb-3">How It Works</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-text-secondary">
           <div className="flex items-start gap-2">
             <span className="text-lg">1️⃣</span>
-            <p>Click your brokerage above. A secure connection portal opens.</p>
+            <p>Click your brokerage above or connect via Plaid. A secure portal opens.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-lg">2️⃣</span>
-            <p>Sign in to your brokerage through SnapTrade&apos;s SOC 2 certified portal.</p>
+            <p>Sign in to your institution through a SOC 2 certified portal.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-lg">3️⃣</span>
-            <p>Your holdings sync automatically. Read-only access — we never trade on your behalf.</p>
+            <p>Your data syncs automatically. Read-only access — we never transact on your behalf.</p>
           </div>
         </div>
       </Card>

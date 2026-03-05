@@ -30,10 +30,25 @@ export interface BrokeragePosition {
   institutionName: string;
 }
 
+export interface PlaidAccount {
+  id: string;
+  itemId: string;
+  name: string;
+  officialName: string | null;
+  type: string; // depository, credit, loan, investment
+  subtype: string | null; // checking, savings, credit card, etc.
+  mask: string | null;
+  currentBalance: number | null;
+  availableBalance: number | null;
+  limit: number | null;
+  institutionName: string;
+}
+
 interface CachedBrokerageData {
   accounts: BrokerageAccount[];
   positions: BrokeragePosition[];
   totalInvestment: number;
+  plaidAccounts: PlaidAccount[];
   cachedAt: number;
 }
 
@@ -41,6 +56,7 @@ interface BrokerageDataContextType {
   accounts: BrokerageAccount[];
   positions: BrokeragePosition[];
   totalInvestment: number;
+  plaidAccounts: PlaidAccount[];
   loading: boolean;
   refresh: () => Promise<void>;
   forceRefresh: () => Promise<void>;
@@ -52,6 +68,7 @@ const BrokerageDataContext = createContext<BrokerageDataContextType>({
   accounts: [],
   positions: [],
   totalInvestment: 0,
+  plaidAccounts: [],
   loading: true,
   refresh: () => Promise.resolve(),
   forceRefresh: () => Promise.resolve(),
@@ -82,12 +99,14 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
   const [accounts, setAccounts] = useState<BrokerageAccount[]>([]);
   const [positions, setPositions] = useState<BrokeragePosition[]>([]);
   const [totalInvestment, setTotalInvestment] = useState(0);
+  const [plaidAccounts, setPlaidAccounts] = useState<PlaidAccount[]>([]);
   const [loading, setLoading] = useState(true);
 
   const applyCache = useCallback((cached: CachedBrokerageData) => {
     setAccounts(cached.accounts);
     setPositions(cached.positions);
     setTotalInvestment(cached.totalInvestment);
+    setPlaidAccounts(cached.plaidAccounts || []);
   }, []);
 
   const loadFromCache = useCallback((): CachedBrokerageData | null => {
@@ -106,14 +125,16 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
   }, []);
 
   const fetchAndCache = useCallback(async (userId: string): Promise<CachedBrokerageData> => {
-    // Fetch accounts and holdings in parallel
-    const [acctRes, holdRes] = await Promise.all([
+    // Fetch accounts, holdings, and Plaid accounts in parallel
+    const [acctRes, holdRes, plaidRes] = await Promise.all([
       fetch(`/api/snaptrade/accounts?clerkId=${userId}`),
       fetch(`/api/snaptrade/holdings?clerkId=${userId}`),
+      fetch(`/api/plaid/accounts?clerkId=${userId}`).catch(() => null),
     ]);
 
     const acctData = await acctRes.json();
     const holdData = await holdRes.json();
+    const plaidData = plaidRes ? await plaidRes.json().catch(() => ({ plaidAccounts: [] })) : { plaidAccounts: [] };
 
     // Build account list with balances
     const rawAccounts = acctData.accounts || [];
@@ -236,10 +257,33 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
     const totalFromPositions = holdData.totalInvestment || 0;
     const totalInvestment = Math.max(totalFromBalances, totalFromPositions);
 
+    // Flatten Plaid accounts from all items
+    const flatPlaidAccounts: PlaidAccount[] = [];
+    if (Array.isArray(plaidData.plaidAccounts)) {
+      for (const item of plaidData.plaidAccounts) {
+        for (const acct of item.accounts || []) {
+          flatPlaidAccounts.push({
+            id: acct.id,
+            itemId: item.itemId,
+            name: acct.name,
+            officialName: acct.officialName,
+            type: acct.type,
+            subtype: acct.subtype,
+            mask: acct.mask,
+            currentBalance: acct.currentBalance,
+            availableBalance: acct.availableBalance,
+            limit: acct.limit,
+            institutionName: item.institutionName,
+          });
+        }
+      }
+    }
+
     const cached: CachedBrokerageData = {
       accounts: brokerageAccounts,
       positions: holdPositions,
       totalInvestment,
+      plaidAccounts: flatPlaidAccounts,
       cachedAt: Date.now(),
     };
 
@@ -298,7 +342,7 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
   }, [clerkId, loadFromCache, fetchAndCache, applyCache]);
 
   return (
-    <BrokerageDataContext.Provider value={{ accounts, positions, totalInvestment, loading, refresh, forceRefresh }}>
+    <BrokerageDataContext.Provider value={{ accounts, positions, totalInvestment, plaidAccounts, loading, refresh, forceRefresh }}>
       {children}
     </BrokerageDataContext.Provider>
   );

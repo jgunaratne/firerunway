@@ -138,6 +138,17 @@ CREATE TABLE IF NOT EXISTS income_tax (
   created_at timestamptz DEFAULT now()
 );
 
+-- Plaid items (banking / credit card connections)
+CREATE TABLE IF NOT EXISTS plaid_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  plaid_item_id text NOT NULL,
+  access_token text NOT NULL,
+  institution_name text,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, plaid_item_id)
+);
+
 -- Row Level Security policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -149,6 +160,7 @@ ALTER TABLE real_estate_properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE property_value_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE net_worth_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE income_tax ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plaid_items ENABLE ROW LEVEL SECURITY;
 
 -- Note: RLS policies should be configured based on your auth setup.
 -- The service role key (used in API routes) bypasses RLS.

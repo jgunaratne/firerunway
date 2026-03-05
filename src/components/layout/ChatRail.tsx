@@ -19,7 +19,7 @@ interface ChatMessage {
 function usePageContextString(): string {
   const pathname = usePathname();
   const { profile, rsuGrants, realEstate, accounts, netWorthHistory, incomeTaxRecords } = useUserData();
-  const { positions, totalInvestment, accounts: brokerageAccounts } = useBrokerageData();
+  const { positions, totalInvestment, accounts: brokerageAccounts, plaidAccounts } = useBrokerageData();
   const { pageContext: localPageContext } = usePageLocalContext();
 
   const pageName = pathname?.replace('/', '') || 'dashboard';
@@ -107,6 +107,19 @@ function usePageContextString(): string {
     parts.push('--- Statement Snapshots ---');
     accounts.forEach(a => {
       parts.push(`  - ${a.account_type}: ${formatCurrency(a.total_value)}, ${a.holdings?.length || 0} holdings`);
+    });
+  }
+
+  if (plaidAccounts.length > 0) {
+    parts.push('');
+    parts.push('--- Banking & Credit Cards (Plaid) ---');
+    const bankTotal = plaidAccounts.filter(a => a.type === 'depository').reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+    const creditTotal = plaidAccounts.filter(a => a.type === 'credit').reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+    if (bankTotal > 0) parts.push(`Total Cash (checking/savings): ${formatCurrency(bankTotal)}`);
+    if (creditTotal > 0) parts.push(`Total Credit Card Debt: ${formatCurrency(creditTotal)}`);
+    plaidAccounts.forEach(a => {
+      const balance = a.currentBalance !== null ? formatCurrency(Math.abs(a.currentBalance)) : 'N/A';
+      parts.push(`  - ${a.institutionName}: ${a.officialName || a.name} (${a.subtype || a.type}) = ${a.type === 'credit' ? '-' : ''}${balance}`);
     });
   }
 
