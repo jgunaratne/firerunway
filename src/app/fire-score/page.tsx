@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { calculateFIScore, formatCurrency } from '@/lib/calculations';
@@ -53,7 +52,7 @@ function EditableAmount({
 
   return (
     <div className="text-center">
-      <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">{label}</p>
       {editing ? (
         <input
           autoFocus
@@ -73,7 +72,7 @@ function EditableAmount({
           <p className={`number-display text-xl font-bold ${value > 0 ? 'text-text-primary' : 'text-text-secondary/50'}`}>
             {value > 0 ? formatCurrency(value, true) : placeholder}
           </p>
-          <p className="text-[10px] text-text-secondary/40 opacity-0 group-hover:opacity-100 transition-opacity">
+          <p className="text-sm text-text-secondary/40 opacity-0 group-hover:opacity-100 transition-opacity">
             click to edit
           </p>
         </button>
@@ -297,44 +296,53 @@ export default function FireScorePage() {
     }
   }, [userId, refresh]);
 
-  if (isLoading || holdingsLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+  if (isLoading || holdingsLoading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-text-secondary text-sm">Calculating your FIRE score...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div
+        >
           <h1 className="page-title">FIRE Score</h1>
           <p className="page-subtitle">A single, honest answer to &quot;am I financially independent?&quot;</p>
         </div>
-        {saving && <span className="text-xs text-accent animate-pulse">Saving...</span>}
+        {saving && <span className="text-sm text-accent animate-pulse">Saving...</span>}
       </div>
 
       {/* Score Hero */}
-      <Card className="py-10">
-        <div className="text-center">
-          <p className={`number-display text-7xl lg:text-8xl font-bold ${getScoreColor(score)}`}>
+      <Card className="py-12 relative overflow-hidden">
+        {/* Radial glow behind score */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-accent/[0.06] rounded-full blur-3xl pointer-events-none" />
+        <div className="text-center relative z-10">
+          <p className={`number-display text-7xl lg:text-8xl font-bold ${getScoreColor(score)} glow-text`}>
             <AnimatedNumber value={score} />
           </p>
-          <p className="text-text-secondary mt-2 text-sm">out of 100 — <span className="text-text-primary font-medium">{getScoreLabel(score)}</span></p>
+          <p className="text-text-secondary mt-3 text-sm">out of 100 — <span className="text-text-primary font-medium">{getScoreLabel(score)}</span></p>
         </div>
 
         {/* Progress bar with milestones */}
-        <div className="mt-8 px-4 lg:px-16">
-          <div className="relative h-3 bg-white/5 rounded-full overflow-hidden">
-            <motion.div
+        <div className="mt-8 px-4 lg:px-16 relative z-10">
+          <div className="relative h-3 bg-white/[0.03] rounded-full overflow-hidden">
+            <div
               className="absolute left-0 top-0 h-full rounded-full"
               style={{
                 background: `linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #10b981 70%, #6366f1 100%)`,
+                boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)',
               }}
-              initial={{ width: 0 }}
               animate={{ width: `${Math.min(score, 100)}%` }}
-              transition={{ duration: 1.5, ease: 'easeOut', delay: 0.5 }}
             />
           </div>
           <div className="flex justify-between mt-3">
             {milestones.map((m) => (
               <div key={m.value} className="text-center" style={{ width: '20%' }}>
-                <p className={`text-[10px] ${score >= m.value ? 'text-text-primary' : 'text-text-secondary/50'}`}>
+                <p className={`text-sm ${score >= m.value ? 'text-text-primary' : 'text-text-secondary/50'}`}>
                   {m.label}
                 </p>
               </div>
@@ -344,11 +352,11 @@ export default function FireScorePage() {
       </Card>
 
       {/* Editable Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         <Card className="text-center">
-          <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Investable Assets</p>
-          <p className="number-display text-xl font-bold text-text-primary">{formatCurrency(investable, true)}</p>
-          <p className="text-[10px] text-text-secondary/40 mt-0.5">from linked accounts</p>
+          <p className="stat-label mb-2">Investable Assets</p>
+          <p className="number-display text-xl font-bold text-text-primary glow-text">{formatCurrency(investable, true)}</p>
+          <p className="text-sm text-text-secondary/40 mt-1">from linked accounts</p>
         </Card>
         <Card>
           <EditableAmount
@@ -366,7 +374,7 @@ export default function FireScorePage() {
             placeholder="Click to set"
           />
           {isIncomeFromTax && (
-            <p className="text-[10px] text-accent/60 text-center mt-0.5">from W-2 ({incomeTaxRecords[0]?.tax_year})</p>
+            <p className="text-sm text-accent/60 text-center mt-0.5">from W-2 ({incomeTaxRecords[0]?.tax_year})</p>
           )}
         </Card>
         <Card>
@@ -381,21 +389,21 @@ export default function FireScorePage() {
 
       {/* Derived Metrics */}
       {(fireNumber > 0 || annualIncome > 0) && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-5">
           <Card className="text-center">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Progress</p>
-            <p className={`number-display text-2xl font-bold ${fundingRatio >= 0.75 ? 'text-emerald-400' : fundingRatio >= 0.5 ? 'text-accent' : 'text-text-primary'}`}>
+            <p className="stat-label mb-2">Progress</p>
+            <p className={`number-display text-2xl font-bold ${fundingRatio >= 0.75 ? 'text-emerald-400 glow-text-green' : fundingRatio >= 0.5 ? 'text-accent glow-text' : 'text-text-primary'}`}>
               {fireNumber > 0 ? `${Math.round(fundingRatio * 100)}%` : '—'}
             </p>
           </Card>
           <Card className="text-center">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Savings Rate</p>
+            <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">Savings Rate</p>
             <p className={`number-display text-2xl font-bold ${savingsRate >= 0.3 ? 'text-emerald-400' : savingsRate > 0 ? 'text-amber-400' : 'text-text-primary'}`}>
               {annualIncome > 0 && annualSpend > 0 ? `${Math.round(savingsRate * 100)}%` : '—'}
             </p>
           </Card>
           <Card className="text-center">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Runway</p>
+            <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">Runway</p>
             <p className="number-display text-2xl font-bold text-text-primary">
               {annualSpend > 0 ? `${(investable / annualSpend).toFixed(1)} yrs` : '—'}
             </p>
@@ -409,7 +417,7 @@ export default function FireScorePage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-text-secondary border-b border-border">
+              <tr className="text-sm text-text-secondary border-b border-border">
                 <th className="text-left pb-2 font-medium">Factor</th>
                 <th className="text-left pb-2 font-medium">Your Value</th>
                 <th className="text-right pb-2 font-medium">Weight</th>
@@ -417,19 +425,16 @@ export default function FireScorePage() {
               </tr>
             </thead>
             <tbody>
-              {fiData.breakdown.map((row, i) => (
-                <motion.tr
+              {fiData.breakdown.map((row) => (
+                <tr
                   key={row.factor}
                   className="border-b border-border/50"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.05 }}
                 >
                   <td className="py-2.5 text-text-primary font-medium">{row.factor}</td>
                   <td className="py-2.5 number-display text-text-secondary">{row.value}</td>
                   <td className="py-2.5 text-right number-display text-text-secondary">{row.weight}%</td>
                   <td className="py-2.5 text-right number-display font-bold text-text-primary">{row.points}</td>
-                </motion.tr>
+                </tr>
               ))}
               <tr className="border-t-2 border-border">
                 <td className="py-2.5 font-bold text-text-primary">Total</td>
@@ -446,29 +451,26 @@ export default function FireScorePage() {
       {fireNumber > 0 && annualSavings > 0 && (
         <div>
           <h3 className="section-title">Timeline Projections</h3>
-          <p className="text-xs text-text-secondary mb-4">
+          <p className="text-sm text-text-secondary mb-4">
             Based on your portfolio of {formatCurrency(investable, true)} and annual savings of {formatCurrency(annualSavings, true)}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {projections.map((proj, i) => (
+            {projections.map((proj) => (
               <Card key={proj.label} hover className="text-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + i * 0.1 }}
+                <div
                 >
                   <span className="text-3xl">{proj.emoji}</span>
                   <p className="text-sm font-semibold text-text-primary mt-2">{proj.label}</p>
-                  <p className="text-xs text-text-secondary">{proj.percentile}</p>
+                  <p className="text-sm text-text-secondary">{proj.percentile}</p>
                   <p className="number-display text-3xl font-bold text-text-primary mt-3">{proj.year}</p>
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="text-sm text-text-secondary mt-1">
                     {proj.yearsAway > 0 ? `${proj.yearsAway} years away` : 'Now'}
                   </p>
                   <p className="number-display text-sm text-text-secondary mt-1">
                     Portfolio: {formatCurrency(proj.portfolioAtFI, true)}
                   </p>
-                  <p className="text-[10px] text-text-secondary/60 mt-3 leading-relaxed">{proj.assumptions}</p>
-                </motion.div>
+                  <p className="text-sm text-text-secondary/60 mt-3 leading-relaxed">{proj.assumptions}</p>
+                </div>
               </Card>
             ))}
           </div>
@@ -479,22 +481,19 @@ export default function FireScorePage() {
       {recommendations.length > 0 && (
         <Card>
           <h3 className="section-title">What Moves Your Score</h3>
-          <p className="text-xs text-text-secondary mb-4">Personalized actions based on your current financial data</p>
+          <p className="text-sm text-text-secondary mb-4">Personalized actions based on your current financial data</p>
           <div className="space-y-3">
             {recommendations.map((rec, i) => (
-              <motion.div
+              <div
                 key={i}
                 className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-border/50 hover:border-accent/20 transition-colors"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 + i * 0.1 }}
               >
                 <span className="text-xl">{rec.icon}</span>
                 <div className="flex-1">
                   <p className="text-sm text-text-primary">{rec.action}</p>
                 </div>
                 <span className="number-display text-sm font-bold text-emerald-400">{rec.impact}</span>
-              </motion.div>
+              </div>
             ))}
           </div>
         </Card>
@@ -522,11 +521,9 @@ export default function FireScorePage() {
                       </span>
                     </div>
                     <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                      <motion.div
+                      <div
                         className={`h-full rounded-full ${item.color}`}
-                        initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
-                        transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
                       />
                     </div>
                   </div>

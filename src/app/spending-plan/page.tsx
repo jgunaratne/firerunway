@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Card from '@/components/shared/Card';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useStockPrice } from '@/hooks/useStockPrice';
+import { Upload, FileText, X, Wand2 } from 'lucide-react';
 
 interface Transaction {
   amount: number;
@@ -37,17 +37,45 @@ const FIXED_COST_SUBCATEGORIES: Record<string, string> = {
   'GENERAL_MERCHANDISE': 'Shopping / Clothes',
 };
 
-function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false }: {
+function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange }: {
   label: string; amount: number | string; indent?: boolean; bold?: boolean; highlight?: boolean; dimLabel?: boolean;
+  onAmountChange?: (val: number) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState('');
+  const editable = !!onAmountChange && typeof amount === 'number';
+
   return (
     <div className={`flex items-center justify-between py-2 px-3 ${bold ? 'border-t border-border' : 'border-b border-border/20'} ${highlight ? 'bg-accent/5' : ''}`}>
       <span className={`text-sm ${indent ? 'pl-4' : ''} ${bold ? 'font-semibold text-text-primary' : dimLabel ? 'text-text-secondary/60' : 'text-text-secondary'}`}>
         {label}
       </span>
-      <span className={`number-display text-sm ${bold ? 'font-bold text-accent' : 'text-text-primary'}`}>
-        {typeof amount === 'number' ? formatCurrency(amount) : amount}
-      </span>
+      {editing ? (
+        <input
+          autoFocus
+          type="number"
+          className="w-28 bg-bg-elevated border border-accent/40 rounded px-2 py-0.5 text-sm text-text-primary text-right number-display focus:outline-none"
+          value={editVal}
+          onChange={(e) => setEditVal(e.target.value)}
+          onBlur={() => {
+            const n = parseFloat(editVal);
+            if (!isNaN(n) && n >= 0) onAmountChange!(n);
+            setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+        />
+      ) : (
+        <span
+          className={`number-display text-sm ${bold ? 'font-bold text-accent' : 'text-text-primary'} ${editable ? 'cursor-pointer hover:text-accent/80 hover:underline decoration-dotted underline-offset-2' : ''}`}
+          onClick={editable ? () => { setEditVal(String(Math.round(amount as number))); setEditing(true); } : undefined}
+          title={editable ? 'Click to edit' : undefined}
+        >
+          {typeof amount === 'number' ? formatCurrency(amount) : amount}
+        </span>
+      )}
     </div>
   );
 }
@@ -62,15 +90,15 @@ function SectionHeader({ title, pct, targetRange, actual }: {
     <div className="flex items-center justify-between py-2.5 px-3 bg-white/[0.03] rounded-t-lg border-b border-border">
       <span className="text-sm font-bold text-text-primary uppercase tracking-wide">{title}</span>
       <div className="flex items-center gap-3">
-        <span className="text-xs text-text-secondary">Target: {targetRange}</span>
-        <span className={`text-xs font-bold ${color}`}>{pct.toFixed(0)}%</span>
+        <span className="text-sm text-text-secondary">Target: {targetRange}</span>
+        <span className={`text-sm font-bold ${color}`}>{pct.toFixed(0)}%</span>
       </div>
     </div>
   );
 }
 
 export default function SpendingPlanPage() {
-  const { profile, rsuGrants, realEstate, clerkId } = useUserData();
+  const { profile, rsuGrants, realEstate, clerkId, incomeTaxRecords } = useUserData();
   const { totalInvestment, plaidAccounts } = useBrokerageData();
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -86,6 +114,70 @@ export default function SpendingPlanPage() {
       .catch(() => setTransactions([]))
       .finally(() => setLoading(false));
   }, [clerkId]);
+
+  // === Upload State (persisted to localStorage) ===
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedData, setUploadedData] = useState<{
+    period: 'monthly' | 'annual';
+    grossIncome: number | null;
+    netIncome: number | null;
+    categories: Record<string, number>;
+    notes: string;
+  } | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [manualOverrides, setManualOverrides] = useState<Record<string, number>>({});
+
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('csp_uploaded_data');
+      if (saved) setUploadedData(JSON.parse(saved));
+      const savedOverrides = localStorage.getItem('csp_overrides');
+      if (savedOverrides) setManualOverrides(JSON.parse(savedOverrides));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist uploadedData to localStorage
+  useEffect(() => {
+    if (uploadedData) {
+      localStorage.setItem('csp_uploaded_data', JSON.stringify(uploadedData));
+    } else {
+      localStorage.removeItem('csp_uploaded_data');
+      localStorage.removeItem('csp_overrides');
+    }
+  }, [uploadedData]);
+
+  // Persist manual overrides
+  useEffect(() => {
+    if (Object.keys(manualOverrides).length > 0) {
+      localStorage.setItem('csp_overrides', JSON.stringify(manualOverrides));
+    }
+  }, [manualOverrides]);
+
+  const setOverride = useCallback((label: string, val: number) => {
+    setManualOverrides(prev => ({ ...prev, [label]: val }));
+  }, []);
+
+  const handleUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setUploadError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/ai/spending', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) {
+        setUploadError(data.error);
+      } else {
+        setUploadedData(data.result);
+      }
+    } catch {
+      setUploadError('Failed to process file');
+    } finally {
+      setUploading(false);
+    }
+  }, []);
 
   // === Net Worth ===
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
@@ -104,10 +196,35 @@ export default function SpendingPlanPage() {
   const totalNetWorth = totalAssets + totalInvestments + totalSavings - totalDebt;
 
   // === Income ===
-  const grossMonthlyIncome = (profile?.annual_income || 0) / 12;
-  // Estimate net income (rough: 70% of gross after tax)
-  const estimatedTaxRate = 0.30;
-  const netMonthlyIncome = grossMonthlyIncome * (1 - estimatedTaxRate);
+  const [incomeOverride, setIncomeOverride] = useState<{ gross: number; net: number } | null>(null);
+
+  // Hydrate income override from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('csp_income_override');
+      if (saved) setIncomeOverride(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist income override
+  useEffect(() => {
+    if (incomeOverride) {
+      localStorage.setItem('csp_income_override', JSON.stringify(incomeOverride));
+    } else {
+      localStorage.removeItem('csp_income_override');
+    }
+  }, [incomeOverride]);
+
+  const importIncomeFromTax = useCallback(() => {
+    if (incomeTaxRecords.length === 0) return;
+    const latest = incomeTaxRecords[0]; // most recent
+    const gross = latest.total_income / 12;
+    const net = (latest.total_income - latest.total_tax) / 12;
+    setIncomeOverride({ gross, net });
+  }, [incomeTaxRecords]);
+
+  const grossMonthlyIncome = incomeOverride?.gross ?? (profile?.annual_income || 0) / 12;
+  const netMonthlyIncome = incomeOverride?.net ?? grossMonthlyIncome * (1 - 0.30);
 
   // === Categorize Monthly Spending from Plaid (last month) ===
   const expenses = useMemo(
@@ -115,15 +232,38 @@ export default function SpendingPlanPage() {
     [transactions]
   );
 
-  // Build category totals
+  // Build category totals from Plaid OR uploaded data
   const categoryTotals = useMemo(() => {
     const map = new Map<string, number>();
-    for (const tx of expenses) {
-      const cat = tx.personalFinanceCategory || 'OTHER';
-      map.set(cat, (map.get(cat) || 0) + tx.amount);
+
+    if (uploadedData) {
+      // Use uploaded data — convert annual to monthly if needed
+      const divisor = uploadedData.period === 'annual' ? 12 : 1;
+      const cats = uploadedData.categories;
+      if (cats.rent_mortgage) map.set('RENT_AND_UTILITIES', (cats.rent_mortgage + (cats.utilities || 0)) / divisor);
+      if (cats.transportation) map.set('TRANSPORTATION', cats.transportation / divisor);
+      if (cats.debt_payments) map.set('LOAN_PAYMENTS', cats.debt_payments / divisor);
+      if (cats.insurance || cats.medical) map.set('MEDICAL', ((cats.insurance || 0) + (cats.medical || 0)) / divisor);
+      if (cats.personal_care) map.set('PERSONAL_CARE', cats.personal_care / divisor);
+      if (cats.home_maintenance) map.set('HOME_IMPROVEMENT', cats.home_maintenance / divisor);
+      if (cats.groceries || cats.dining_out) map.set('FOOD_AND_DRINK', ((cats.groceries || 0) + (cats.dining_out || 0)) / divisor);
+      if (cats.clothing) map.set('GENERAL_MERCHANDISE', cats.clothing / divisor);
+      if (cats.subscriptions || cats.entertainment) map.set('ENTERTAINMENT', ((cats.subscriptions || 0) + (cats.entertainment || 0)) / divisor);
+      if (cats.childcare) map.set('GENERAL_SERVICES', cats.childcare / divisor);
+      // Put travel, education, gifts into guilt-free via OTHER
+      const guiltFreeExtra = ((cats.travel || 0) + (cats.education || 0) + (cats.gifts_donations || 0) + (cats.other || 0)) / divisor;
+      if (guiltFreeExtra > 0) map.set('GUILT_FREE_EXTRA', guiltFreeExtra);
+      // Savings/investments
+      if (cats.savings_investments) map.set('SAVINGS_INVESTMENTS', cats.savings_investments / divisor);
+    } else {
+    // Use Plaid transaction data
+      for (const tx of expenses) {
+        const cat = tx.personalFinanceCategory || 'OTHER';
+        map.set(cat, (map.get(cat) || 0) + tx.amount);
+      }
     }
     return map;
-  }, [expenses]);
+  }, [expenses, uploadedData]);
 
   // Fixed Costs
   const fixedCostItems = useMemo(() => {
@@ -145,8 +285,12 @@ export default function SpendingPlanPage() {
     if (subs > 0) items.push({ label: 'Subscriptions / Entertainment', amount: subs });
 
     items.sort((a, b) => b.amount - a.amount);
-    return items;
-  }, [categoryTotals]);
+    // Apply manual overrides
+    return items.map(item => ({
+      ...item,
+      amount: manualOverrides[item.label] ?? item.amount,
+    }));
+  }, [categoryTotals, manualOverrides]);
 
   const fixedCostsTotal = fixedCostItems.reduce((sum, i) => sum + i.amount, 0);
   // Add 15% miscellaneous buffer
@@ -161,40 +305,99 @@ export default function SpendingPlanPage() {
   // Savings goals (estimate from what's left after fixed + investments)
   const savingsGoals = Math.max(0, netMonthlyIncome * 0.05);
 
-  // Guilt-free spending = what's left
-  const guiltFreeSpending = Math.max(0, netMonthlyIncome - fixedCostsTotalWithMisc - monthlyInvestments - savingsGoals);
+  // Guilt-free spending = what's left (include uploaded extras)
+  const guiltFreeExtra = categoryTotals.get('GUILT_FREE_EXTRA') || 0;
+  const guiltFreeSpending = Math.max(0, netMonthlyIncome - fixedCostsTotalWithMisc - monthlyInvestments - savingsGoals) + guiltFreeExtra;
+
+  // Override investments/savings from uploaded data + manual edits
+  const uploadedSavingsInvestments = categoryTotals.get('SAVINGS_INVESTMENTS') || 0;
+  const effectiveInvestments = manualOverrides['__investments'] ?? (uploadedData ? Math.max(monthlyInvestments, uploadedSavingsInvestments * 0.6) : monthlyInvestments);
+  const effectiveSavings = manualOverrides['__savings'] ?? (uploadedData ? Math.max(savingsGoals, uploadedSavingsInvestments * 0.4) : savingsGoals);
 
   // Percentages
   const fixedPct = netMonthlyIncome > 0 ? (fixedCostsTotalWithMisc / netMonthlyIncome) * 100 : 0;
-  const investPct = netMonthlyIncome > 0 ? (monthlyInvestments / netMonthlyIncome) * 100 : 0;
-  const savingsPct = netMonthlyIncome > 0 ? (savingsGoals / netMonthlyIncome) * 100 : 0;
+  const investPct = netMonthlyIncome > 0 ? (effectiveInvestments / netMonthlyIncome) * 100 : 0;
+  const savingsPct = netMonthlyIncome > 0 ? (effectiveSavings / netMonthlyIncome) * 100 : 0;
   const guiltFreePct = netMonthlyIncome > 0 ? (guiltFreeSpending / netMonthlyIncome) * 100 : 0;
 
   if (loading) {
-    return <div className="text-center py-20 text-text-secondary">Loading spending plan...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-text-secondary text-sm">Building your spending plan...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div>
+      <div
+      >
         <h1 className="page-title">Conscious Spending Plan</h1>
         <p className="page-subtitle">Know exactly where your money goes — so you can spend guilt-free on what you love</p>
+
+        {/* Upload Section */}
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.csv,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleUpload(f);
+              e.target.value = '';
+            }}
+          />
+          {uploadedData ? (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <FileText size={16} className="text-emerald-400" />
+              <span className="text-sm text-emerald-400">Statement loaded</span>
+              <button
+                onClick={() => setUploadedData(null)}
+                className="ml-1 text-text-secondary hover:text-text-primary transition-colors"
+                title="Remove uploaded data"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-all disabled:opacity-50"
+            >
+              <Upload size={16} />
+              <span className="text-sm font-medium">
+                {uploading ? 'Processing...' : 'Upload Spending Statement'}
+              </span>
+            </button>
+          )}
+          {uploadError && (
+            <span className="text-sm text-red-400">{uploadError}</span>
+          )}
+        </div>
+
+        {uploadedData?.notes && (
+          <p className="mt-2 text-sm text-text-secondary/70 italic">
+            AI: {uploadedData.notes}
+          </p>
+        )}
       </div>
 
       {/* Four-bucket overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Fixed Costs', pct: fixedPct, target: '50-60%', amount: fixedCostsTotalWithMisc, color: fixedPct > 60 ? '#ef4444' : '#10b981' },
-          { label: 'Investments', pct: investPct, target: '≥10%', amount: monthlyInvestments, color: investPct >= 10 ? '#10b981' : '#f59e0b' },
-          { label: 'Savings', pct: savingsPct, target: '5-10%', amount: savingsGoals, color: '#6366f1' },
+          { label: 'Investments', pct: investPct, target: '≥10%', amount: effectiveInvestments, color: investPct >= 10 ? '#10b981' : '#f59e0b' },
+          { label: 'Savings', pct: savingsPct, target: '5-10%', amount: effectiveSavings, color: '#6366f1' },
           { label: 'Guilt-Free', pct: guiltFreePct, target: '20-35%', amount: guiltFreeSpending, color: guiltFreePct > 0 ? '#10b981' : '#ef4444' },
-        ].map((bucket, i) => (
-          <motion.div
+        ].map((bucket) => (
+          <div
             key={bucket.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * i }}
             className="glass-card p-4 rounded-xl"
           >
             <p className="stat-label">{bucket.label}</p>
@@ -203,15 +406,15 @@ export default function SpendingPlanPage() {
               <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(bucket.pct, 100)}%`, backgroundColor: bucket.color }} />
               </div>
-              <span className="text-xs font-bold" style={{ color: bucket.color }}>{bucket.pct.toFixed(0)}%</span>
+              <span className="text-sm font-bold" style={{ color: bucket.color }}>{bucket.pct.toFixed(0)}%</span>
             </div>
-            <p className="text-[10px] text-text-secondary mt-1">Target: {bucket.target}</p>
-          </motion.div>
+            <p className="text-sm text-text-secondary mt-1">Target: {bucket.target}</p>
+          </div>
         ))}
       </div>
 
       {/* Net Worth */}
-      <Card delay={0.2}>
+      <Card>
         <div className="py-2 px-3 bg-white/[0.03] rounded-t-lg border-b border-border mb-1">
           <span className="text-sm font-bold text-text-primary uppercase tracking-wide">Net Worth</span>
         </div>
@@ -223,19 +426,49 @@ export default function SpendingPlanPage() {
       </Card>
 
       {/* Income */}
-      <Card delay={0.25}>
-        <div className="py-2 px-3 bg-white/[0.03] rounded-t-lg border-b border-border mb-1">
+      <Card>
+        <div className="py-2 px-3 bg-white/[0.03] rounded-t-lg border-b border-border mb-1 flex items-center justify-between">
           <span className="text-sm font-bold text-text-primary uppercase tracking-wide">Income</span>
+          {incomeTaxRecords.length > 0 && (
+            <button
+              onClick={importIncomeFromTax}
+              className={`flex items-center gap-1.5 text-sm font-medium px-2 py-1 rounded-lg transition-all ${incomeOverride
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                : 'text-text-secondary hover:text-accent hover:bg-accent/10'
+                }`}
+              title={`Import from ${incomeTaxRecords[0].document_type} (${incomeTaxRecords[0].tax_year})`}
+            >
+              <Wand2 size={14} />
+              {incomeOverride ? 'Imported from W-2' : 'Import from Tax'}
+            </button>
+          )}
         </div>
-        <PlanRow label="Gross monthly income (before taxes)" amount={grossMonthlyIncome} indent />
-        <PlanRow label="Net monthly income (after taxes, est.)" amount={netMonthlyIncome} bold highlight />
+        <PlanRow
+          label="Gross monthly income (before taxes)"
+          amount={grossMonthlyIncome}
+          indent
+          onAmountChange={incomeOverride ? (val) => setIncomeOverride(prev => prev ? { ...prev, gross: val } : { gross: val, net: val * 0.7 }) : undefined}
+        />
+        <PlanRow
+          label="Net monthly income (after taxes)"
+          amount={netMonthlyIncome}
+          bold
+          highlight
+          onAmountChange={incomeOverride ? (val) => setIncomeOverride(prev => prev ? { ...prev, net: val } : { gross: val / 0.7, net: val }) : undefined}
+        />
       </Card>
 
       {/* Fixed Costs */}
-      <Card delay={0.3}>
+      <Card>
         <SectionHeader title="Fixed Costs" pct={fixedPct} targetRange="50-60%" actual={fixedPct} />
         {fixedCostItems.map((item) => (
-          <PlanRow key={item.label} label={item.label} amount={item.amount} indent />
+          <PlanRow
+            key={item.label}
+            label={item.label}
+            amount={item.amount}
+            indent
+            onAmountChange={uploadedData ? (val) => setOverride(item.label, val) : undefined}
+          />
         ))}
         {fixedCostItems.length === 0 && (
           <PlanRow label="No transaction data yet" amount="—" indent dimLabel />
@@ -245,21 +478,31 @@ export default function SpendingPlanPage() {
       </Card>
 
       {/* Investments */}
-      <Card delay={0.35}>
+      <Card>
         <SectionHeader title="Investments" pct={investPct} targetRange="10%" actual={investPct} />
-        <PlanRow label="Post-Tax Retirement / Brokerage" amount={monthlyInvestments} indent />
-        <PlanRow label="INVESTMENTS TOTAL" amount={monthlyInvestments} bold highlight />
+        <PlanRow
+          label="Post-Tax Retirement / Brokerage"
+          amount={effectiveInvestments}
+          indent
+          onAmountChange={uploadedData ? (val) => setOverride('__investments', val) : undefined}
+        />
+        <PlanRow label="INVESTMENTS TOTAL" amount={effectiveInvestments} bold highlight />
       </Card>
 
       {/* Savings Goals */}
-      <Card delay={0.4}>
+      <Card>
         <SectionHeader title="Savings Goals" pct={savingsPct} targetRange="5-10%" actual={savingsPct} />
-        <PlanRow label="Emergency Fund / Vacations / Gifts" amount={savingsGoals} indent />
-        <PlanRow label="SAVINGS TOTAL" amount={savingsGoals} bold highlight />
+        <PlanRow
+          label="Emergency Fund / Vacations / Gifts"
+          amount={effectiveSavings}
+          indent
+          onAmountChange={uploadedData ? (val) => setOverride('__savings', val) : undefined}
+        />
+        <PlanRow label="SAVINGS TOTAL" amount={effectiveSavings} bold highlight />
       </Card>
 
       {/* Guilt-Free Spending */}
-      <Card delay={0.45}>
+      <Card>
         <SectionHeader title="Guilt-Free Spending" pct={guiltFreePct} targetRange="20-35%" actual={guiltFreePct} />
         <PlanRow label="Dining out, movies, anything you want!" amount={guiltFreeSpending} indent />
         <PlanRow label="GUILT-FREE SPENDING TOTAL" amount={guiltFreeSpending} bold highlight />

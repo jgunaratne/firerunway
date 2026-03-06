@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
   PieChart, Pie, Cell,
@@ -10,6 +9,11 @@ import Card from '@/components/shared/Card';
 import FilterPills from '@/components/shared/FilterPills';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
+import {
+  Utensils, Car, Plane, ShoppingBag, Film, Home as HomeIcon,
+  Heart, Sparkles, Wrench, Package, ShoppingCart, Hammer,
+  ArrowRightLeft, Landmark, CreditCard, DollarSign, FileText,
+} from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -30,29 +34,29 @@ const CATEGORY_COLORS = [
   '#a855f7', '#e11d48',
 ];
 
-const CATEGORY_ICONS: Record<string, string> = {
-  'FOOD_AND_DRINK': '🍽️',
-  'TRANSPORTATION': '🚗',
-  'TRAVEL': '✈️',
-  'SHOPPING': '🛍️',
-  'ENTERTAINMENT': '🎬',
-  'RENT_AND_UTILITIES': '🏠',
-  'MEDICAL': '🏥',
-  'PERSONAL_CARE': '💇',
-  'GENERAL_SERVICES': '🔧',
-  'GENERAL_MERCHANDISE': '📦',
-  'GROCERIES': '🛒',
-  'HOME_IMPROVEMENT': '🏗️',
-  'TRANSFER': '💸',
-  'LOAN_PAYMENTS': '🏦',
-  'BANK_FEES': '💳',
-  'INCOME': '💰',
-  'OTHER': '📋',
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  'FOOD_AND_DRINK': <Utensils size={14} />,
+  'TRANSPORTATION': <Car size={14} />,
+  'TRAVEL': <Plane size={14} />,
+  'SHOPPING': <ShoppingBag size={14} />,
+  'ENTERTAINMENT': <Film size={14} />,
+  'RENT_AND_UTILITIES': <HomeIcon size={14} />,
+  'MEDICAL': <Heart size={14} />,
+  'PERSONAL_CARE': <Sparkles size={14} />,
+  'GENERAL_SERVICES': <Wrench size={14} />,
+  'GENERAL_MERCHANDISE': <Package size={14} />,
+  'GROCERIES': <ShoppingCart size={14} />,
+  'HOME_IMPROVEMENT': <Hammer size={14} />,
+  'TRANSFER': <ArrowRightLeft size={14} />,
+  'LOAN_PAYMENTS': <Landmark size={14} />,
+  'BANK_FEES': <CreditCard size={14} />,
+  'INCOME': <DollarSign size={14} />,
+  'OTHER': <FileText size={14} />,
 };
 
-function getCategoryIcon(category: string | null) {
-  if (!category) return '📋';
-  return CATEGORY_ICONS[category] || '📋';
+function getCategoryIcon(category: string | null): React.ReactNode {
+  if (!category) return <FileText size={14} />;
+  return CATEGORY_ICONS[category] || <FileText size={14} />;
 }
 
 function formatCategoryName(category: string | null) {
@@ -139,30 +143,39 @@ export default function ExpensesPage() {
   const avgMonthly = monthlyData.length > 0 ? totalSpend / monthlyData.length : 0;
 
   if (loading) {
-    return <div className="text-center py-20 text-text-secondary">Loading expenses...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-text-secondary text-sm">Loading expenses...</p>
+        </div>
+      </div>
+    );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="space-y-6">
-        <div>
+      <div className="space-y-8">
+        <div
+        >
           <h1 className="page-title">Expenses</h1>
           <p className="page-subtitle">Track your spending across all connected accounts</p>
         </div>
         <Card className="text-center py-12">
-          <span className="text-4xl">💳</span>
+          <CreditCard size={40} className="text-text-secondary/40 mx-auto" />
           <p className="text-text-secondary mt-4">No transaction data available.</p>
-          <p className="text-xs text-text-secondary mt-1">Connect a bank or credit card via Plaid to see your spending.</p>
+          <p className="text-sm text-text-secondary mt-1">Connect a bank or credit card via Plaid to see your spending.</p>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div
+        >
           <h1 className="page-title">Expenses</h1>
           <p className="page-subtitle">Track your spending across all connected accounts</p>
         </div>
@@ -175,22 +188,22 @@ export default function ExpensesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card delay={0.1}>
+        <Card>
           <p className="stat-label">Total Spending</p>
           <p className="stat-value mt-1">{formatCurrency(totalSpend)}</p>
-          <p className="text-xs text-text-secondary mt-1">
+          <p className="text-sm text-text-secondary mt-1">
             Last {months} month{months > 1 ? 's' : ''}
           </p>
         </Card>
-        <Card delay={0.15}>
+        <Card>
           <p className="stat-label">Monthly Average</p>
           <p className="stat-value mt-1" style={{ color: 'var(--accent)' }}>{formatCurrency(avgMonthly)}</p>
-          <p className="text-xs text-text-secondary mt-1">/month</p>
+          <p className="text-sm text-text-secondary mt-1">/month</p>
         </Card>
-        <Card delay={0.2}>
+        <Card>
           <p className="stat-label">Transactions</p>
           <p className="stat-value mt-1">{expenses.length}</p>
-          <p className="text-xs text-text-secondary mt-1">
+          <p className="text-sm text-text-secondary mt-1">
             {categoryData.length} categories
           </p>
         </Card>
@@ -199,7 +212,7 @@ export default function ExpensesPage() {
       {/* Monthly Trend + Category Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly Bar Chart */}
-        <Card delay={0.25}>
+        <Card>
           <h3 className="section-title">Monthly Spending</h3>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -218,7 +231,7 @@ export default function ExpensesPage() {
         </Card>
 
         {/* Category Pie */}
-        <Card delay={0.3}>
+        <Card>
           <h3 className="section-title">By Category</h3>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -249,18 +262,15 @@ export default function ExpensesPage() {
       </div>
 
       {/* Category Grid */}
-      <Card delay={0.35}>
+      <Card>
         <h3 className="section-title">Category Breakdown</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {categoryData.map((cat, i) => {
             const pct = totalSpend > 0 ? (cat.value / totalSpend) * 100 : 0;
             const isSelected = selectedCategory === cat.name;
             return (
-              <motion.button
+              <button
                 key={cat.name}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * i }}
                 onClick={() => setSelectedCategory(isSelected ? null : cat.name)}
                 className={`text-left p-3 rounded-lg border transition-all ${isSelected
                   ? 'border-accent bg-accent/10'
@@ -269,7 +279,7 @@ export default function ExpensesPage() {
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span>{cat.icon}</span>
-                  <span className="text-xs font-medium text-text-primary truncate">{cat.displayName}</span>
+                  <span className="text-sm font-medium text-text-primary truncate">{cat.displayName}</span>
                 </div>
                 <p className="number-display text-sm font-bold text-text-primary">{formatCurrency(cat.value)}</p>
                 {/* Progress bar */}
@@ -282,15 +292,15 @@ export default function ExpensesPage() {
                     }}
                   />
                 </div>
-                <p className="text-[10px] text-text-secondary mt-1">{pct.toFixed(1)}%</p>
-              </motion.button>
+                <p className="text-sm text-text-secondary mt-1">{pct.toFixed(1)}%</p>
+              </button>
             );
           })}
         </div>
       </Card>
 
       {/* Transaction List */}
-      <Card delay={0.4}>
+      <Card>
         <div className="flex items-center justify-between mb-4">
           <h3 className="section-title mb-0">
             {selectedCategory ? `${formatCategoryName(selectedCategory)} Transactions` : 'All Transactions'}
@@ -300,7 +310,7 @@ export default function ExpensesPage() {
             {selectedCategory && (
               <button
                 onClick={() => setSelectedCategory(null)}
-                className="text-xs text-accent hover:text-accent/80 transition-colors"
+                className="text-sm text-accent hover:text-accent/80 transition-colors"
               >
                 Clear filter ✕
               </button>
@@ -310,7 +320,7 @@ export default function ExpensesPage() {
               placeholder="Search..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="px-3 py-1.5 text-xs rounded-lg border border-border bg-transparent text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-accent w-40"
+              className="px-3 py-1.5 text-sm rounded-lg border border-border bg-transparent text-text-primary placeholder:text-text-secondary/40 focus:outline-none focus:border-accent w-40"
             />
           </div>
         </div>
@@ -321,7 +331,7 @@ export default function ExpensesPage() {
                 <span className="text-lg flex-shrink-0">{getCategoryIcon(tx.personalFinanceCategory)}</span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-text-primary truncate">{tx.merchantName || tx.name}</p>
-                  <p className="text-[11px] text-text-secondary">
+                  <p className="text-sm text-text-secondary">
                     {new Date(tx.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     {' · '}
                     {tx.institutionName}
@@ -335,7 +345,7 @@ export default function ExpensesPage() {
             </div>
           ))}
           {filteredTransactions.length > 100 && (
-            <p className="text-xs text-text-secondary text-center py-3">
+            <p className="text-sm text-text-secondary text-center py-3">
               Showing first 100 of {filteredTransactions.length} transactions
             </p>
           )}

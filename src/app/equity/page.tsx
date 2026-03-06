@@ -1,43 +1,47 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 
-function ConcentrationGauge({ pct, size = 200 }: { pct: number; size?: number }) {
-  const radius = (size - 24) / 2;
+function ConcentrationGauge({ pct, size = 220 }: { pct: number; size?: number }) {
+  const radius = (size - 28) / 2;
   const circumference = Math.PI * radius;
   const offset = circumference * (1 - Math.min(pct / 50, 1));
   const color = pct <= 15 ? '#10b981' : pct <= 25 ? '#f59e0b' : '#ef4444';
+  const glowColor = pct <= 15 ? 'rgba(16,185,129,0.4)' : pct <= 25 ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)';
   const label = pct <= 15 ? 'Well diversified' : pct <= 25 ? 'Moderate concentration' : 'High concentration risk';
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center relative">
+      {/* Ambient glow */}
+      <div
+        className="absolute top-0 w-40 h-24 rounded-full blur-3xl opacity-25 pulse-glow"
+        style={{ background: glowColor }}
+      />
       <svg width={size} height={size / 2 + 30} viewBox={`0 0 ${size} ${size / 2 + 30}`}>
         <path
-          d={`M 12,${size / 2 + 12} A ${radius},${radius} 0 0,1 ${size - 12},${size / 2 + 12}`}
-          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" strokeLinecap="round"
+          d={`M 14,${size / 2 + 14} A ${radius},${radius} 0 0,1 ${size - 14},${size / 2 + 14}`}
+          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="8" strokeLinecap="round"
         />
-        <motion.path
-          d={`M 12,${size / 2 + 12} A ${radius},${radius} 0 0,1 ${size - 12},${size / 2 + 12}`}
-          fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+        <path
+          d={`M 14,${size / 2 + 14} A ${radius},${radius} 0 0,1 ${size - 14},${size / 2 + 14}`}
+          fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
+          strokeDashoffset={offset}
+          style={{ filter: `drop-shadow(0 0 10px ${glowColor})` }}
         />
-        <text x={size / 2} y={size / 2 - 5} textAnchor="middle" className="number-display" fill={color} fontSize="36" fontWeight="bold">
+        <text x={size / 2} y={size / 2 - 5} textAnchor="middle" className="number-display" fill={color} fontSize="38" fontWeight="bold">
           {pct.toFixed(0)}%
         </text>
-        <text x={size / 2} y={size / 2 + 18} textAnchor="middle" fill="#8888aa" fontSize="12">
+        <text x={size / 2} y={size / 2 + 18} textAnchor="middle" fill="#7878a0" fontSize="12" fontWeight="500">
           of net worth
         </text>
       </svg>
-      <p className="text-sm mt-1" style={{ color }}>{label}</p>
+      <p className="text-sm mt-1 font-medium" style={{ color }}>{label}</p>
     </div>
   );
 }
@@ -110,26 +114,28 @@ export default function EquityPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-8">
+      <div
+      >
         <h1 className="page-title">Equity / RSUs</h1>
         <p className="page-subtitle">Equity compensation — vesting, concentration, and scenarios</p>
       </div>
 
       {/* Concentration Gauge */}
-      <Card delay={0.1} className="text-center py-8">
-        <p className="text-xs text-text-secondary uppercase tracking-wider mb-4">Employer Stock Concentration</p>
+      <Card className="text-center py-10 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-accent-amber/[0.04] rounded-full blur-3xl pointer-events-none" />
+        <p className="stat-label mb-4 relative z-10">Employer Stock Concentration</p>
         <ConcentrationGauge pct={concentrationPct} />
-        <div className="flex justify-center gap-8 mt-4 text-sm">
+        <div className="flex justify-center gap-10 mt-5 text-sm relative z-10">
           <div>
-            <p className="text-text-secondary text-xs">Unvested Value</p>
-            <p className="number-display font-bold text-accent-amber">
+            <p className="stat-label">Unvested Value</p>
+            <p className="number-display font-bold text-accent-amber glow-text-amber mt-1">
               <AnimatedNumber value={Math.round(unvestedValue)} format={(n) => formatCurrency(n)} />
             </p>
           </div>
           <div>
-            <p className="text-text-secondary text-xs">Vested Unsold</p>
-            <p className="number-display font-bold text-text-primary">
+            <p className="stat-label">Vested Unsold</p>
+            <p className="number-display font-bold text-text-primary glow-text mt-1">
               <AnimatedNumber value={Math.round(vestedValue)} format={(n) => formatCurrency(n)} />
             </p>
           </div>
@@ -137,11 +143,11 @@ export default function EquityPage() {
       </Card>
 
       {/* Stock Price Scenario Slider */}
-      <Card delay={0.2}>
+      <Card>
         <h3 className="section-title">Stock Price Scenario</h3>
-        <p className="text-xs text-text-secondary mb-4">Drag to see how price changes affect your finances</p>
+        <p className="text-sm text-text-secondary mb-4">Drag to see how price changes affect your finances</p>
 
-        <div className="flex items-center justify-between text-xs text-text-secondary mb-2">
+        <div className="flex items-center justify-between text-sm text-text-secondary mb-2">
           <span>-50%</span>
           <span className="number-display text-lg font-bold text-text-primary">
             AMZN ${adjustedPrice.toFixed(2)}
@@ -164,74 +170,69 @@ export default function EquityPage() {
         />
 
         {priceAdjust !== 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
+          <div
             className="mt-4 grid grid-cols-3 gap-4 text-center"
           >
             <div className="glass-card p-3 rounded-lg">
-              <p className="text-xs text-text-secondary">Unvested Value</p>
+              <p className="text-sm text-text-secondary">Unvested Value</p>
               <p className="number-display text-sm font-bold text-text-primary">{formatCurrency(unvestedValue)}</p>
             </div>
             <div className="glass-card p-3 rounded-lg">
-              <p className="text-xs text-text-secondary">Concentration</p>
+              <p className="text-sm text-text-secondary">Concentration</p>
               <p className="number-display text-sm font-bold" style={{ color: concentrationPct > 25 ? '#ef4444' : concentrationPct > 15 ? '#f59e0b' : '#10b981' }}>
                 {concentrationPct.toFixed(1)}%
               </p>
             </div>
             <div className="glass-card p-3 rounded-lg">
-              <p className="text-xs text-text-secondary">FIRE Date Delta</p>
+              <p className="text-sm text-text-secondary">FIRE Date Delta</p>
               <p className={`number-display text-sm font-bold ${monthsDelta <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {monthsDelta <= 0 ? '' : '+'}{monthsDelta} months
               </p>
             </div>
-          </motion.div>
+          </div>
         )}
       </Card>
 
       {/* Vesting Timeline */}
-      <Card delay={0.3}>
+      <Card>
         <h3 className="section-title">Vesting Timeline — Next 24 Months</h3>
 
         <div className="flex gap-3 overflow-x-auto pb-2">
           {adjustedEvents.map((event, i) => (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 + i * 0.08 }}
               className="glass-card p-4 min-w-[180px] flex-shrink-0"
             >
-              <p className="text-xs text-text-secondary">
+              <p className="text-sm text-text-secondary">
                 {new Date(event.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
               </p>
               <p className="number-display text-lg font-bold text-text-primary mt-1">{event.shares} shares</p>
               <div className="border-t border-border mt-2 pt-2 space-y-1">
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-sm">
                   <span className="text-text-secondary">Gross</span>
                   <span className="number-display text-text-primary">{formatCurrency(event.grossValue)}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-sm">
                   <span className="text-text-secondary">After tax</span>
                   <span className="number-display text-emerald-400">{formatCurrency(event.afterTaxValue)}</span>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 
-        <p className="text-xs text-text-secondary mt-4 border-t border-border pt-3">
+        <p className="text-sm text-text-secondary mt-4 border-t border-border pt-3">
           RSUs are taxed as ordinary income at vest. Estimated federal withholding at your bracket: {taxRate.federal}%. State: {taxRate.state}%.
         </p>
       </Card>
 
       {/* Grant Summary Table */}
-      <Card delay={0.4}>
+      <Card>
         <h3 className="section-title">Grant Summary</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-text-secondary border-b border-border">
+              <tr className="text-sm text-text-secondary border-b border-border">
                 <th className="text-left pb-2 font-medium">Grant</th>
                 <th className="text-left pb-2 font-medium">Date</th>
                 <th className="text-right pb-2 font-medium">Total</th>

@@ -1,3 +1,5 @@
+'use client';
+
 interface FilterPillsProps {
   options: { label: string; value: string }[];
   selected: string;
@@ -6,7 +8,7 @@ interface FilterPillsProps {
 
 export default function FilterPills({ options, selected, onChange }: FilterPillsProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       {options.map(opt => (
         <button
           key={opt.value}

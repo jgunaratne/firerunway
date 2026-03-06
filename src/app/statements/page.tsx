@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import UploadZone from '@/components/upload/UploadZone';
 import { formatCurrency } from '@/lib/calculations';
@@ -90,9 +89,10 @@ export default function StatementsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Page header */}
-      <div>
+      <div
+      >
         <h1 className="page-title">Manage Statements</h1>
         <p className="page-subtitle">Upload and manage your brokerage PDF statements</p>
       </div>
@@ -102,27 +102,25 @@ export default function StatementsPage() {
 
       {/* Error */}
       {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="glass-card p-4 border-accent-red/50"
         >
           <span className="text-accent-red text-sm">{error}</span>
-        </motion.div>
+        </div>
       )}
 
       {/* Refresh button */}
       <div className="flex justify-end">
         <button
           onClick={refresh}
-          className="text-xs text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-lg border border-border hover:border-accent/30 transition-all"
+          className="text-sm text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-lg border border-border hover:border-accent/30 transition-all"
         >
           ↻ Refresh
         </button>
       </div>
 
       {/* Statements list */}
-      <Card delay={0.2}>
+      <Card>
         <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-4">
           Uploaded Statements ({statements.length})
         </h3>
@@ -141,15 +139,13 @@ export default function StatementsPage() {
 
         <div className="space-y-3">
           {statements.map((stmt) => (
-            <motion.div
+            <div
               key={stmt.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
               className="bg-bg-elevated rounded-lg p-4 flex items-center gap-4 hover:bg-bg-elevated/80 transition-colors"
             >
               {/* Broker badge */}
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold uppercase flex-shrink-0"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold uppercase flex-shrink-0"
                 style={{ backgroundColor: BROKER_COLORS[stmt.broker] ?? '#636e7b' }}
               >
                 {stmt.broker.slice(0, 2)}
@@ -159,27 +155,27 @@ export default function StatementsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-text-primary font-medium text-sm capitalize">{stmt.broker}</span>
-                  <span className="text-text-secondary text-xs">•</span>
-                  <span className="text-text-secondary text-xs">{stmt.account_type || 'Unknown'}</span>
+                  <span className="text-text-secondary text-sm">•</span>
+                  <span className="text-text-secondary text-sm">{stmt.account_type || 'Unknown'}</span>
                   {stmt.account_number && (
                     <>
-                      <span className="text-text-secondary text-xs">•</span>
-                      <span className="text-text-secondary text-xs font-mono">{stmt.account_number}</span>
+                      <span className="text-text-secondary text-sm">•</span>
+                      <span className="text-text-secondary text-sm font-mono">{stmt.account_number}</span>
                     </>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-1">
                   <span className="number-display text-text-primary text-sm">{formatCurrency(stmt.total_value)}</span>
-                  <span className="text-text-secondary text-xs">{formatDate(stmt.statement_date)}</span>
+                  <span className="text-text-secondary text-sm">{formatDate(stmt.statement_date)}</span>
                   <span
-                    className="text-xs px-1.5 py-0.5 rounded font-medium"
+                    className="text-sm px-1.5 py-0.5 rounded font-medium"
                     style={{ color: CONFIDENCE_COLORS[stmt.extraction_confidence] ?? '#8b949e' }}
                   >
                     {stmt.extraction_confidence}
                   </span>
                 </div>
                 {stmt.extraction_notes && stmt.extraction_confidence !== 'high' && (
-                  <div className="text-xs text-accent-amber mt-1 truncate">
+                  <div className="text-sm text-accent-amber mt-1 truncate">
                     ⚠ {stmt.extraction_notes}
                   </div>
                 )}
@@ -189,18 +185,18 @@ export default function StatementsPage() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => handleReprocess(stmt.id)}
-                  className="text-xs text-accent hover:text-accent/80 px-2 py-1 rounded hover:bg-accent/10 transition-colors"
+                  className="text-sm text-accent hover:text-accent/80 px-2 py-1 rounded hover:bg-accent/10 transition-colors"
                 >
                   Reprocess
                 </button>
                 <button
                   onClick={() => handleDelete(stmt.id)}
-                  className="text-xs text-accent-red hover:text-accent-red/80 px-2 py-1 rounded hover:bg-accent-red/10 transition-colors"
+                  className="text-sm text-accent-red hover:text-accent-red/80 px-2 py-1 rounded hover:bg-accent-red/10 transition-colors"
                 >
                   Delete
                 </button>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </Card>

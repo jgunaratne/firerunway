@@ -66,41 +66,48 @@ export default function TopBar() {
   const fiScore = Number.isFinite(rawFiScore) ? rawFiScore : 0;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-bg-primary/80 backdrop-blur-xl">
-      <div className="flex items-center justify-between h-full px-4 lg:px-6 max-w-[1400px] mx-auto">
+    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-bg-primary/60 backdrop-blur-2xl border-b border-white/[0.04]">
+      {/* Subtle gradient border effect */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+
+      <div className="flex items-center justify-between h-full px-4 lg:px-6 max-w-[1400px] mx-auto relative">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2.5 group">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.png" alt="FireRunway" width={28} height={28} className="rounded-sm" />
+          <img src="/icon.png" alt="FireRunway" width={28} height={28} className="rounded-lg group-hover:shadow-glow-sm transition-shadow duration-300" />
           <span className="font-display text-lg text-text-primary tracking-tight">FireRunway</span>
         </Link>
 
         {/* Center stats */}
         <div className="hidden md:flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-secondary uppercase tracking-wider">FI Score</span>
-            <span className="number-display text-lg font-bold text-accent">
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm text-text-secondary uppercase tracking-[0.15em] font-medium">FI Score</span>
+            <span className="number-display text-lg font-bold text-accent glow-text">
               <AnimatedNumber value={fiScore} />
             </span>
           </div>
-          <div className="w-px h-6 bg-border" />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-secondary uppercase tracking-wider">Net Worth</span>
-            <span className="number-display text-lg font-bold text-accent-green">
+
+          <div className="w-px h-5 bg-white/[0.06]" />
+
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm text-text-secondary uppercase tracking-[0.15em] font-medium">Net Worth</span>
+            <span className="number-display text-lg font-bold text-accent-green glow-text-green">
               <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} />
             </span>
           </div>
-          <div className="w-px h-6 bg-border" />
+
+          <div className="w-px h-5 bg-white/[0.06]" />
+
           <button
             onClick={handleRefresh}
             disabled={refreshing}
             title="Refresh all data"
-            className="p-1.5 rounded-md text-text-secondary hover:text-accent hover:bg-white/5 transition-all disabled:opacity-50"
+            className="p-1.5 rounded-lg text-text-secondary hover:text-accent hover:bg-white/5 transition-all duration-300 disabled:opacity-50"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
+              width="15"
+              height="15"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

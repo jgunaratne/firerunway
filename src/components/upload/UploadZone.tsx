@@ -87,7 +87,7 @@ export default function UploadZone() {
           {['Fidelity', 'Schwab', 'Vanguard', 'Webull'].map((broker) => (
             <span
               key={broker}
-              className="px-3 py-1 rounded-full text-xs font-medium bg-bg-elevated text-text-secondary border border-border"
+              className="px-3 py-1 rounded-full text-sm font-medium bg-bg-elevated text-text-secondary border border-border"
             >
               {broker}
             </span>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
 
 interface AnimatedNumberProps {
   value: number;
@@ -47,13 +46,8 @@ export default function AnimatedNumber({
   const formatted = format ? format(displayValue) : displayValue.toLocaleString();
 
   return (
-    <motion.span
-      className={`number-display ${className}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
+    <span className={`number-display ${className}`}>
       {prefix}{formatted}{suffix}
-    </motion.span>
+    </span>
   );
 }

@@ -2,20 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard, TrendingUp, PieChart, Home, Briefcase,
+  Flame, BarChart3, FileText, DollarSign, Receipt,
+  ClipboardList, Link as LinkIcon, MoreHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
 
-const navItems = [
-  { href: '/dashboard', icon: '🏠', label: 'Dashboard' },
-  { href: '/net-worth', icon: '📈', label: 'Net Worth' },
-  { href: '/portfolio', icon: '🥧', label: 'Portfolio' },
-  { href: '/real-estate', icon: '🏡', label: 'Real Estate' },
-  { href: '/equity', icon: '💼', label: 'Equity / RSUs' },
-  { href: '/fire-score', icon: '🔥', label: 'FIRE Score' },
-  { href: '/monte-carlo', icon: '📊', label: 'Monte Carlo' },
-  { href: '/statements', icon: '📄', label: 'Statements' },
-  { href: '/income-tax', icon: '💰', label: 'Income & Tax' },
-  { href: '/expenses', icon: '🧾', label: 'Expenses' },
-  { href: '/spending-plan', icon: '📋', label: 'Spending Plan' },
-  { href: '/portfolio?tab=accounts', icon: '🔗', label: 'Accounts' },
+const navItems: { href: string; icon: LucideIcon; label: string }[] = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/net-worth', icon: TrendingUp, label: 'Net Worth' },
+  { href: '/portfolio', icon: PieChart, label: 'Portfolio' },
+  { href: '/real-estate', icon: Home, label: 'Real Estate' },
+  { href: '/equity', icon: Briefcase, label: 'Equity / RSUs' },
+  { href: '/fire-score', icon: Flame, label: 'FIRE Score' },
+  { href: '/monte-carlo', icon: BarChart3, label: 'Monte Carlo' },
+  { href: '/statements', icon: FileText, label: 'Statements' },
+  { href: '/income-tax', icon: DollarSign, label: 'Income & Tax' },
+  { href: '/expenses', icon: Receipt, label: 'Expenses' },
+  { href: '/spending-plan', icon: ClipboardList, label: 'Spending Plan' },
+  { href: '/portfolio?tab=accounts', icon: LinkIcon, label: 'Accounts' },
 ];
 
 export default function Sidebar() {
@@ -26,55 +32,65 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <nav className="hidden lg:flex fixed left-0 top-14 bottom-0 w-56 border-r border-border bg-bg-primary/50 backdrop-blur-sm flex-col py-4 px-3 z-40">
-        <div className="flex flex-col gap-1">
+      <nav className="hidden lg:flex fixed left-0 top-14 bottom-0 w-56 border-r border-white/[0.04] bg-bg-primary/40 backdrop-blur-2xl flex-col py-5 px-3 z-40">
+        <div className="flex flex-col gap-0.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
-                    ? 'bg-accent/15 text-text-primary border border-accent/30'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5 border border-transparent'
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive
+                  ? 'text-text-primary'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
                   }`}
               >
-                <span className="text-base">{item.icon}</span>
-                <span>{item.label}</span>
+                {isActive && (
+                  <div
+                    className="absolute inset-0 rounded-xl bg-accent/10 border border-accent/20 shadow-glow-sm"
+                  />
+                )}
+                <item.icon size={18} className={`relative z-10 ${isActive ? 'text-accent' : ''}`} />
+                <span className="relative z-10">{item.label}</span>
               </Link>
             );
           })}
         </div>
 
         {/* Disclaimer */}
-        <div className="mt-auto pt-4 border-t border-border">
-          <p className="text-[10px] text-text-secondary/50 leading-relaxed px-2">
+        <div className="mt-auto pt-4 border-t border-white/[0.04]">
+          <p className="text-sm text-text-secondary/40 leading-relaxed px-2">
             FireRunway provides financial information for educational purposes only. Not investment advice.
           </p>
         </div>
       </nav>
 
       {/* Mobile bottom tabs */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg-primary/90 backdrop-blur-xl">
-        <div className="flex justify-around items-center h-16 px-2">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.04] bg-bg-primary/80 backdrop-blur-2xl">
+        <div className="flex justify-around items-center h-16 px-1">
           {navItems.slice(0, 5).map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all ${isActive ? 'text-accent' : 'text-text-secondary'
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-300 ${isActive ? 'text-accent' : 'text-text-secondary'
                   }`}
               >
-                <span className="text-lg">{item.icon}</span>
-                <span className="text-[10px] font-medium">{item.label}</span>
+                {isActive && (
+                  <div
+                    className="absolute inset-0 rounded-xl bg-accent/8"
+                  />
+                )}
+                <item.icon size={20} className="relative z-10" />
+                <span className="relative z-10 text-sm font-medium">{item.label}</span>
               </Link>
             );
           })}
           {/* More menu for remaining items */}
-          <div className="flex flex-col items-center gap-0.5 px-2 py-1">
-            <span className="text-lg">⋯</span>
-            <span className="text-[10px] font-medium text-text-secondary">More</span>
+          <div className="flex flex-col items-center gap-0.5 px-3 py-1.5">
+            <MoreHorizontal size={20} className="text-text-secondary" />
+            <span className="text-sm font-medium text-text-secondary">More</span>
           </div>
         </div>
       </nav>

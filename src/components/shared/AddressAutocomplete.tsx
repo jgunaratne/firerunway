@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { MapPin } from 'lucide-react';
 
 interface NominatimResult {
   place_id: number;
@@ -157,11 +158,11 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
                   : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
               }`}
             >
-              <span className="mr-2 text-xs">📍</span>
+              <MapPin size={14} className="mr-2 text-text-secondary/60 flex-shrink-0" />
               {s.display_name}
             </button>
           ))}
-          <div className="px-3 py-1.5 text-[10px] text-text-secondary/40 bg-bg-elevated border-t border-border/30">
+          <div className="px-3 py-1.5 text-sm text-text-secondary/40 bg-bg-elevated border-t border-border/30">
             Powered by OpenStreetMap
           </div>
         </div>

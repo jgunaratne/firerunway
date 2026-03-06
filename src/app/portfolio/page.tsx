@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   Legend,
@@ -13,6 +12,10 @@ import { formatCurrency } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
 import { useBrokerageData, BrokerageAccount } from '@/lib/BrokerageDataContext';
 import { useUserData } from '@/lib/UserDataContext';
+import {
+  TrendingUp, Building2, CreditCard, Landmark,
+  PiggyBank, CircleCheck,
+} from 'lucide-react';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
@@ -28,10 +31,10 @@ function HoldingsTab() {
 
   if (positions.length === 0) {
     return (
-      <Card delay={0.1}>
+      <Card>
         <div className="text-center py-8">
           <p className="text-text-secondary text-sm">No holdings found.</p>
-          <p className="text-text-secondary/60 text-xs mt-2">
+          <p className="text-text-secondary/60 text-sm mt-2">
             Connect a brokerage account in the Accounts tab to see your real holdings.
           </p>
         </div>
@@ -102,7 +105,7 @@ function HoldingsTab() {
       <div className="flex items-center justify-between">
         <button
           onClick={toggleAll}
-          className="text-xs text-accent hover:text-accent/80 transition-colors font-medium"
+          className="text-sm text-accent hover:text-accent/80 transition-colors font-medium"
         >
           {allExpanded ? '▾ Collapse All' : '▸ Expand All'}
         </button>
@@ -115,10 +118,10 @@ function HoldingsTab() {
           <Card key={name} className="overflow-hidden">
             <button onClick={() => toggleAccount(name)} className="w-full text-left flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-accent text-xs">{isExpanded ? '▾' : '▸'}</span>
+                <span className="text-accent text-sm">{isExpanded ? '▾' : '▸'}</span>
                 <div>
                   <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-sm text-text-secondary">
                     {group.institutionName && group.institutionName !== name && group.institutionName.toLowerCase() !== 'unknown' ? `${group.institutionName} · ` : ''}{group.type ? `${group.type} · ` : ''}{group.holdings.length} positions
                   </p>
                 </div>
@@ -129,7 +132,7 @@ function HoldingsTab() {
               <div className="overflow-x-auto mt-4 border-t border-border pt-4">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-text-secondary border-b border-border">
+                    <tr className="text-sm text-text-secondary border-b border-border">
                       <th className="text-left pb-2 font-medium">Ticker</th>
                       <th className="text-right pb-2 font-medium">Shares</th>
                       <th className="text-right pb-2 font-medium">Price</th>
@@ -141,7 +144,7 @@ function HoldingsTab() {
                       <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
                         <td className="py-2">
                           <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
-                          <p className="text-xs text-text-secondary hidden md:block">{h.name}</p>
+                          <p className="text-sm text-text-secondary hidden md:block">{h.name}</p>
                         </td>
                         <td className="text-right number-display py-2">{h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
                         <td className="text-right number-display py-2">${h.price.toFixed(2)}</td>
@@ -164,7 +167,7 @@ function HoldingsTab() {
             <p className="number-display text-xl font-bold text-text-primary">
               <AnimatedNumber value={totalInvestment} format={(n) => formatCurrency(n)} />
             </p>
-            <p className="text-xs text-text-secondary">Last synced: just now</p>
+            <p className="text-sm text-text-secondary">Last synced: just now</p>
           </div>
         </div>
       </Card>
@@ -207,10 +210,10 @@ function AllocationTab() {
 
   if (allocationData.length === 0) {
     return (
-      <Card delay={0.1}>
+      <Card>
         <div className="text-center py-8">
           <p className="text-text-secondary text-sm">No allocation data available.</p>
-          <p className="text-text-secondary/60 text-xs mt-2">Connect a brokerage in the Accounts tab.</p>
+          <p className="text-text-secondary/60 text-sm mt-2">Connect a brokerage in the Accounts tab.</p>
         </div>
       </Card>
     );
@@ -219,7 +222,7 @@ function AllocationTab() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card delay={0.1}>
+        <Card>
           <h4 className="text-sm font-semibold text-text-primary mb-2">Your Current Allocation</h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -234,9 +237,9 @@ function AllocationTab() {
           </div>
         </Card>
 
-        <Card delay={0.2}>
+        <Card>
           <h4 className="text-sm font-semibold text-text-primary mb-1">Recommended for Your Profile</h4>
-          <p className="text-xs text-text-secondary mb-2">Based on a 2028 target date and moderate risk tolerance</p>
+          <p className="text-sm text-text-secondary mb-2">Based on a 2028 target date and moderate risk tolerance</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -251,11 +254,11 @@ function AllocationTab() {
         </Card>
       </div>
 
-      <Card delay={0.3}>
+      <Card>
         <h4 className="text-sm font-semibold text-text-primary mb-4">Allocation Breakdown</h4>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs text-text-secondary border-b border-border">
+            <tr className="text-sm text-text-secondary border-b border-border">
               <th className="text-left pb-2 font-medium">Holding</th>
               <th className="text-right pb-2 font-medium">% of Portfolio</th>
             </tr>
@@ -295,10 +298,10 @@ function AllocationTab() {
           },
         ].map(({ category, etfs }) => (
           <div key={category} className="mb-4 last:mb-0">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">{category}</p>
+            <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">{category}</p>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-text-secondary border-b border-border/50">
+                <tr className="text-sm text-text-secondary border-b border-border/50">
                   <th className="text-left pb-1 font-medium">ETF</th>
                   <th className="text-right pb-1 font-medium">Expense Ratio</th>
                   <th className="text-right pb-1 font-medium">10yr Return</th>
@@ -309,7 +312,7 @@ function AllocationTab() {
                   <tr key={etf.ticker} className="border-b border-border/30">
                     <td className="py-1.5">
                       <span className="number-display font-semibold text-text-primary">{etf.ticker}</span>
-                      <span className="text-text-secondary ml-2 text-xs">{etf.name}</span>
+                      <span className="text-text-secondary ml-2 text-sm">{etf.name}</span>
                     </td>
                     <td className="text-right number-display text-emerald-400">{etf.expenseRatio}%</td>
                     <td className="text-right number-display">{etf.return10yr}%</td>
@@ -319,7 +322,7 @@ function AllocationTab() {
             </table>
           </div>
         ))}
-        <p className="text-[10px] text-text-secondary/50 mt-3 italic">This is educational information, not personalized investment advice.</p>
+        <p className="text-sm text-text-secondary/50 mt-3 italic">This is educational information, not personalized investment advice.</p>
       </Card>
     </div>
   );
@@ -333,22 +336,22 @@ function PerformanceTab() {
 
   return (
     <div className="space-y-4">
-      <Card delay={0.1}>
+      <Card>
         <h4 className="text-sm font-semibold text-text-primary mb-4">Portfolio Performance</h4>
         <div className="text-center py-8">
-          <p className="text-text-secondary/60 text-xs uppercase tracking-wider mb-2">Current Portfolio Value</p>
+          <p className="text-text-secondary/60 text-sm uppercase tracking-wider mb-2">Current Portfolio Value</p>
           <p className="number-display text-3xl font-bold text-text-primary">
             {totalInvestment > 0 ? <AnimatedNumber value={totalInvestment} format={(n) => formatCurrency(n)} /> : '—'}
           </p>
-          <p className="text-xs text-text-secondary mt-2">as of {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-sm text-text-secondary mt-2">as of {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
         </div>
       </Card>
 
-      <Card delay={0.2} className="border-accent/20">
+      <Card className="border-accent/20">
         <div className="text-center py-6">
-          <span className="text-2xl mb-2 block">📈</span>
+          <TrendingUp size={28} className="text-accent/60 mb-2 mx-auto" />
           <h4 className="text-sm font-semibold text-text-primary mb-2">Performance History Coming Soon</h4>
-          <p className="text-xs text-text-secondary max-w-md mx-auto">
+          <p className="text-sm text-text-secondary max-w-md mx-auto">
             Historical portfolio tracking will build automatically as daily snapshots are collected.
             Check back in a few days to see your portfolio performance over time.
           </p>
@@ -360,10 +363,10 @@ function PerformanceTab() {
 
 // Brokerages that can be connected — shown as cards
 const brokerages = [
-  { id: 'FIDELITY', name: 'Fidelity', icon: '🟢' },
-  { id: 'VANGUARD', name: 'Vanguard', icon: '🔴' },
-  { id: 'SCHWAB', name: 'Charles Schwab', icon: '🔵' },
-  { id: '', name: 'Other Brokerage', icon: '🏦' },
+  { id: 'FIDELITY', name: 'Fidelity', color: 'text-emerald-400' },
+  { id: 'VANGUARD', name: 'Vanguard', color: 'text-red-400' },
+  { id: 'SCHWAB', name: 'Charles Schwab', color: 'text-blue-400' },
+  { id: '', name: 'Other Brokerage', color: 'text-text-secondary' },
 ];
 
 interface ConnectedAccount {
@@ -553,11 +556,11 @@ function AccountsTab() {
   }, {} as Record<string, { itemId: string; institutionName: string; accounts: typeof plaidAccounts }>);
 
   const getAccountIcon = (type: string, subtype: string | null) => {
-    if (type === 'credit') return '💳';
-    if (type === 'loan') return '🏦';
-    if (subtype === 'checking') return '✅';
-    if (subtype === 'savings') return '💰';
-    return '🏦';
+    if (type === 'credit') return <CreditCard size={18} className="text-amber-400" />;
+    if (type === 'loan') return <Landmark size={18} className="text-text-secondary" />;
+    if (subtype === 'checking') return <CircleCheck size={18} className="text-emerald-400" />;
+    if (subtype === 'savings') return <PiggyBank size={18} className="text-blue-400" />;
+    return <Landmark size={18} className="text-text-secondary" />;
   };
 
   return (
@@ -570,7 +573,7 @@ function AccountsTab() {
             <button
               onClick={handleRefreshData}
               disabled={refreshing}
-              className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80 transition-colors font-medium disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm text-accent hover:text-accent/80 transition-colors font-medium disabled:opacity-50"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
@@ -586,12 +589,12 @@ function AccountsTab() {
             {cachedAccounts.map((acct) => (
               <div key={acct.id} className="flex items-center justify-between p-3 glass-card rounded-lg">
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">🏦</span>
+                  <Landmark size={20} className="text-accent/60" />
                   <div>
                     <p className="text-sm font-medium text-text-primary">{acct.institution_name || acct.name}</p>
-                    <p className="text-xs text-text-secondary">{acct.name} • ****{acct.number?.slice(-4)}</p>
+                    <p className="text-sm text-text-secondary">{acct.name} • ****{acct.number?.slice(-4)}</p>
                     {acct.type && (
-                      <p className="text-xs text-text-secondary/60">{acct.type}</p>
+                      <p className="text-sm text-text-secondary/60">{acct.type}</p>
                     )}
                   </div>
                 </div>
@@ -603,7 +606,7 @@ function AccountsTab() {
                   )}
                   <button
                     onClick={() => disconnectAccount(acct.authorization_id || acct.id)}
-                    className="text-xs text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
+                    className="text-sm text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
                   >
                     Disconnect
                   </button>
@@ -622,10 +625,10 @@ function AccountsTab() {
             {Object.values(plaidByInstitution).map((group) => (
               <div key={group.itemId}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">{group.institutionName}</p>
+                  <p className="text-sm font-semibold text-text-primary uppercase tracking-wider">{group.institutionName}</p>
                   <button
                     onClick={() => disconnectPlaidItem(group.itemId)}
-                    className="text-xs text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
+                    className="text-sm text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"
                   >
                     Disconnect
                   </button>
@@ -637,7 +640,7 @@ function AccountsTab() {
                         <span className="text-xl">{getAccountIcon(acct.type, acct.subtype)}</span>
                         <div>
                           <p className="text-sm font-medium text-text-primary">{acct.officialName || acct.name}</p>
-                          <p className="text-xs text-text-secondary">
+                          <p className="text-sm text-text-secondary">
                             {acct.subtype || acct.type}{acct.mask ? ` • ****${acct.mask}` : ''}
                           </p>
                         </div>
@@ -649,7 +652,7 @@ function AccountsTab() {
                           </p>
                         )}
                         {acct.type === 'credit' && acct.limit !== null && (
-                          <p className="text-[10px] text-text-secondary">
+                          <p className="text-sm text-text-secondary">
                             {formatCurrency(acct.limit - (acct.currentBalance || 0))} available
                           </p>
                         )}
@@ -664,9 +667,9 @@ function AccountsTab() {
       )}
 
       {/* Connect New Account */}
-      <Card delay={0.2}>
+      <Card>
         <h4 className="text-sm font-semibold text-text-primary mb-2">Connect a Brokerage Account</h4>
-        <p className="text-xs text-text-secondary mb-4">
+        <p className="text-sm text-text-secondary mb-4">
           Securely connect your investment accounts to see real holdings, allocation, and performance.
           Powered by SnapTrade with bank-level encryption.
         </p>
@@ -685,24 +688,24 @@ function AccountsTab() {
               disabled={connecting || !userId}
               className="glass-card-hover p-4 text-center flex flex-col items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="text-3xl">{broker.icon}</span>
+              <Building2 size={28} className={broker.color} />
               <span className="text-sm font-medium text-text-primary">{broker.name}</span>
-              {connecting && <span className="text-xs text-text-secondary">Opening...</span>}
+              {connecting && <span className="text-sm text-text-secondary">Opening...</span>}
             </button>
           ))}
         </div>
 
         {!userId && (
-          <p className="text-xs text-amber-400 mt-4">
+          <p className="text-sm text-amber-400 mt-4">
             ⚠️ Sign in to connect your brokerage accounts.
           </p>
         )}
       </Card>
 
       {/* Connect Banking / Credit Card */}
-      <Card delay={0.3}>
+      <Card>
         <h4 className="text-sm font-semibold text-text-primary mb-2">Connect Bank or Credit Card</h4>
-        <p className="text-xs text-text-secondary mb-4">
+        <p className="text-sm text-text-secondary mb-4">
           Connect your bank accounts, credit cards, and loans for a complete financial picture.
           Powered by Plaid with bank-level encryption.
         </p>
@@ -711,20 +714,20 @@ function AccountsTab() {
           disabled={connectingPlaid || !userId}
           className="w-full glass-card-hover p-4 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span className="text-2xl">💳</span>
+          <CreditCard size={24} className="text-accent" />
           <span className="text-sm font-medium text-text-primary">
             {connectingPlaid ? 'Opening Plaid...' : 'Connect with Plaid'}
           </span>
         </button>
-        <p className="text-[10px] text-text-secondary/50 mt-2 text-center">
+        <p className="text-sm text-text-secondary/50 mt-2 text-center">
           Supports Amex, Chase, Bank of America, Capital One, and 10,000+ institutions
         </p>
       </Card>
 
       {/* How It Works */}
-      <Card delay={0.4} className="border-accent/20">
+      <Card className="border-accent/20">
         <h4 className="text-sm font-semibold text-text-primary mb-3">How It Works</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-text-secondary">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-text-secondary">
           <div className="flex items-start gap-2">
             <span className="text-lg">1️⃣</span>
             <p>Click your brokerage above or connect via Plaid. A secure portal opens.</p>
@@ -768,8 +771,9 @@ export default function PortfolioPage() {
   }, [clerkId]);
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-8">
+      <div
+      >
         <h1 className="page-title">Portfolio</h1>
         <p className="page-subtitle">All your investments in one place</p>
       </div>
@@ -784,17 +788,14 @@ export default function PortfolioPage() {
       </div>
 
       {/* Tab content */}
-      <motion.div
+      <div
         key={activeTab}
-        initial={{ opacity: 0, x: 10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
       >
         {activeTab === 'Holdings' && <HoldingsTab />}
         {activeTab === 'Allocation' && <AllocationTab />}
         {activeTab === 'Performance' && <PerformanceTab />}
         {activeTab === 'Accounts' && <AccountsTab />}
-      </motion.div>
+      </div>
 
       {/* AI Analysis */}
       <AIAnalysis

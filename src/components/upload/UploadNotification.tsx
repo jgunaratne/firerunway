@@ -1,6 +1,7 @@
 'use client';
 
 import { useUpload } from './UploadProvider';
+import { CheckCircle2, XCircle, FileText } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   queued: 'Queued',
@@ -35,7 +36,7 @@ export default function UploadNotification() {
         {allDone && (
           <button
             onClick={clearAll}
-            className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+            className="text-sm text-text-secondary hover:text-text-primary transition-colors"
           >
             Dismiss all
           </button>
@@ -53,9 +54,9 @@ export default function UploadNotification() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-text-primary truncate">
-                {job.status === 'done' ? '✅' : job.status === 'error' ? '❌' : '📄'} {job.filename}
+                {job.status === 'done' ? <CheckCircle2 size={14} className="text-emerald-400 inline mr-1" /> : job.status === 'error' ? <XCircle size={14} className="text-red-400 inline mr-1" /> : <FileText size={14} className="text-text-secondary inline mr-1" />}{job.filename}
               </div>
-              <div className="text-xs text-text-secondary mt-0.5">
+              <div className="text-sm text-text-secondary mt-0.5">
                 {job.status === 'done' && job.result ? (
                   <span>
                     {job.result.broker} — ${(job.result.totalValue ?? 0).toLocaleString()} • {job.result.holdingsCount} holdings
@@ -70,7 +71,7 @@ export default function UploadNotification() {
             {(job.status === 'done' || job.status === 'error') && job.jobId && (
               <button
                 onClick={() => dismiss(job.jobId!)}
-                className="text-text-secondary hover:text-text-primary text-xs transition-colors shrink-0"
+                className="text-text-secondary hover:text-text-primary text-sm transition-colors shrink-0"
               >
                 ✕
               </button>

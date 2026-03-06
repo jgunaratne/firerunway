@@ -6,6 +6,7 @@ import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { usePageContext as usePageLocalContext } from '@/lib/PageContextProvider';
 import { formatCurrency } from '@/lib/calculations';
+import { MessageSquare, Sparkles } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ export default function ChatRail() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [persona, setPersona] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pageContext = usePageContextString();
@@ -180,6 +182,7 @@ export default function ChatRail() {
         body: JSON.stringify({
           messages: newMessages,
           pageContext,
+          persona,
         }),
       });
 
@@ -194,7 +197,7 @@ export default function ChatRail() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, pageContext]);
+  }, [input, loading, messages, pageContext, persona]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -250,35 +253,70 @@ export default function ChatRail() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-lg">✨</span>
+            <Sparkles size={18} className={persona ? (persona === 'ramsey' ? 'text-blue-400' : 'text-amber-400') : 'text-accent'} />
             <div>
-              <h3 className="text-sm font-semibold text-text-primary">AI Assistant</h3>
-              <p className="text-[10px] text-text-secondary">
+              <h3 className="text-sm font-semibold text-text-primary">
+                {persona === 'ramit' ? 'Ramit Mode' : persona === 'ramsey' ? 'Ramsey Mode' : 'AI Assistant'}
+              </h3>
+              <p className="text-sm text-text-secondary">
                 Viewing: {pageLabel}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setMessages([]);
-            }}
-            className="text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-white/5"
-            title="Clear chat"
-          >
-            Clear
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setPersona(persona === 'ramit' ? null : 'ramit');
+                setMessages([]);
+              }}
+              className={`text-sm font-medium px-2.5 py-1 rounded-lg transition-all ${persona === 'ramit'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'text-text-secondary hover:text-amber-400 hover:bg-amber-500/10 border border-transparent'
+                }`}
+              title={persona === 'ramit' ? 'Switch to standard AI' : 'Switch to Ramit mode'}
+            >
+              Ramit
+            </button>
+            <button
+              onClick={() => {
+                setPersona(persona === 'ramsey' ? null : 'ramsey');
+                setMessages([]);
+              }}
+              className={`text-sm font-medium px-2.5 py-1 rounded-lg transition-all ${persona === 'ramsey'
+                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                : 'text-text-secondary hover:text-blue-400 hover:bg-blue-500/10 border border-transparent'
+                }`}
+              title={persona === 'ramsey' ? 'Switch to standard AI' : 'Switch to Ramsey mode'}
+            >
+              Ramsey
+            </button>
+            <button
+              onClick={() => {
+                setMessages([]);
+              }}
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-white/5"
+              title="Clear chat"
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {messages.length === 0 && (
             <div className="text-center py-8">
-              <span className="text-3xl block mb-3">💬</span>
+              <MessageSquare size={32} className="text-text-secondary/40 mx-auto mb-3" />
               <p className="text-sm text-text-secondary mb-1">
                 Ask me anything about your finances.
               </p>
-              <p className="text-xs text-text-secondary/60">
-                I have access to all your financial data across every page.
+              <p className="text-sm text-text-secondary/60">
+                {persona === 'ramit'
+                  ? 'I\'ll respond using Ramit Sethi\'s financial philosophy and style.'
+                  : persona === 'ramsey'
+                    ? 'I\'ll respond using Dave Ramsey\'s Baby Steps and debt-free philosophy.'
+                    : 'I have access to all your financial data across every page.'
+                }
               </p>
               {/* Suggested prompts */}
               <div className="mt-4 space-y-2">
@@ -289,7 +327,7 @@ export default function ChatRail() {
                       setInput(s);
                       setTimeout(() => inputRef.current?.focus(), 50);
                     }}
-                    className="block w-full text-left text-xs text-text-secondary hover:text-text-primary px-3 py-2 rounded-lg border border-border/50 hover:border-accent/30 hover:bg-accent/5 transition-all"
+                    className="block w-full text-left text-sm text-text-secondary hover:text-text-primary px-3 py-2 rounded-lg border border-border/50 hover:border-accent/30 hover:bg-accent/5 transition-all"
                   >
                     {s}
                   </button>

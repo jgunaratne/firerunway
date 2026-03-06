@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Card from '@/components/shared/Card';
 import { useUserData } from '@/lib/UserDataContext';
+import { Sparkles } from 'lucide-react';
 
 interface AIAnalysisProps {
   type: 'portfolio' | 'fire' | 'income_tax' | 'net_worth' | 'real_estate' | 'monte_carlo';
@@ -32,16 +33,16 @@ function parseAnalysis(text: string): AnalysisSection[] {
       const bullet = trimmed.replace(/^[•\-\*]\s*/, '');
       if (bullet) currentSection.bullets.push(bullet);
     } else {
-      currentSection = { header: '📋 Overview', bullets: [trimmed.replace(/^[•\-\*]\s*/, '')] };
+      currentSection = { header: 'Overview', bullets: [trimmed.replace(/^[•\-\*]\s*/, '')] };
     }
   }
   if (currentSection) sections.push(currentSection);
 
   if (sections.length === 0) {
     const paragraphs = text.split('\n\n').filter(Boolean);
-    const icons = ['📊', '💪', '⚡', '🎯'];
+    const labels = ['Insight', 'Insight', 'Insight', 'Insight'];
     return paragraphs.map((p, i) => ({
-      header: `${icons[i % icons.length]} Insight`,
+      header: labels[i % labels.length],
       bullets: [p.trim()],
     }));
   }
@@ -124,11 +125,12 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
     <Card delay={0.3}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-text-primary text-base font-semibold">
-            ✨ AI {label} Analysis
+          <h3 className="text-text-primary text-base font-semibold flex items-center gap-2">
+            <Sparkles size={18} className="text-accent" />
+            AI {label} Analysis
           </h3>
           {savedAt && analysis && (
-            <div className="text-xs text-text-secondary mt-0.5">
+            <div className="text-sm text-text-secondary mt-0.5">
               Last analyzed: {new Date(savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </div>
           )}

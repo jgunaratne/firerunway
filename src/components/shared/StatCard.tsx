@@ -9,16 +9,20 @@ interface StatCardProps {
   subtitle?: string;
   delay?: number;
   valueColor?: string;
+  glowClass?: string;
 }
 
-export default function StatCard({ label, value, subtitle, delay = 0, valueColor }: StatCardProps) {
+export default function StatCard({ label, value, subtitle, delay = 0, valueColor, glowClass = 'glow-text' }: StatCardProps) {
   return (
     <Card delay={delay}>
-      <p className="stat-label">{label}</p>
-      <p className="stat-value mt-1" style={valueColor ? { color: valueColor } : undefined}>
+      <p className="stat-label mb-2">{label}</p>
+      <p
+        className={`stat-value ${glowClass}`}
+        style={valueColor ? { color: valueColor } : undefined}
+      >
         {value}
       </p>
-      {subtitle && <p className="text-xs text-text-secondary mt-1">{subtitle}</p>}
+      {subtitle && <p className="text-sm text-text-secondary mt-2 leading-relaxed">{subtitle}</p>}
     </Card>
   );
 }

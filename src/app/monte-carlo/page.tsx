@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -13,12 +12,16 @@ import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { usePageContext } from '@/lib/PageContextProvider';
 import { useStockPrice } from '@/hooks/useStockPrice';
+import {
+  Briefcase, GraduationCap, TrendingDown, DollarSign,
+  Heart, Home as HomeIcon,
+} from 'lucide-react';
 
 interface LifeEvent {
   id: string;
   type: 'quit' | 'layoff' | 'college' | 'purchase' | 'windfall' | 'expense';
   label: string;
-  emoji: string;
+  iconLabel: string;
   year: number;
   params: Record<string, number>;
 }
@@ -154,12 +157,12 @@ function runMonteCarloSync(params: SimParams): SimResult {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const eventTypes = [
-  { type: 'quit', emoji: '💼', label: 'Quit / Retire' },
-  { type: 'college', emoji: '🏫', label: 'Child College' },
-  { type: 'layoff', emoji: '📉', label: 'Layoff' },
-  { type: 'windfall', emoji: '💰', label: 'Windfall' },
-  { type: 'expense', emoji: '🏥', label: 'Major Expense' },
-  { type: 'purchase', emoji: '🏠', label: 'Home Purchase' },
+  { type: 'quit', icon: <Briefcase size={14} />, label: 'Quit / Retire' },
+  { type: 'college', icon: <GraduationCap size={14} />, label: 'Child College' },
+  { type: 'layoff', icon: <TrendingDown size={14} />, label: 'Layoff' },
+  { type: 'windfall', icon: <DollarSign size={14} />, label: 'Windfall' },
+  { type: 'expense', icon: <Heart size={14} />, label: 'Major Expense' },
+  { type: 'purchase', icon: <HomeIcon size={14} />, label: 'Home Purchase' },
 ] as const;
 
 // ─── Tooltip ────────────────────────────────────────────────────────
@@ -168,9 +171,9 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
   if (!active || !payload?.length) return null;
   return (
     <div className="tooltip-content min-w-[160px]">
-      <p className="text-xs text-text-secondary mb-2">Year {label}</p>
+      <p className="text-sm text-text-secondary mb-2">Year {label}</p>
       {payload.map((p) => (
-        <div key={p.name} className="flex justify-between text-xs gap-4 py-0.5">
+        <div key={p.name} className="flex justify-between text-sm gap-4 py-0.5">
           <span className="text-text-secondary">{p.name}</span>
           <span className="number-display text-text-primary font-medium">{formatCurrency(p.value, true)}</span>
         </div>
@@ -345,7 +348,7 @@ export default function MonteCarloPage() {
       parts.push(``);
       parts.push(`Life Events (${events.length}):`);
       events.forEach(e => {
-        parts.push(`  - ${e.emoji} ${e.label} in ${e.year} (${JSON.stringify(e.params)})`);
+        parts.push(`  - ${e.iconLabel} ${e.label} in ${e.year} (${JSON.stringify(e.params)})`);
       });
     }
 
@@ -388,7 +391,7 @@ export default function MonteCarloPage() {
       id: Date.now().toString(),
       type: type as LifeEvent['type'],
       label: eventMeta.label,
-      emoji: eventMeta.emoji,
+      iconLabel: eventMeta.label,
       year: currentYear + 4,
       params: type === 'college' ? { annualCost: 55000, plan529: 20000 } :
         type === 'windfall' ? { amount: 100000 } :
@@ -452,15 +455,16 @@ export default function MonteCarloPage() {
   }, [params, result, fireYear, conservativeFireYear, events, clerkId]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div
+        >
           <h1 className="page-title">Monte Carlo Simulator</h1>
           <p className="page-subtitle">How much longer do you need to keep working?</p>
         </div>
         <button
           onClick={() => setShowVariables(!showVariables)}
-          className="tab-button text-xs"
+          className="tab-button text-sm"
         >
           {showVariables ? 'Hide' : 'Show'} Variables ⚙️
         </button>
@@ -468,11 +472,13 @@ export default function MonteCarloPage() {
 
       <div className="flex gap-6">
         {/* Main content */}
-        <div className="flex-1 space-y-6 min-w-0">
+        <div className="flex-1 space-y-8 min-w-0">
           {/* Fan Chart */}
           <Card>
             <h3 className="section-title">Portfolio Projections — {params.years} Years</h3>
-            <div className="h-96">
+            <div className="h-96 relative">
+              {/* Chart glow background */}
+              <div className="absolute inset-0 bg-gradient-to-t from-accent/[0.03] to-transparent rounded-xl pointer-events-none" />
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
@@ -495,7 +501,7 @@ export default function MonteCarloPage() {
                   <ReferenceLine y={params.fireNumber} stroke="#10b981" strokeDasharray="6 4" strokeWidth={2} label={{ value: `FIRE: ${formatCurrency(params.fireNumber, true)}`, position: 'right', fill: '#10b981', fontSize: 11 }} />
                   {/* Event markers */}
                   {events.map(evt => (
-                    <ReferenceLine key={evt.id} x={evt.year} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} label={{ value: evt.emoji, position: 'top', fontSize: 16 }} />
+                    <ReferenceLine key={evt.id} x={evt.year} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} label={{ value: evt.iconLabel, position: 'top', fontSize: 11 }} />
                   ))}
                   <Area type="monotone" dataKey="p90" stroke="none" fill="url(#p90grad)" name="90th pctile" isAnimationActive={false} />
                   <Area type="monotone" dataKey="p75" stroke="none" fill="url(#p75grad)" name="75th pctile" isAnimationActive={false} />
@@ -510,25 +516,25 @@ export default function MonteCarloPage() {
           {/* Outcome Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="text-center">
-              <p className="text-xs text-text-secondary">Success Rate</p>
-              <p className="number-display text-2xl font-bold text-emerald-400">
+              <p className="stat-label mb-2">Success Rate</p>
+              <p className="number-display text-2xl font-bold text-emerald-400 glow-text-green">
                 <AnimatedNumber value={Math.round(result.successRate * 100)} suffix="%" />
               </p>
             </Card>
             <Card className="text-center">
-              <p className="text-xs text-text-secondary">Median at Yr {params.years}</p>
-              <p className="number-display text-2xl font-bold text-text-primary">
+              <p className="stat-label mb-2">Median at Yr {params.years}</p>
+              <p className="number-display text-2xl font-bold text-text-primary glow-text">
                 <AnimatedNumber value={result.medianFinalValue} format={(n) => formatCurrency(n, true)} />
               </p>
             </Card>
             <Card className="text-center">
-              <p className="text-xs text-text-secondary">Conservative FI</p>
-              <p className="number-display text-2xl font-bold text-accent-amber">
+              <p className="stat-label mb-2">Conservative FI</p>
+              <p className="number-display text-2xl font-bold text-accent-amber glow-text-amber">
                 {conservativeFireYear || 'N/A'}
               </p>
             </Card>
             <Card className="text-center">
-              <p className="text-xs text-text-secondary">Base Case FI</p>
+              <p className="text-sm text-text-secondary">Base Case FI</p>
               <p className="number-display text-2xl font-bold text-accent">
                 {fireYear || 'N/A'}
               </p>
@@ -538,7 +544,7 @@ export default function MonteCarloPage() {
           {/* Life Events Timeline */}
           <Card>
             <h3 className="section-title">Life Events</h3>
-            <p className="text-xs text-text-secondary mb-4">Add events to see how they affect your projections</p>
+            <p className="text-sm text-text-secondary mb-4">Add events to see how they affect your projections</p>
 
             {/* Event chips */}
             <div className="flex flex-wrap gap-2 mb-4">
@@ -546,9 +552,9 @@ export default function MonteCarloPage() {
                 <button
                   key={et.type}
                   onClick={() => addEvent(et.type)}
-                  className="glass-card-hover px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"
+                  className="glass-card-hover px-3 py-1.5 text-sm font-medium flex items-center gap-1.5"
                 >
-                  <span>{et.emoji}</span> {et.label}
+                  {et.icon} {et.label}
                 </button>
               ))}
             </div>
@@ -557,29 +563,27 @@ export default function MonteCarloPage() {
             {events.length > 0 && (
               <div className="space-y-2">
                 {events.map((evt) => (
-                  <motion.div
+                  <div
                     key={evt.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
                     className="flex items-center gap-3 p-3 glass-card rounded-lg"
                   >
-                    <span className="text-xl">{evt.emoji}</span>
+                    <span className="text-xl text-accent">{eventTypes.find(et => et.type === evt.type)?.icon}</span>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-text-primary">{evt.label}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <label className="text-xs text-text-secondary">Year:</label>
+                      <label className="text-sm text-text-secondary">Year:</label>
                       <input
                         type="number"
                         min={currentYear}
                         max={currentYear + params.years}
                         value={evt.year}
                         onChange={(e) => updateEventYear(evt.id, Number(e.target.value))}
-                        className="w-20 bg-bg-elevated border border-border rounded px-2 py-1 text-xs number-display text-text-primary"
+                        className="w-20 bg-bg-elevated border border-border rounded px-2 py-1 text-sm number-display text-text-primary"
                       />
                     </div>
-                    <button onClick={() => removeEvent(evt.id)} className="text-red-400/60 hover:text-red-400 text-xs transition-colors">✕</button>
-                  </motion.div>
+                    <button onClick={() => removeEvent(evt.id)} className="text-red-400/60 hover:text-red-400 text-sm transition-colors">✕</button>
+                  </div>
                 ))}
               </div>
             )}
@@ -589,7 +593,7 @@ export default function MonteCarloPage() {
           <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="section-title mb-0">Scenario Manager</h3>
-              <button onClick={saveScenario} className="text-xs px-3 py-1.5 bg-accent/15 text-accent border border-accent/30 rounded-md hover:bg-accent/25 transition-colors">
+              <button onClick={saveScenario} className="text-sm px-3 py-1.5 bg-accent/15 text-accent border border-accent/30 rounded-md hover:bg-accent/25 transition-colors">
                 Save Current Scenario
               </button>
             </div>
@@ -598,7 +602,7 @@ export default function MonteCarloPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-text-secondary border-b border-border">
+                    <tr className="text-sm text-text-secondary border-b border-border">
                       <th className="text-left pb-2 font-medium">Scenario</th>
                       <th className="text-right pb-2 font-medium">Success Rate</th>
                       <th className="text-right pb-2 font-medium">Median (yr {params.years})</th>
@@ -625,7 +629,7 @@ export default function MonteCarloPage() {
                 </table>
               </div>
             ) : (
-              <p className="text-xs text-text-secondary">No saved scenarios yet. Adjust life events and variables, then save to compare.</p>
+              <p className="text-sm text-text-secondary">No saved scenarios yet. Adjust life events and variables, then save to compare.</p>
             )}
           </Card>
 
@@ -635,10 +639,7 @@ export default function MonteCarloPage() {
 
         {/* Variables Panel (collapsible sidebar) */}
         {showVariables && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 280, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
+          <div
             className="hidden lg:block flex-shrink-0"
           >
             <Card className="sticky top-20 space-y-5 text-sm">
@@ -646,17 +647,17 @@ export default function MonteCarloPage() {
                 <h4 className="font-display text-base text-text-primary">Variables</h4>
                 <div className="flex items-center gap-2">
                   {savedIndicator && (
-                    <span className="text-xs text-emerald-400">✓ Saved</span>
+                    <span className="text-sm text-emerald-400">✓ Saved</span>
                   )}
                   <button
                     onClick={handleSaveParams}
-                    className="text-[10px] px-2 py-1 bg-accent/15 text-accent border border-accent/30 rounded hover:bg-accent/25 transition-colors"
+                    className="text-sm px-2 py-1 bg-accent/15 text-accent border border-accent/30 rounded hover:bg-accent/25 transition-colors"
                   >
                     Save
                   </button>
                   <button
                     onClick={handleResetParams}
-                    className="text-[10px] px-2 py-1 text-text-secondary border border-border rounded hover:text-text-primary transition-colors"
+                    className="text-sm px-2 py-1 text-text-secondary border border-border rounded hover:text-text-primary transition-colors"
                   >
                     Reset
                   </button>
@@ -664,23 +665,23 @@ export default function MonteCarloPage() {
               </div>
 
               <div>
-                <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">Portfolio</p>
+                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">Portfolio</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-xs text-text-secondary">Starting value</label>
-                    <input type="text" value={formatCurrency(params.startingPortfolio)} readOnly className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5 opacity-60" />
-                    <p className="text-[10px] text-text-secondary/60 mt-0.5">Auto-calculated from your accounts</p>
+                    <label className="text-sm text-text-secondary">Starting value</label>
+                    <input type="text" value={formatCurrency(params.startingPortfolio)} readOnly className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5 opacity-60" />
+                    <p className="text-sm text-text-secondary/60 mt-0.5">Auto-calculated from your accounts</p>
                   </div>
                   <div>
-                    <label className="text-xs text-text-secondary">Annual contribution</label>
-                    <input type="text" value={`$${params.annualContribution.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, annualContribution: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5" />
+                    <label className="text-sm text-text-secondary">Annual contribution</label>
+                    <input type="text" value={`$${params.annualContribution.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, annualContribution: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
                   </div>
                   <div>
-                    <label className="text-xs text-text-secondary">Allocation (equity/bond): {Math.round(params.equityPct * 100)}/{Math.round(params.bondPct * 100)}</label>
+                    <label className="text-sm text-text-secondary">Allocation (equity/bond): {Math.round(params.equityPct * 100)}/{Math.round(params.bondPct * 100)}</label>
                     <input type="range" min={0} max={100} value={params.equityPct * 100} onChange={e => { const eq = Number(e.target.value) / 100; setParams(p => ({ ...p, equityPct: eq, bondPct: 1 - eq })); }} className="w-full accent-accent" />
                   </div>
                   <div>
-                    <label className="text-xs text-text-secondary">Inflation: {(params.inflationRate * 100).toFixed(1)}%</label>
+                    <label className="text-sm text-text-secondary">Inflation: {(params.inflationRate * 100).toFixed(1)}%</label>
                     <input type="range" min={1} max={6} step={0.5} value={params.inflationRate * 100} onChange={e => setParams(p => ({ ...p, inflationRate: Number(e.target.value) / 100 }))} className="w-full accent-accent" />
                   </div>
                 </div>
@@ -688,11 +689,11 @@ export default function MonteCarloPage() {
 
               {/* Real Estate Toggle */}
               <div className="border-t border-border pt-4">
-                <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">Real Estate</p>
+                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">Real Estate</p>
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] border border-border/50">
                   <div>
-                    <p className="text-xs text-text-primary font-medium">Include equity</p>
-                    <p className="text-[10px] text-text-secondary">{formatCurrency(realEstateEquity, true)}</p>
+                    <p className="text-sm text-text-primary font-medium">Include equity</p>
+                    <p className="text-sm text-text-secondary">{formatCurrency(realEstateEquity, true)}</p>
                   </div>
                   <button
                     onClick={() => setParams(p => ({ ...p, includeRealEstate: !p.includeRealEstate }))}
@@ -708,34 +709,34 @@ export default function MonteCarloPage() {
               </div>
 
               <div className="border-t border-border pt-4">
-                <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">Expenses</p>
+                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">Expenses</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-xs text-text-secondary">Current annual spend</label>
-                    <input type="text" value={`$${params.annualSpend.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, annualSpend: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5" />
+                    <label className="text-sm text-text-secondary">Current annual spend</label>
+                    <input type="text" value={`$${params.annualSpend.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, annualSpend: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
                   </div>
                   <div>
-                    <label className="text-xs text-text-secondary">Retirement spend</label>
-                    <input type="text" value={`$${params.retirementSpend.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, retirementSpend: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5" />
+                    <label className="text-sm text-text-secondary">Retirement spend</label>
+                    <input type="text" value={`$${params.retirementSpend.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, retirementSpend: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
                   </div>
                 </div>
               </div>
 
               <div className="border-t border-border pt-4">
-                <p className="text-xs text-text-secondary uppercase tracking-wider mb-2">FIRE Parameters</p>
+                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">FIRE Parameters</p>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-xs text-text-secondary">FIRE number</label>
-                    <input type="text" value={`$${params.fireNumber.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, fireNumber: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-xs number-display text-text-primary mt-0.5" />
+                    <label className="text-sm text-text-secondary">FIRE number</label>
+                    <input type="text" value={`$${params.fireNumber.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, fireNumber: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
                   </div>
                   <div>
-                    <label className="text-xs text-text-secondary">Projection years: {params.years}</label>
+                    <label className="text-sm text-text-secondary">Projection years: {params.years}</label>
                     <input type="range" min={10} max={40} value={params.years} onChange={e => setParams(p => ({ ...p, years: Number(e.target.value) }))} className="w-full accent-accent" />
                   </div>
                 </div>
               </div>
             </Card>
-          </motion.div>
+          </div>
         )}
       </div>
 

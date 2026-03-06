@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Home as HomeIcon, Building2, Palmtree } from 'lucide-react';
 import Card from '@/components/shared/Card';
 import AIAnalysis from '@/components/shared/AIAnalysis';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
@@ -66,7 +67,7 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
   const remainingMonths = monthlyPayment > 0 ? Math.ceil(mortgageBalance / monthlyPayment) : 0;
 
   const typeLabel = property.property_type === 'primary' ? 'Primary Residence' : property.property_type === 'rental' ? 'Rental Property' : 'Vacation Home';
-  const typeIcon = property.property_type === 'primary' ? '🏠' : property.property_type === 'rental' ? '🏢' : '🏖️';
+  const TypeIcon = property.property_type === 'primary' ? HomeIcon : property.property_type === 'rental' ? Building2 : Palmtree;
 
   // Rental metrics (only if rental with rent set)
   const rentalMetrics = monthlyRent && property.property_type === 'rental' ? calcRentalMetrics({
@@ -102,17 +103,17 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
         <div className="flex items-start justify-between">
           <div>
             <p className="text-base font-semibold text-text-primary flex items-center gap-2">
-              <span>{typeIcon}</span>
+              <TypeIcon size={16} className="flex-shrink-0" />
               {property.address}
             </p>
-            <p className="text-xs text-text-secondary mt-0.5">{typeLabel}</p>
+            <p className="text-sm text-text-secondary mt-0.5">{typeLabel}</p>
           </div>
           <div className="text-right">
             {currentValue > 0 && (
               <p className="number-display text-lg font-bold text-text-primary">{formatCurrency(currentValue)}</p>
             )}
             {equity !== 0 && (
-              <p className="number-display text-xs text-emerald-400">Equity: {formatCurrency(equity)}</p>
+              <p className="number-display text-sm text-emerald-400">Equity: {formatCurrency(equity)}</p>
             )}
           </div>
         </div>
@@ -126,13 +127,13 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm">
                 {currentValue > 0 && (
                   <div>
-                    <p className="text-text-secondary text-xs">Current Value</p>
+                    <p className="text-text-secondary text-sm">Current Value</p>
                     <p className="number-display font-medium">{formatCurrency(currentValue)}</p>
                   </div>
                 )}
                 {purchasePrice > 0 && (
                   <div>
-                    <p className="text-text-secondary text-xs">Purchase Price</p>
+                    <p className="text-text-secondary text-sm">Purchase Price</p>
                     <p className="number-display font-medium">
                       {formatCurrency(purchasePrice)}
                       {property.purchase_date ? ` (${new Date(property.purchase_date).getFullYear()})` : ''}
@@ -141,7 +142,7 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
                 )}
                 {appreciation !== 0 && (
                   <div>
-                    <p className="text-text-secondary text-xs">Appreciation</p>
+                    <p className="text-text-secondary text-sm">Appreciation</p>
                     <p className={`number-display font-medium ${appreciation >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {appreciation >= 0 ? '+' : ''}{formatCurrency(appreciation)} ({appreciationPct.toFixed(1)}%)
                     </p>
@@ -156,25 +157,25 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
             <div className="border-t border-border pt-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm">
                 <div>
-                  <p className="text-text-secondary text-xs">Mortgage Balance</p>
+                  <p className="text-text-secondary text-sm">Mortgage Balance</p>
                   <p className="number-display font-medium">{formatCurrency(mortgageBalance)}</p>
                 </div>
                 {monthlyPayment > 0 && (
                   <div>
-                    <p className="text-text-secondary text-xs">Monthly Payment</p>
+                    <p className="text-text-secondary text-sm">Monthly Payment</p>
                     <p className="number-display font-medium">{formatCurrency(monthlyPayment)}/mo</p>
                   </div>
                 )}
                 {mortgageRate > 0 && (
                   <div>
-                    <p className="text-text-secondary text-xs">Rate / Remaining</p>
+                    <p className="text-text-secondary text-sm">Rate / Remaining</p>
                     <p className="number-display font-medium">
                       {mortgageRate}%{remainingMonths > 0 ? ` (${Math.ceil(remainingMonths / 12)}yr left)` : ''}
                     </p>
                   </div>
                 )}
                 <div>
-                  <p className="text-text-secondary text-xs">Equity</p>
+                  <p className="text-text-secondary text-sm">Equity</p>
                   <p className="number-display font-bold text-emerald-400">{formatCurrency(equity)}</p>
                 </div>
               </div>
@@ -186,19 +187,19 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
             <div className="border-t border-border pt-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-6 text-sm">
                 <div>
-                  <p className="text-text-secondary text-xs">Monthly Rent</p>
+                  <p className="text-text-secondary text-sm">Monthly Rent</p>
                   <p className="number-display font-medium">{formatCurrency(monthlyRent)}/mo</p>
                 </div>
                 <div>
-                  <p className="text-text-secondary text-xs">Annual NOI</p>
+                  <p className="text-text-secondary text-sm">Annual NOI</p>
                   <p className="number-display font-medium">{formatCurrency(rentalMetrics.noi)}</p>
                 </div>
                 <div>
-                  <p className="text-text-secondary text-xs">Cap Rate</p>
+                  <p className="text-text-secondary text-sm">Cap Rate</p>
                   <p className="number-display font-medium">{(rentalMetrics.capRate * 100).toFixed(1)}%</p>
                 </div>
                 <div>
-                  <p className="text-text-secondary text-xs">Cash-on-Cash</p>
+                  <p className="text-text-secondary text-sm">Cash-on-Cash</p>
                   <p className="number-display font-medium">{(rentalMetrics.cashOnCash * 100).toFixed(1)}%</p>
                 </div>
               </div>
@@ -215,7 +216,7 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
               {showAmortization && (
                 <div className="mt-4 space-y-4">
                   <div>
-                    <label className="text-xs text-text-secondary block mb-2">Extra Monthly Payment: {formatCurrency(extraPayment)}</label>
+                    <label className="text-sm text-text-secondary block mb-2">Extra Monthly Payment: {formatCurrency(extraPayment)}</label>
                     <input
                       type="range" min={0} max={3000} step={100}
                       value={extraPayment}
@@ -223,7 +224,7 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
                       className="w-full accent-accent"
                     />
                     {extraPayment > 0 && (
-                      <div className="flex gap-4 mt-2 text-xs">
+                      <div className="flex gap-4 mt-2 text-sm">
                         <span className="text-emerald-400">Save {formatCurrency(interestSaved)} in interest</span>
                         <span className="text-accent">Pay off {monthsSaved} months earlier</span>
                       </div>
@@ -245,7 +246,7 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
           )}
 
           {/* Action buttons */}
-          <div className="flex gap-2 text-xs border-t border-border pt-4">
+          <div className="flex gap-2 text-sm border-t border-border pt-4">
             <button onClick={onEdit} className="px-3 py-1.5 rounded-md border border-border text-text-secondary hover:text-text-primary hover:border-accent/30 transition-all">
               Edit
             </button>
@@ -284,7 +285,7 @@ function PropertyFormPanel({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
-          <label className="text-xs text-text-secondary block mb-1">Address *</label>
+          <label className="text-sm text-text-secondary block mb-1">Address *</label>
           <AddressAutocomplete
             className={inputClass}
             placeholder="Start typing an address..."
@@ -294,7 +295,7 @@ function PropertyFormPanel({
         </div>
 
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Property Type</label>
+          <label className="text-sm text-text-secondary block mb-1">Property Type</label>
           <select className={inputClass} value={form.property_type} onChange={e => setForm(f => ({ ...f, property_type: e.target.value as PropertyForm['property_type'] }))}>
             <option value="primary">Primary Residence</option>
             <option value="rental">Rental Property</option>
@@ -303,52 +304,52 @@ function PropertyFormPanel({
         </div>
 
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Current Value ($)</label>
+          <label className="text-sm text-text-secondary block mb-1">Current Value ($)</label>
           <input className={inputClass} type="number" placeholder="750000" value={form.current_value} onChange={e => setForm(f => ({ ...f, current_value: e.target.value }))} />
         </div>
 
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Purchase Price ($)</label>
+          <label className="text-sm text-text-secondary block mb-1">Purchase Price ($)</label>
           <input className={inputClass} type="number" placeholder="650000" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} />
         </div>
 
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Purchase Date</label>
+          <label className="text-sm text-text-secondary block mb-1">Purchase Date</label>
           <input className={inputClass} type="date" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} />
         </div>
 
         <div className="md:col-span-2 border-t border-border pt-4 mt-2">
-          <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Mortgage Details (optional)</p>
+          <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">Mortgage Details (optional)</p>
         </div>
 
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Original Loan Amount ($)</label>
+          <label className="text-sm text-text-secondary block mb-1">Original Loan Amount ($)</label>
           <input className={inputClass} type="number" placeholder="520000" value={form.original_loan_amount} onChange={e => setForm(f => ({ ...f, original_loan_amount: e.target.value }))} />
         </div>
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Current Mortgage Balance ($)</label>
+          <label className="text-sm text-text-secondary block mb-1">Current Mortgage Balance ($)</label>
           <input className={inputClass} type="number" placeholder="480000" value={form.mortgage_balance} onChange={e => setForm(f => ({ ...f, mortgage_balance: e.target.value }))} />
         </div>
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Interest Rate (%)</label>
+          <label className="text-sm text-text-secondary block mb-1">Interest Rate (%)</label>
           <input className={inputClass} type="number" step="0.01" placeholder="6.5" value={form.mortgage_rate} onChange={e => setForm(f => ({ ...f, mortgage_rate: e.target.value }))} />
         </div>
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Monthly Payment ($)</label>
+          <label className="text-sm text-text-secondary block mb-1">Monthly Payment ($)</label>
           <input className={inputClass} type="number" placeholder="3200" value={form.monthly_payment} onChange={e => setForm(f => ({ ...f, monthly_payment: e.target.value }))} />
         </div>
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Loan Term (months)</label>
+          <label className="text-sm text-text-secondary block mb-1">Loan Term (months)</label>
           <input className={inputClass} type="number" placeholder="360" value={form.mortgage_term_months} onChange={e => setForm(f => ({ ...f, mortgage_term_months: e.target.value }))} />
         </div>
         <div>
-          <label className="text-xs text-text-secondary block mb-1">Mortgage Start Date</label>
+          <label className="text-sm text-text-secondary block mb-1">Mortgage Start Date</label>
           <input className={inputClass} type="date" value={form.mortgage_start_date} onChange={e => setForm(f => ({ ...f, mortgage_start_date: e.target.value }))} />
         </div>
 
         {form.property_type === 'rental' && (
           <div>
-            <label className="text-xs text-text-secondary block mb-1">Monthly Rent ($)</label>
+            <label className="text-sm text-text-secondary block mb-1">Monthly Rent ($)</label>
             <input className={inputClass} type="number" placeholder="2800" value={form.monthly_rent} onChange={e => setForm(f => ({ ...f, monthly_rent: e.target.value }))} />
           </div>
         )}
@@ -526,12 +527,20 @@ export default function RealEstatePage() {
 
   // ─── Render ───────────────────────────────────────────────────────
 
-  if (isLoading) return <div className="text-center py-20 text-text-secondary">Loading...</div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-text-secondary text-sm">Loading properties...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div
+        >
           <h1 className="page-title">Real Estate</h1>
           <p className="page-subtitle">Property values, mortgages, and equity</p>
         </div>
@@ -545,7 +554,7 @@ export default function RealEstatePage() {
       {/* Empty state */}
       {realEstate.length === 0 && formMode === 'hidden' && (
         <Card className="text-center py-12">
-          <span className="text-5xl block mb-4">🏠</span>
+          <HomeIcon size={48} className="text-text-secondary/40 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-text-primary mb-2">No Properties Yet</h3>
           <p className="text-sm text-text-secondary max-w-md mx-auto mb-6">
             Add your home or investment properties to track equity, mortgage payoff, and how real estate fits into your FIRE plan.
@@ -561,22 +570,22 @@ export default function RealEstatePage() {
 
       {/* Summary bar */}
       {realEstate.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <Card className="text-center">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Total Property Value</p>
-            <p className="number-display text-2xl font-bold text-text-primary">
+            <p className="stat-label mb-2">Total Property Value</p>
+            <p className="number-display text-2xl font-bold text-text-primary glow-text">
               <AnimatedNumber value={totalPropertyValue} format={(n) => formatCurrency(n)} />
             </p>
           </Card>
           <Card className="text-center">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Total Mortgage Balance</p>
-            <p className="number-display text-2xl font-bold text-red-400">
+            <p className="stat-label mb-2">Total Mortgage Balance</p>
+            <p className="number-display text-2xl font-bold text-red-400 glow-text-red">
               <AnimatedNumber value={totalMortgageBalance} format={(n) => `−${formatCurrency(n)}`} />
             </p>
           </Card>
           <Card className="text-center">
-            <p className="text-xs text-text-secondary uppercase tracking-wider mb-1">Total Equity</p>
-            <p className="number-display text-2xl font-bold text-emerald-400">
+            <p className="stat-label mb-2">Total Equity</p>
+            <p className="number-display text-2xl font-bold text-emerald-400 glow-text-green">
               <AnimatedNumber value={totalEquity} format={(n) => formatCurrency(n)} />
             </p>
           </Card>

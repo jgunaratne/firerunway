@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
+import { Flame, TrendingUp, Landmark, PiggyBank, CheckCircle2 } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ interface OnboardingData {
 
 const inputClass = 'w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none transition-colors';
 const numberClass = `${inputClass} number-display`;
-const labelClass = 'text-xs text-text-secondary block mb-1';
+const labelClass = 'text-sm text-text-secondary block mb-1';
 
 function parseNum(val: string): number {
   return Number(val.replace(/[^0-9.-]/g, '')) || 0;
@@ -80,21 +81,20 @@ function ProgressIndicator({ current, total }: { current: number; total: number 
 // Welcome
 function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    <div
       className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4">
-      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }}>
-        <span className="text-6xl mb-6 block">🔥</span>
-      </motion.div>
-      <motion.h1 className="font-display text-3xl lg:text-5xl text-text-primary max-w-2xl leading-tight"
-        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }}>
+      <div>
+        <Flame size={56} className="text-accent mb-6 mx-auto" />
+      </div>
+      <h1 className="font-display text-3xl lg:text-5xl text-text-primary max-w-2xl leading-tight">
         Know if you&apos;re financially independent — before you find out the hard way
-      </motion.h1>
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.5 }} className="mt-10">
+      </h1>
+      <div className="mt-10">
         <button onClick={onNext} className="px-8 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all transform hover:scale-105 text-lg">
           Get Started
         </button>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -102,35 +102,35 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 function ConnectAccountsStep({ onNext }: { onNext: () => void }) {
   const [connected, setConnected] = useState({ brokerage: false, retirement: false, ira: false });
   return (
-    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-md mx-auto space-y-6">
+    <div className="max-w-md mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Connect Your Accounts</h2>
         <p className="page-subtitle">Securely link your brokerage and retirement accounts</p>
       </div>
       <div className="space-y-3">
         {[
-          { key: 'brokerage', label: 'Brokerage', desc: 'Schwab, Fidelity, E*Trade, etc.', icon: '📈' },
-          { key: 'retirement', label: '401k / Retirement', desc: 'Employer retirement plan', icon: '🏦' },
-          { key: 'ira', label: 'IRA / Roth IRA', desc: 'Individual retirement accounts', icon: '💰' },
+          { key: 'brokerage', label: 'Brokerage', desc: 'Schwab, Fidelity, E*Trade, etc.', Icon: TrendingUp },
+          { key: 'retirement', label: '401k / Retirement', desc: 'Employer retirement plan', Icon: Landmark },
+          { key: 'ira', label: 'IRA / Roth IRA', desc: 'Individual retirement accounts', Icon: PiggyBank },
         ].map((account) => (
           <button key={account.key}
             onClick={() => setConnected(prev => ({ ...prev, [account.key]: !prev[account.key as keyof typeof prev] }))}
             className={`w-full glass-card p-4 flex items-center gap-4 text-left transition-all ${connected[account.key as keyof typeof connected] ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}>
-            <span className="text-2xl">{account.icon}</span>
+            <account.Icon size={22} className="text-accent" />
             <div className="flex-1">
               <p className="text-sm font-medium text-text-primary">{account.label}</p>
-              <p className="text-xs text-text-secondary">{account.desc}</p>
+              <p className="text-sm text-text-secondary">{account.desc}</p>
             </div>
-            <span className="text-lg">{connected[account.key as keyof typeof connected] ? '✅' : '○'}</span>
+            {connected[account.key as keyof typeof connected] ? <CheckCircle2 size={18} className="text-emerald-400" /> : <span className="text-lg text-text-secondary/30">○</span>}
           </button>
         ))}
       </div>
-      <p className="text-xs text-text-secondary/60 text-center">Account connections via SnapTrade coming soon. Skip for now and enter data manually.</p>
+      <p className="text-sm text-text-secondary/60 text-center">Account connections via SnapTrade coming soon. Skip for now and enter data manually.</p>
       <div className="flex gap-3">
         <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">Continue</button>
         <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">Skip for now</button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -151,7 +151,7 @@ function RSUSetupStep({ onNext, grants, setGrants }: { onNext: () => void; grant
   };
 
   return (
-    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">RSU / Equity Setup</h2>
         <p className="page-subtitle">Tell us about your equity compensation</p>
@@ -161,8 +161,8 @@ function RSUSetupStep({ onNext, grants, setGrants }: { onNext: () => void; grant
         <div key={idx} className="glass-card p-5 space-y-4">
           {grants.length > 1 && (
             <div className="flex justify-between items-center">
-              <p className="text-xs text-text-secondary font-medium">Grant {idx + 1}</p>
-              <button onClick={() => removeGrant(idx)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+              <p className="text-sm text-text-secondary font-medium">Grant {idx + 1}</p>
+              <button onClick={() => removeGrant(idx)} className="text-sm text-red-400 hover:text-red-300">Remove</button>
             </div>
           )}
           <div>
@@ -204,7 +204,7 @@ function RSUSetupStep({ onNext, grants, setGrants }: { onNext: () => void; grant
         <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">Continue</button>
         <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">Skip</button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -229,7 +229,7 @@ function RealEstateSetupStep({ onNext, properties, setProperties }: { onNext: ()
   };
 
   return (
-    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Real Estate</h2>
         <p className="page-subtitle">Add your properties to get a complete net worth picture</p>
@@ -239,8 +239,8 @@ function RealEstateSetupStep({ onNext, properties, setProperties }: { onNext: ()
         <div key={idx} className="glass-card p-5 space-y-4">
           {properties.length > 1 && (
             <div className="flex justify-between items-center">
-              <p className="text-xs text-text-secondary font-medium">Property {idx + 1}</p>
-              <button onClick={() => removeProperty(idx)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+              <p className="text-sm text-text-secondary font-medium">Property {idx + 1}</p>
+              <button onClick={() => removeProperty(idx)} className="text-sm text-red-400 hover:text-red-300">Remove</button>
             </div>
           )}
           <div>
@@ -308,7 +308,7 @@ function RealEstateSetupStep({ onNext, properties, setProperties }: { onNext: ()
         <button onClick={onNext} className="flex-1 py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">Continue</button>
         <button onClick={onNext} className="px-4 py-2.5 text-text-secondary text-sm hover:text-text-primary transition-colors">Skip</button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -319,7 +319,7 @@ function YourNumbersStep({ onNext, profile, setProfile }: { onNext: () => void; 
   };
 
   return (
-    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h2 className="font-display text-2xl text-text-primary">Your Numbers</h2>
         <p className="page-subtitle">We need a few more details to calculate your FIRE score</p>
@@ -372,7 +372,7 @@ function YourNumbersStep({ onNext, profile, setProfile }: { onNext: () => void; 
       <button onClick={onNext} className="w-full py-2.5 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all text-sm">
         Calculate My Score
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -395,13 +395,13 @@ function FirstLookStep({ onFinish, data, saving }: { onFinish: () => void; data:
   });
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+    <div
       className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4 space-y-8">
-      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}>
-        <span className="text-7xl block">🔥</span>
-      </motion.div>
+      <div>
+        <Flame size={72} className="text-accent" />
+      </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="space-y-2">
+      <div className="space-y-2">
         <p className="text-sm text-text-secondary uppercase tracking-wider">Your FI Score</p>
         <p className="number-display text-7xl lg:text-8xl font-bold text-accent">
           <AnimatedNumber value={fiScore.total} duration={1500} />
@@ -409,36 +409,36 @@ function FirstLookStep({ onFinish, data, saving }: { onFinish: () => void; data:
         <p className="text-text-secondary">
           out of 100 — {fiScore.total >= 75 ? 'Approaching Independence' : fiScore.total >= 50 ? 'Halfway There' : 'Building Your Base'}
         </p>
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }} className="grid grid-cols-3 gap-6 max-w-xl">
+      <div className="grid grid-cols-3 gap-6 max-w-xl">
         <div className="glass-card p-4 text-center">
-          <p className="text-xs text-text-secondary mb-1">Net Worth</p>
+          <p className="text-sm text-text-secondary mb-1">Net Worth</p>
           <p className="number-display text-xl font-bold text-emerald-400">
             <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} duration={1200} />
           </p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-xs text-text-secondary mb-1">FIRE Number</p>
+          <p className="text-sm text-text-secondary mb-1">FIRE Number</p>
           <p className="number-display text-xl font-bold text-text-primary">
             <AnimatedNumber value={data.profile.fireNumber || 3000000} format={(n) => formatCurrency(n, true)} duration={1200} />
           </p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-xs text-text-secondary mb-1">Runway</p>
+          <p className="text-sm text-text-secondary mb-1">Runway</p>
           <p className="number-display text-xl font-bold text-accent">
             <AnimatedNumber value={Math.round(runway * 10)} format={(n) => `${(n / 10).toFixed(1)}yr`} duration={1200} />
           </p>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.8 }}>
+      <div>
         <button onClick={onFinish} disabled={saving}
           className="px-8 py-3 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-all transform hover:scale-105 text-lg disabled:opacity-50 disabled:transform-none">
           {saving ? 'Saving your data...' : 'Go to Dashboard →'}
         </button>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -508,21 +508,21 @@ export default function OnboardingPage() {
       {step > 0 && step < 5 && (
         <div className="fixed top-0 left-0 right-0 z-50 py-4 px-6 flex justify-center bg-bg-primary/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-secondary">Step {step} of {steps.length - 2}</span>
+            <span className="text-sm text-text-secondary">Step {step} of {steps.length - 2}</span>
             <ProgressIndicator current={step} total={steps.length - 1} />
           </div>
         </div>
       )}
 
       <div className="pt-16 pb-8 px-4">
-        <AnimatePresence mode="wait">
+        
           {step === 0 && <WelcomeStep key="welcome" onNext={next} />}
           {step === 1 && <ConnectAccountsStep key="connect" onNext={next} />}
           {step === 2 && <RSUSetupStep key="rsu" onNext={next} grants={rsuGrants} setGrants={setRsuGrants} />}
           {step === 3 && <RealEstateSetupStep key="realestate" onNext={next} properties={realEstate} setProperties={setRealEstate} />}
           {step === 4 && <YourNumbersStep key="numbers" onNext={next} profile={profile} setProfile={setProfile} />}
           {step === 5 && <FirstLookStep key="firstlook" onFinish={finish} data={data} saving={saving} />}
-        </AnimatePresence>
+        
       </div>
     </div>
   );

@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
 import Card from '@/components/shared/Card';
 import AIAnalysis from '@/components/shared/AIAnalysis';
 import { useUserData } from '@/lib/UserDataContext';
 import { formatCurrency } from '@/lib/calculations';
+import { Upload, FileText } from 'lucide-react';
 
 interface IncomeTaxRecord {
   id: string;
@@ -112,7 +112,7 @@ function BreakdownTable({ items, labels, colors }: {
               <div className="text-text-primary text-sm">{labels[key] ?? key}</div>
             </div>
             <div className="number-display text-text-primary text-sm font-medium">{formatCurrency(value)}</div>
-            <div className="text-text-secondary text-xs w-12 text-right">{pct.toFixed(0)}%</div>
+            <div className="text-text-secondary text-sm w-12 text-right">{pct.toFixed(0)}%</div>
           </div>
         );
       })}
@@ -214,15 +214,16 @@ export default function IncomeTaxPage() {
   const effectiveRate = totalIncome > 0 ? (totalTax / totalIncome) * 100 : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Page header */}
-      <div>
+      <div
+      >
         <h1 className="page-title">Income & Taxes</h1>
         <p className="page-subtitle">Upload W-2s and tax documents to track your income and tax burden</p>
       </div>
 
       {/* Upload Area */}
-      <Card delay={0.1}>
+      <Card>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="section-title mb-0">Upload Tax Document</h3>
@@ -235,7 +236,7 @@ export default function IncomeTaxPage() {
                 {uploadProgress < 50 ? 'Uploading...' : uploadProgress < 90 ? 'Extracting data...' : 'Finishing...'} {uploadProgress}%
               </span>
             ) : (
-              '📄 Upload PDF'
+                <><Upload size={16} className="inline mr-1.5" />Upload PDF</>
             )}
             <input type="file" accept=".pdf" onChange={handleUpload} className="hidden" disabled={uploading} />
           </label>
@@ -243,13 +244,11 @@ export default function IncomeTaxPage() {
       </Card>
 
       {error && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+        <div
           className="text-accent-red text-sm bg-accent-red/10 rounded-lg p-3"
         >
           {error}
-        </motion.div>
+        </div>
       )}
 
       {loading && (
@@ -263,9 +262,9 @@ export default function IncomeTaxPage() {
       )}
 
       {!loading && records.length === 0 && (
-        <Card delay={0.2} className="text-center">
+        <Card className="text-center">
           <div className="py-6">
-            <div className="text-4xl mb-4">📄</div>
+            <FileText size={40} className="text-text-secondary/40 mx-auto mb-4" />
             <p className="text-text-primary text-lg font-medium">No tax documents yet</p>
             <p className="text-text-secondary text-sm mt-1">Upload a W-2, 1099, or tax return to see your income and tax breakdown</p>
           </div>
@@ -275,25 +274,25 @@ export default function IncomeTaxPage() {
       {records.length > 0 && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card delay={0.1}>
-              <div className="text-text-secondary text-xs uppercase tracking-wider mb-1">Total Income</div>
-              <div className="number-display text-3xl font-bold text-accent-green">{formatCurrency(totalIncome)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <Card>
+              <div className="stat-label mb-2">Total Income</div>
+              <div className="number-display text-3xl font-bold text-accent-green glow-text-green">{formatCurrency(totalIncome)}</div>
             </Card>
-            <Card delay={0.15}>
-              <div className="text-text-secondary text-xs uppercase tracking-wider mb-1">Total Tax</div>
-              <div className="number-display text-3xl font-bold text-accent-red">{formatCurrency(totalTax)}</div>
+            <Card>
+              <div className="stat-label mb-2">Total Tax</div>
+              <div className="number-display text-3xl font-bold text-accent-red glow-text-red">{formatCurrency(totalTax)}</div>
             </Card>
-            <Card delay={0.2}>
-              <div className="text-text-secondary text-xs uppercase tracking-wider mb-1">Effective Tax Rate</div>
-              <div className="number-display text-3xl font-bold text-accent-amber">{effectiveRate.toFixed(1)}%</div>
-              <div className="text-text-secondary text-xs mt-1">Take-home: {formatCurrency(totalIncome - totalTax)}</div>
+            <Card>
+              <div className="stat-label mb-2">Effective Tax Rate</div>
+              <div className="number-display text-3xl font-bold text-accent-amber glow-text-amber">{effectiveRate.toFixed(1)}%</div>
+              <div className="text-text-secondary text-sm mt-2">Take-home: {formatCurrency(totalIncome - totalTax)}</div>
             </Card>
           </div>
 
           {/* Breakdowns */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card delay={0.25}>
+            <Card>
               <h3 className="section-title">Income Breakdown</h3>
               <BreakdownBar items={aggregatedIncome} total={totalIncome} colors={INCOME_COLORS} />
               <div className="mt-4">
@@ -301,7 +300,7 @@ export default function IncomeTaxPage() {
               </div>
             </Card>
 
-            <Card delay={0.3}>
+            <Card>
               <h3 className="section-title">Tax & Deductions Breakdown</h3>
               <BreakdownBar items={aggregatedTax} total={totalTax} colors={TAX_COLORS} />
               <div className="mt-4">
@@ -311,14 +310,12 @@ export default function IncomeTaxPage() {
           </div>
 
           {/* Documents List */}
-          <Card delay={0.35}>
+          <Card>
             <h3 className="section-title">Uploaded Documents</h3>
             <div className="space-y-3">
               {records.map((r) => (
-                <motion.div
+                <div
                   key={r.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
                   className="flex items-center gap-4 p-3 rounded-lg bg-bg-elevated/50 border border-border/50"
                 >
                   <div className="w-10 h-10 rounded-lg bg-accent/20 text-accent flex items-center justify-center text-sm font-bold flex-shrink-0">
@@ -328,21 +325,21 @@ export default function IncomeTaxPage() {
                     <div className="text-text-primary text-sm font-medium truncate">
                       {r.employer || r.filename}
                     </div>
-                    <div className="text-text-secondary text-xs">
+                    <div className="text-text-secondary text-sm">
                       {r.document_type.toUpperCase()} · Tax Year {r.tax_year} · {r.extraction_confidence}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="number-display text-text-primary text-sm">{formatCurrency(r.total_income)}</div>
-                    <div className="number-display text-accent-red text-xs">-{formatCurrency(r.total_tax)}</div>
+                    <div className="number-display text-accent-red text-sm">-{formatCurrency(r.total_tax)}</div>
                   </div>
                   <button
                     onClick={() => handleDelete(r.id)}
-                    className="text-text-secondary hover:text-accent-red text-xs transition-colors"
+                    className="text-text-secondary hover:text-accent-red text-sm transition-colors"
                   >
                     Delete
                   </button>
-                </motion.div>
+                </div>
               ))}
             </div>
           </Card>
