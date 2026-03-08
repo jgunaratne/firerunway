@@ -64,7 +64,7 @@ export default function TopBar() {
     } catch { /* SSR guard */ }
     clearBrokerageCache();
     await signOut();
-    router.push('/sign-in');
+    router.push('/');
   };
 
   const annualSpend = profile?.annual_spend || 0;

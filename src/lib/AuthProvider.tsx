@@ -22,7 +22,7 @@ export function useAuth() {
 }
 
 // Pages that don't require authentication
-const PUBLIC_PATHS = ['/sign-in', '/sign-up'];
+const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
     if (loading) return;
-    const isPublicPath = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
+    const isPublicPath = pathname === '/' || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
     if (!user && !isPublicPath) {
-      router.push('/sign-in');
+      router.push('/');
     }
   }, [user, loading, pathname, router]);
 
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Show nothing while redirecting unauthenticated users
-  const isPublicPath = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
+  const isPublicPath = pathname === '/' || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
   if (!loading && !user && !isPublicPath) {
     return null;
   }
