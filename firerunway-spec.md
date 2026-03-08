@@ -19,7 +19,7 @@ Live at: [firerunway.com](https://firerunway.com)
 | Auth | Firebase Authentication (Google sign-in) |
 | Account Aggregation | SnapTrade API (brokerage), Plaid (bank accounts) |
 | Market Data | Yahoo Finance / Polygon.io fallback |
-| AI | Google Gemini API (`gemini-2.0-flash`) |
+| AI | Google Gemini API (`gemini-2.5-flash`) |
 | PDF Parsing | Gemini multimodal (statement + tax doc extraction) |
 | Database | Supabase (Postgres) |
 | Hosting | VPS (Ubuntu) with PM2 + Nginx + Let's Encrypt |
@@ -172,7 +172,7 @@ Left Sidebar (desktop) / Bottom Tabs (mobile)
 
 ## AI Integration (Gemini)
 
-All AI features use Google Gemini (`gemini-2.0-flash`):
+All AI features use Google Gemini (`gemini-2.5-flash`):
 
 - **Statement parsing:** Multimodal PDF → structured holdings/account data
 - **Tax document parsing:** W-2/1099 extraction
