@@ -9,8 +9,8 @@ import ChatRail from '@/components/layout/ChatRail';
 export default function LayoutShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  // The landing page handles its own full-screen layout
-  if (pathname === '/') {
+  // Standalone pages handle their own full-screen layout
+  if (pathname === '/' || pathname === '/contact' || pathname === '/privacy') {
     return <>{children}</>;
   }
 

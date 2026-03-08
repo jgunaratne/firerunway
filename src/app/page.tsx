@@ -328,8 +328,9 @@ export default function LandingPage() {
             FireRunway provides financial information for educational purposes only. Nothing on this platform constitutes personalized investment advice.
           </p>
           <div className="flex items-center gap-6 text-sm text-text-secondary">
+            <Link href="/contact" className="hover:text-text-primary transition-colors">Contact</Link>
             <Link href="#" className="hover:text-text-primary transition-colors">Terms</Link>
-            <Link href="#" className="hover:text-text-primary transition-colors">Privacy</Link>
+            <Link href="/privacy" className="hover:text-text-primary transition-colors">Privacy</Link>
           </div>
         </div>
       </footer>

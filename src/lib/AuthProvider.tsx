@@ -22,7 +22,7 @@ export function useAuth() {
 }
 
 // Pages that don't require authentication
-const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up'];
+const PUBLIC_PATHS = ['/', '/sign-in', '/sign-up', '/contact', '/privacy'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
