@@ -27,6 +27,8 @@ export default function TopBar() {
   const { totalNetWorth, investable, rsuValue } = useNetWorth();
   const { forceRefresh: refreshHoldings } = useBrokerageData();
   const { refresh: refreshUserData } = useUserData();
+  const [demoMode, setDemoMode] = useState(false);
+  useEffect(() => { setDemoMode(isDemoMode()); }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function TopBar() {
     router.push('/');
   };
 
-  const demoMode = typeof window !== 'undefined' && isDemoMode();
+
 
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
