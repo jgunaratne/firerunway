@@ -15,9 +15,9 @@ export default function LayoutShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary font-sans flex flex-col">
+    <div className="h-screen bg-bg-primary text-text-primary font-sans flex flex-col overflow-hidden">
       <TopBar />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         <Sidebar />
         <main className="flex-1 overflow-y-auto relative pb-20 lg:pb-0">
           {/* Grid Background */}
