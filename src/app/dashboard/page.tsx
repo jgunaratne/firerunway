@@ -1,128 +1,99 @@
 'use client';
 
-import Card from '@/components/shared/Card';
-import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useNetWorth } from '@/hooks/useNetWorth';
+import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import Link from 'next/link';
 import {
   CheckCircle2, AlertTriangle, AlertCircle,
-  Wallet, BarChart3, Flame, TrendingUp,
+  Wallet, BarChart3, Flame, LineChart, ArrowRight,
 } from 'lucide-react';
 
-// Arc Gauge Component
-function ArcGauge({ value, max = 100, size = 180, label }: { value: number; max?: number; size?: number; label: string }) {
-  const pct = value / max;
-  const radius = (size - 24) / 2;
-  const circumference = Math.PI * radius;
-  const offset = circumference * (1 - pct);
-  const color = pct >= 0.75 ? '#10b981' : pct >= 0.5 ? '#f59e0b' : '#ef4444';
-  const glowColor = pct >= 0.75 ? 'rgba(16,185,129,0.4)' : pct >= 0.5 ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)';
+// ─── Arc Gauge ───────────────────────────────────────────────────────
+function ArcGauge({ value, max = 100 }: { value: number; max?: number }) {
+  const pct = Math.min(value / max, 1);
+  // SVG arc: semicircle from (10,50) to (90,50), radius 40
+  const totalLen = 125.6; // π * 40
+  const offset = totalLen * (1 - pct);
+  const color = pct >= 0.75 ? 'var(--color-accent-green)' : pct >= 0.5 ? 'var(--color-accent-amber)' : 'var(--color-accent-red)';
 
   return (
-    <div className="flex flex-col items-center relative">
-      {/* Ambient glow behind gauge */}
-      <div
-        className="absolute top-0 w-32 h-20 rounded-full blur-3xl opacity-30 pulse-glow"
-        style={{ background: glowColor }}
-      />
-      <svg width={size} height={size / 2 + 24} viewBox={`0 0 ${size} ${size / 2 + 24}`}>
-        {/* Background arc */}
+    <div className="relative w-48 h-24 mb-4 flex items-end justify-center">
+      <svg viewBox="0 0 100 50" className="absolute inset-0 w-full h-full overflow-visible">
+        <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--color-bg-elevated)" strokeWidth="8" strokeLinecap="round" />
         <path
-          d={`M 12,${size / 2 + 12} A ${radius},${radius} 0 0,1 ${size - 12},${size / 2 + 12}`}
-          fill="none"
-          stroke="var(--overlay-separator)"
-          strokeWidth="6"
-          strokeLinecap="round"
-        />
-        {/* Value arc */}
-        <path
-          d={`M 12,${size / 2 + 12} A ${radius},${radius} 0 0,1 ${size - 12},${size / 2 + 12}`}
+          d="M 10 50 A 40 40 0 0 1 90 50"
           fill="none"
           stroke={color}
-          strokeWidth="6"
+          strokeWidth="8"
           strokeLinecap="round"
-          strokeDasharray={circumference}
+          strokeDasharray={totalLen}
           strokeDashoffset={offset}
-          style={{ filter: `drop-shadow(0 0 8px ${glowColor})` }}
         />
-        {/* Center text */}
-        <text
-          x={size / 2}
-          y={size / 2 - 8}
-          textAnchor="middle"
-          className="number-display"
-          fill="currentColor"
-          fontSize="36"
-          fontWeight="bold"
-        >
-          {value}
-        </text>
-        <text
-          x={size / 2}
-          y={size / 2 + 14}
-          textAnchor="middle"
-          fill="var(--text-secondary)"
-          fontSize="12"
-          fontWeight="500"
-        >
-          / {max}
-        </text>
       </svg>
-      <p className="text-sm text-text-secondary mt-1 tracking-wide">{label}</p>
+      <div className="z-10 flex flex-col items-center translate-y-2">
+        <div className="text-4xl font-bold"><AnimatedNumber value={value} /></div>
+        <div className="text-[10px] text-text-secondary font-mono mt-0.5">/ {max}</div>
+      </div>
     </div>
   );
 }
 
-// Layoff Readiness Item
-function LayoffItem({ status, label, detail }: { status: 'green' | 'amber' | 'red'; label: string; detail: string }) {
-  const StatusIcon = status === 'green' ? CheckCircle2 : status === 'amber' ? AlertTriangle : AlertCircle;
-  const textColor = status === 'green' ? 'text-emerald-400' : status === 'amber' ? 'text-amber-400' : 'text-red-400';
-  const glowClass = status === 'green' ? 'glow-text-green' : status === 'amber' ? 'glow-text-amber' : 'glow-text-red';
+// ─── Layoff Readiness Row ────────────────────────────────────────────
+function LayoffRow({ status, label, detail }: { status: 'green' | 'amber' | 'red'; label: string; detail: string }) {
+  const Icon = status === 'green' ? CheckCircle2 : status === 'amber' ? AlertTriangle : AlertCircle;
+  const color = status === 'green' ? 'text-accent-green' : status === 'amber' ? 'text-accent-amber' : 'text-accent-red';
   return (
-    <div className="flex items-start gap-3 py-2.5 px-3 rounded-xl transition-colors themed-hover">
-      <StatusIcon size={18} className={`mt-0.5 flex-shrink-0 ${textColor}`} />
+    <div className="flex gap-4">
+      <Icon className={`w-5 h-5 ${color} shrink-0 mt-0.5`} />
       <div>
-        <p className={`text-sm font-medium ${textColor} ${glowClass}`}>{label}</p>
-        <p className="text-sm text-text-secondary mt-0.5 leading-relaxed">{detail}</p>
+        <div className={`font-medium ${color} mb-1`}>{label}</div>
+        <div className="text-sm text-text-secondary">{detail}</div>
       </div>
     </div>
   );
 }
 
-// Insight Card
-function InsightCard({ insight }: { insight: { icon: React.ReactNode; title: string; body: string; type: string } }) {
-  const borderGlow = insight.type === 'success'
-    ? 'hover:border-emerald-500/30 hover:shadow-glow-green'
-    : insight.type === 'warning'
-      ? 'hover:border-amber-500/30 hover:shadow-glow-amber'
-      : 'hover:border-accent/30 hover:shadow-glow-sm';
+// ─── Insight Card ────────────────────────────────────────────────────
+function InsightCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <Card className={borderGlow} hover>
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex-shrink-0 text-accent">{insight.icon}</div>
-        <div className="flex-1">
-          <h4 className="text-sm font-semibold text-text-primary mb-1">{insight.title}</h4>
-          <p className="text-sm text-text-secondary leading-relaxed">{insight.body}</p>
-          <button className="text-sm text-accent hover:text-accent/80 mt-3 transition-colors font-medium">Tell me more →</button>
-        </div>
+    <div className="p-6 rounded-xl border border-border bg-bg-surface flex flex-col h-full">
+      <div className="flex items-center gap-3 mb-3">
+        {icon}
+        <h3 className="font-semibold">{title}</h3>
       </div>
-    </Card>
+      <p className="text-sm text-text-secondary leading-relaxed flex-1 mb-4">{description}</p>
+      <button className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1 mt-auto w-fit">
+        Tell me more <ArrowRight className="w-3 h-3" />
+      </button>
+    </div>
   );
 }
 
+// ─── Quick Link Card ─────────────────────────────────────────────────
+function LinkCard({ icon, title, href }: { icon: React.ReactNode; title: string; href: string }) {
+  return (
+    <Link href={href} className="p-6 rounded-xl border border-border bg-bg-surface hover:bg-bg-elevated transition-colors flex flex-col gap-4 group">
+      {icon}
+      <div className="flex items-center gap-2 font-medium">
+        {title}
+        <ArrowRight className="w-4 h-4 text-text-secondary group-hover:text-text-primary transition-colors" />
+      </div>
+    </Link>
+  );
+}
+
+// ─── Dashboard Page ──────────────────────────────────────────────────
 export default function DashboardPage() {
   const { profile, rsuGrants, realEstate, isLoading } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
+  const { totalNetWorth, investable, rsuValue, stockPrice } = useNetWorth();
 
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
   const fireNumber = profile?.fire_number || 0;
-
-  // Derive totals from real data
-  const { totalNetWorth, investable, rsuValue, stockPrice } = useNetWorth();
 
   const fiScore = calculateFIScore({
     currentInvestableAssets: investable,
@@ -148,38 +119,32 @@ export default function DashboardPage() {
   const unvestedValue = unvestedShares * stockPrice;
   const savingsRate = annualIncome > 0 ? (annualIncome - annualSpend) / annualIncome : 0;
 
-  // Compute dynamic insights from real data
+  // Dynamic insights
   const insights = [
     {
-      id: '1',
-      icon: <Wallet size={22} />,
+      icon: <Wallet className="w-5 h-5 text-accent" />,
       title: 'Savings Rate',
-      body: annualIncome > 0
+      description: annualIncome > 0
         ? `You're saving ${Math.round(savingsRate * 100)}% of your income — ${savingsRate > 0.4 ? 'excellent' : savingsRate > 0.25 ? 'good' : 'keep building'} for FIRE.`
         : 'Set your income and spending in the onboarding profile to see your savings rate.',
-      type: savingsRate > 0.4 ? 'success' : savingsRate > 0.25 ? 'info' : 'warning' as const,
     },
     {
-      id: '2',
-      icon: <BarChart3 size={22} />,
+      icon: <BarChart3 className="w-5 h-5 text-accent" />,
       title: 'Portfolio Status',
-      body: totalInvestment > 0
+      description: totalInvestment > 0
         ? `Your connected portfolio is worth ${formatCurrency(totalInvestment)}. ${investable > fireNumber * 0.8 ? 'Getting close to your FIRE number!' : `${formatCurrency(fireGap)} remaining to reach FI.`}`
         : 'Connect a brokerage account to see your real portfolio data.',
-      type: totalInvestment > 0 ? 'info' : 'warning' as const,
     },
     {
-      id: '3',
-      icon: <Flame size={22} />,
+      icon: <Flame className="w-5 h-5 text-accent" />,
       title: 'FIRE Trajectory',
-      body: fireGap <= 0
+      description: fireGap <= 0
         ? 'Congratulations! You\'ve reached your FIRE number!'
         : `At your current savings rate, you have a ${formatCurrency(fireGap)} gap to reach FI.`,
-      type: fireGap <= 0 ? 'success' : 'info' as const,
     },
   ];
 
-  // Only show full-page loading if we have NO data at all (first visit, no cache)
+  // Loading state
   const hasAnyData = profile || totalInvestment > 0 || rsuGrants.length > 0 || realEstate.length > 0;
   if ((isLoading || holdingsLoading) && !hasAnyData) {
     return (
@@ -194,107 +159,94 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Page header */}
-      <div
-      >
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Your financial independence at a glance</p>
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Dashboard</h1>
+        <p className="text-text-secondary">Your financial independence at a glance</p>
       </div>
 
-      {/* Hero Row — 3 stat cards in bento grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* Top Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* FI Score */}
-        <Card className="flex flex-col items-center justify-center py-8">
-          <ArcGauge value={fiScore.total} label={fiScore.total >= 75 ? 'Approaching independence' : fiScore.total >= 50 ? 'Halfway there' : 'Building your base'} />
-          <p className="stat-label mt-3">FI Score</p>
-        </Card>
+        <div className="p-6 rounded-xl border border-border bg-bg-surface flex flex-col items-center justify-center text-center">
+          <ArcGauge value={fiScore.total} />
+          <div className="text-sm font-medium mt-2">{fiScore.total >= 75 ? 'Approaching independence' : fiScore.total >= 50 ? 'Halfway there' : 'Building your base'}</div>
+          <div className="text-xs text-text-secondary mt-1">FI Score</div>
+        </div>
 
         {/* Runway */}
-        <Card className="flex flex-col items-center justify-center py-8">
-          <div className="text-center">
-            <p className="number-display text-5xl font-bold text-text-primary glow-text">
-              <AnimatedNumber value={Math.round(runway * 10)} format={(n) => (n / 10).toFixed(1)} />
-            </p>
-            <p className="text-base text-text-secondary mt-1 tracking-wide">years</p>
+        <div className="p-6 rounded-xl border border-border bg-bg-surface flex flex-col items-center justify-center text-center">
+          <div className="text-5xl font-bold mb-2">
+            <AnimatedNumber value={Math.round(runway * 10)} format={(n) => (n / 10).toFixed(1)} />
           </div>
-          <p className="stat-label mt-4">Runway</p>
-          <p className="text-sm text-text-secondary/70">If income stopped today</p>
-        </Card>
+          <div className="text-text-secondary mb-4">years</div>
+          <div className="text-sm font-medium">Runway</div>
+          <div className="text-xs text-text-secondary mt-1">If income stopped today</div>
+        </div>
 
         {/* FIRE Gap */}
-        <Card className="flex flex-col items-center justify-center py-8">
-          <div className="text-center">
-            <p className="number-display text-5xl font-bold text-accent-amber glow-text-amber">
-              <AnimatedNumber value={fireGap > 0 ? fireGap : 0} format={(n) => formatCurrency(n, true)} />
-            </p>
-            <p className="text-base text-text-secondary mt-1 tracking-wide">away</p>
+        <div className="p-6 rounded-xl border border-border bg-bg-surface flex flex-col items-center justify-center text-center">
+          <div className="text-5xl font-bold text-accent-amber mb-2">
+            <AnimatedNumber value={fireGap > 0 ? fireGap : 0} format={(n) => formatCurrency(n, true)} />
           </div>
-          <p className="stat-label mt-4">FIRE Gap</p>
-          <p className="text-sm text-text-secondary/70">{targetYear ? `Target: ${targetYear}` : 'Set target in profile'}</p>
-        </Card>
+          <div className="text-text-secondary mb-4">away</div>
+          <div className="text-sm font-medium">FIRE Gap</div>
+          <div className="text-xs text-text-secondary mt-1">{targetYear ? `Target: ${targetYear}` : 'Set target in profile'}</div>
+        </div>
       </div>
 
       {/* If Laid Off Tomorrow */}
-      <Card>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-6 rounded-full bg-accent-red shadow-glow-red" />
-          <h3 className="section-title mb-0">If Laid Off Tomorrow</h3>
+      <div className="rounded-xl border border-border bg-bg-surface overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+          <div className="w-1 h-5 bg-accent-red rounded-full" />
+          <h2 className="text-lg font-semibold">If Laid Off Tomorrow</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0.5">
-          <LayoffItem
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <LayoffRow
             status={mortgageCoverageYears >= 5 ? 'green' : mortgageCoverageYears >= 2 ? 'amber' : 'red'}
             label={totalMonthlyMortgage > 0 ? `Mortgage covered: ${mortgageCoverageYears >= 1 ? `${mortgageCoverageYears.toFixed(1)}+ years` : `${Math.round(mortgageCoverageYears * 12)} months`}` : 'No mortgage debt'}
             detail={totalMonthlyMortgage > 0 ? `${formatCurrency(totalMonthlyMortgage)}/mo across ${realEstate.filter(p => (p.monthly_payment ?? 0) > 0).length} mortgage(s)` : 'No properties with mortgages'}
           />
-          <LayoffItem
+          <LayoffRow
             status={emergencyMonths >= 12 ? 'green' : emergencyMonths >= 6 ? 'amber' : 'red'}
             label={monthlySpend > 0 ? `Emergency fund: ${emergencyMonths >= 12 ? `${Math.round(emergencyMonths)} months` : `${emergencyMonths.toFixed(1)} months`}` : 'Set spending to calculate'}
             detail={investable > 0 ? `${formatCurrency(investable)} in investable assets` : 'No investable assets tracked'}
           />
-          <LayoffItem
+          <LayoffRow
             status={unvestedValue <= 0 ? 'green' : unvestedValue < 100000 ? 'amber' : 'red'}
             label={unvestedShares > 0 ? `Unvested RSUs at risk: ${formatCurrency(unvestedValue)}` : 'No unvested RSUs'}
             detail={unvestedShares > 0 ? `${unvestedShares.toLocaleString()} unvested shares across ${rsuGrants.filter(g => g.total_shares - g.vested_shares > 0).length} grant(s)` : 'All grants fully vested or no RSU data'}
           />
-          <LayoffItem
+          <LayoffRow
             status="amber"
             label="Healthcare gap: COBRA ~$1,800/mo"
             detail="Until marketplace enrollment or new employer coverage"
           />
         </div>
-      </Card>
+      </div>
 
       {/* AI Insights */}
       <div>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-1 h-6 rounded-full bg-accent shadow-glow-sm" />
-          <h3 className="section-title mb-0">AI Insights</h3>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-1 h-5 bg-accent rounded-full" />
+          <h2 className="text-lg font-semibold">AI Insights</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {insights.map((insight) => (
-            <InsightCard key={insight.id} insight={insight} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {insights.map((insight, i) => (
+            <InsightCard key={i} {...insight} />
           ))}
         </div>
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {[
-          { href: '/portfolio', label: 'View Portfolio', Icon: TrendingUp },
-          { href: '/monte-carlo', label: 'Run Monte Carlo', Icon: BarChart3 },
-          { href: '/fire-score', label: 'View FIRE Score', Icon: Flame },
-        ].map((link) => (
-          <Link key={link.href} href={link.href}>
-            <Card hover className="flex items-center gap-4 cursor-pointer group">
-              <link.Icon size={24} className="text-accent group-hover:scale-110 transition-transform duration-300" />
-              <span className="text-sm font-medium text-text-primary">{link.label} →</span>
-            </Card>
-          </Link>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <LinkCard icon={<LineChart className="w-5 h-5 text-accent" />} title="View Portfolio" href="/portfolio" />
+        <LinkCard icon={<BarChart3 className="w-5 h-5 text-accent" />} title="Run Monte Carlo" href="/monte-carlo" />
+        <LinkCard icon={<Flame className="w-5 h-5 text-accent" />} title="View FIRE Score" href="/fire-score" />
       </div>
 
       {/* Disclaimer */}
-      <div className="disclaimer">
+      <div className="text-center text-xs text-text-secondary pt-8 pb-4">
         FireRunway provides financial information for educational purposes only. Nothing on this platform constitutes personalized investment advice.
       </div>
     </div>

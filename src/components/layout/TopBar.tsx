@@ -11,7 +11,7 @@ import { useTheme } from '@/lib/ThemeProvider';
 import { useAuth } from '@/lib/AuthProvider';
 import { signOut } from '@/lib/firebase';
 import { useNetWorth } from '@/hooks/useNetWorth';
-import { Sun, Moon, Flame, LogOut } from 'lucide-react';
+import { Sun, Moon, Flame, RefreshCw, LogOut } from 'lucide-react';
 
 export default function TopBar() {
   const pathname = usePathname();
@@ -52,7 +52,6 @@ export default function TopBar() {
   };
 
   const handleSignOut = async () => {
-    // Clear all cached data
     try {
       localStorage.removeItem('user_data_cache');
       const keys = Object.keys(localStorage);
@@ -84,111 +83,87 @@ export default function TopBar() {
   const fiScore = Number.isFinite(rawFiScore) ? rawFiScore : 0;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b" style={{ background: 'var(--bg-primary)', borderColor: 'var(--overlay-separator)', backdropFilter: 'blur(20px)' }}>
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+    <header className="h-16 border-b border-border bg-bg-surface flex items-center justify-between px-6 shrink-0 sticky top-0 z-50">
+      {/* Logo */}
+      <Link href="/dashboard" className="flex items-center gap-2 w-64">
+        <Flame className="w-5 h-5 text-accent-amber" />
+        <span className="font-semibold tracking-tight">FireRunway</span>
+      </Link>
 
-      <div className="flex items-center justify-between h-full px-4 lg:px-6 max-w-[1400px] mx-auto relative">
-        {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <Flame size={24} className="text-accent-amber group-hover:drop-shadow-[0_0_8px_var(--accent-amber)] transition-all duration-300" />
-          <span className="font-display text-lg text-text-primary tracking-tight">FireRunway</span>
-        </Link>
-
-        {/* Center stats */}
-        <div className="hidden md:flex items-center gap-6">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-text-secondary font-medium">FI Score</span>
-            <span className="number-display text-lg font-bold text-accent glow-text">
+      {/* Center stats */}
+      <div className="hidden md:flex items-center gap-8">
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-text-secondary">FI Score</span>
+            <span className="font-semibold text-accent">
               <AnimatedNumber value={fiScore} />
             </span>
           </div>
-
-          <div className="w-px h-5" style={{ background: 'var(--overlay-border)' }} />
-
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-text-secondary font-medium">Net Worth</span>
-            <span className="number-display text-lg font-bold text-accent-green glow-text-green">
+          <div className="flex items-center gap-2">
+            <span className="text-text-secondary">Net Worth</span>
+            <span className="font-semibold text-accent-green font-mono">
               <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} />
             </span>
           </div>
-
-          <div className="w-px h-5" style={{ background: 'var(--overlay-border)' }} />
-
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            title="Refresh all data"
-            className="p-1.5 rounded-lg text-text-secondary hover:text-accent transition-all duration-300 disabled:opacity-50"
-            style={{ ['--tw-bg-opacity' as string]: 0 }}
+            className="text-text-secondary hover:text-text-primary transition-colors"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={refreshing ? 'animate-spin' : ''}
-            >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-            </svg>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
+      </div>
 
-        {/* Theme Toggle + User */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg text-text-secondary hover:text-accent transition-all duration-300"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {mounted ? (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />) : <Sun size={18} />}
-          </button>
+      {/* Right: Theme toggle + User */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggleTheme}
+          className="text-text-secondary hover:text-text-primary transition-colors"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {mounted ? (theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />) : <Sun className="w-5 h-5" />}
+        </button>
 
-          {/* User avatar / sign-out */}
-          {user ? (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent hover:border-accent transition-all"
-              >
-                {user.photoURL ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-accent flex items-center justify-center text-white text-sm font-bold">
-                    {(user.displayName || user.email || '?')[0].toUpperCase()}
-                  </div>
-                )}
-              </button>
-              {showUserMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-bg-card border border-border shadow-xl py-1 z-50">
-                  <div className="px-3 py-2 border-b border-border">
-                    <p className="text-sm font-medium text-text-primary truncate">{user.displayName}</p>
-                    <p className="text-xs text-text-secondary truncate">{user.email}</p>
-                  </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-red-400 hover:bg-bg-elevated transition-colors"
-                  >
-                    <LogOut size={14} />
-                    Sign out
-                  </button>
+        {user ? (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="w-8 h-8 rounded-full overflow-hidden bg-bg-elevated border border-border"
+            >
+              {user.photoURL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-text-secondary text-sm font-bold">
+                  {(user.displayName || user.email || '?')[0].toUpperCase()}
                 </div>
               )}
-            </div>
-          ) : (
-            <Link
-              href="/sign-in"
-              className="text-sm text-text-secondary hover:text-accent transition-colors"
-            >
-              Sign in
-            </Link>
-          )}
-        </div>
+            </button>
+            {showUserMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-bg-surface border border-border shadow-xl py-1 z-50">
+                <div className="px-3 py-2 border-b border-border">
+                  <p className="text-sm font-medium text-text-primary truncate">{user.displayName}</p>
+                  <p className="text-xs text-text-secondary truncate">{user.email}</p>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-accent-red hover:bg-bg-elevated transition-colors"
+                >
+                  <LogOut size={14} />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="text-sm text-text-secondary hover:text-accent transition-colors"
+          >
+            Sign in
+          </Link>
+        )}
       </div>
     </header>
   );

@@ -99,9 +99,7 @@ export default function LandingPage() {
             className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 leading-[1.1]"
           >
             How much longer do you <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/50">
-              need to keep working?
-            </span>
+            need to keep working?
           </motion.h1>
 
           <motion.p
