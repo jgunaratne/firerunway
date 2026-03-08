@@ -55,7 +55,18 @@ export async function POST(request: Request) {
     const totalPropertyValue = properties.reduce((s, p) => s + ((p.current_value as number) ?? 0), 0);
     const totalMortgage = properties.reduce((s, p) => s + ((p.mortgage_balance as number) ?? 0), 0);
     const realEstateEquity = totalPropertyValue - totalMortgage;
-    const netWorth = snapTradeTotal + realEstateEquity;
+
+    // Fetch RSU data for complete net worth
+    let rsuValue = 0;
+    try {
+      const { data: grants } = await supabase.from('rsu_grants').select('vested_shares, company_ticker').eq('user_id', userId);
+      if (grants && grants.length > 0) {
+        // Use a rough stock price estimate; the exact value comes from the live price on the client
+        rsuValue = grants.reduce((s: number, g: { vested_shares: number }) => s + (g.vested_shares ?? 0) * 190, 0);
+      }
+    } catch { /* rsu_grants table may not exist */ }
+
+    const netWorth = snapTradeTotal + rsuValue + realEstateEquity;
 
     if (netWorth === 0 && !userProfile) {
       return NextResponse.json({ analysis: 'No financial data available yet. Connect a brokerage account or add real estate properties first.' });
@@ -70,6 +81,7 @@ export async function POST(request: Request) {
 Net Worth Snapshot:
   Total Net Worth: $${netWorth.toLocaleString()}
   Investment / Brokerage Accounts: $${snapTradeTotal.toLocaleString()} (${netWorth > 0 ? ((snapTradeTotal / netWorth) * 100).toFixed(1) : 0}%)
+  RSU / Employer Stock: $${rsuValue.toLocaleString()} (${netWorth > 0 ? ((rsuValue / netWorth) * 100).toFixed(1) : 0}%)
   Real Estate Equity: $${realEstateEquity.toLocaleString()} (${netWorth > 0 ? ((realEstateEquity / netWorth) * 100).toFixed(1) : 0}%)
   Total Property Value: $${totalPropertyValue.toLocaleString()}
   Total Mortgage Debt: $${totalMortgage.toLocaleString()}

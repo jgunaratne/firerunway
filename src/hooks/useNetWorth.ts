@@ -6,7 +6,7 @@ import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useStockPrice } from '@/hooks/useStockPrice';
 
 export interface NetWorthBreakdown {
-  /** Total net worth = investments + realEstateEquity */
+  /** Total net worth = totalInvestment + rsuValue + realEstateEquity */
   totalNetWorth: number;
   /** SnapTrade portfolio value, or RSU estimate if no brokerage connected */
   investable: number;
@@ -30,9 +30,9 @@ export interface NetWorthBreakdown {
  * Single source of truth for Net Worth across all pages.
  *
  * Formula:
- *   investable = SnapTrade portfolio value (if connected), otherwise vested RSU value
+ *   investable = totalInvestment (SnapTrade) + rsuValue (vested equity)
  *   realEstateEquity = Σ(property value - mortgage balance)
- *   totalNetWorth = investable + realEstateEquity
+ *   totalNetWorth = totalInvestment + rsuValue + realEstateEquity
  */
 export function useNetWorth(): NetWorthBreakdown {
   const { rsuGrants, realEstate, isLoading: userLoading } = useUserData();
@@ -47,9 +47,9 @@ export function useNetWorth(): NetWorthBreakdown {
     const totalMortgageDebt = realEstate.reduce((sum, p) => sum + p.mortgage_balance, 0);
     const realEstateEquity = totalPropertyValue - totalMortgageDebt;
 
-    // Use real portfolio value from brokerages if available, otherwise fall back to RSU estimate
-    const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
-    const totalNetWorth = investable + realEstateEquity;
+    // All liquid/semi-liquid assets: brokerage portfolio + vested RSU equity
+    const investable = totalInvestment + rsuValue;
+    const totalNetWorth = totalInvestment + rsuValue + realEstateEquity;
 
     return {
       totalNetWorth,

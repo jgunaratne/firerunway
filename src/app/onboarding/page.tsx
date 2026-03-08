@@ -378,9 +378,10 @@ function YourNumbersStep({ onNext, profile, setProfile }: { onNext: () => void; 
 
 // First Look / Payoff Screen
 function FirstLookStep({ onFinish, data, saving }: { onFinish: () => void; data: OnboardingData; saving: boolean }) {
-  const investable = data.rsuGrants.reduce((sum, g) => sum + g.vestedShares * 190, 0); // rough estimate
+  const rsuValue = data.rsuGrants.reduce((sum, g) => sum + g.vestedShares * 190, 0); // rough estimate
   const realEstateEquity = data.realEstate.reduce((sum, p) => sum + (p.currentValue - p.mortgageBalance), 0);
-  const totalNetWorth = investable + realEstateEquity;
+  const investable = rsuValue; // during onboarding, brokerage data isn't loaded yet
+  const totalNetWorth = rsuValue + realEstateEquity;
   const runway = data.profile.annualSpend > 0 ? totalNetWorth / data.profile.annualSpend : 0;
 
   const fiScore = calculateFIScore({

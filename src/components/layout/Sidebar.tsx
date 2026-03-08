@@ -31,7 +31,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 border-r border-border bg-bg-surface flex-col overflow-y-auto shrink-0">
+      <aside className="hidden lg:flex w-64 border-r border-border bg-bg-surface flex-col overflow-y-auto shrink-0 sticky top-0 h-screen">
         <nav className="flex-1 py-6 px-3 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && !item.href.includes('?') && pathname?.startsWith(item.href));
