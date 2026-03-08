@@ -4,6 +4,7 @@ import { parsePdf } from '@/lib/gemini-pdf';
 import { validateExtraction } from '@/lib/validator';
 import { aggregatePortfolio } from '@/lib/aggregator';
 import { insertStatement, insertHoldings, getAllHoldings, insertSnapshot } from '@/lib/supabase-db';
+import { maskAccountNumber } from '@/lib/mask-utils';
 import { processingJobs } from '@/lib/job-tracker';
 import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 
@@ -22,7 +23,7 @@ async function processStatement(userId: string, jobId: string, filename: string,
     const statementId = await insertStatement(userId, {
       filename,
       broker: (extraction.broker as string) ?? 'unknown',
-      accountNumber: (extraction.accountNumber as string) ?? '',
+      accountNumber: maskAccountNumber((extraction.accountNumber as string) ?? ''),
       accountType: (extraction.accountType as string) ?? '',
       statementDate: (extraction.statementDate as string) ?? '',
       totalValue: (extraction.totalValue as number) ?? 0,

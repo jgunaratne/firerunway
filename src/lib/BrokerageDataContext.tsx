@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { maskAccountNumber } from '@/lib/mask-utils';
 
 const CACHE_KEY = 'snaptrade_brokerage_data';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -143,7 +144,7 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
       id: a.id || '',
       authorization_id: a.brokerage_authorization || '',
       name: a.name || '',
-      number: a.number || '',
+      number: maskAccountNumber(a.number || ''),
       institution_name: a.institution_name || a.name || 'Unknown',
       type: a.meta?.type || a.type || '',
       balance: a.balance?.total?.amount ?? 0,

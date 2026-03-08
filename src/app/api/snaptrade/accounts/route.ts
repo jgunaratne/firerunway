@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { listAccounts, deleteBrokerageAuthorization } from '@/lib/snaptrade';
 import { createServerClient } from '@/lib/supabase';
+import { maskAccountNumber } from '@/lib/mask-utils';
 
 /**
  * GET /api/snaptrade/accounts?uid=xxx
@@ -25,7 +26,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ accounts: [] });
     }
 
-    const accounts = await listAccounts(user.snaptrade_user_id, user.snaptrade_user_secret);
+    const rawAccounts = await listAccounts(user.snaptrade_user_id, user.snaptrade_user_secret);
+    // Mask account numbers before sending to client — full numbers never leave the server
+    const accounts = (rawAccounts || []).map((a: Record<string, unknown>) => ({
+      ...a,
+      number: maskAccountNumber(String(a.number || '')),
+    }));
     return NextResponse.json({ accounts });
   } catch (err) {
     console.error('SnapTrade accounts error:', err);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { maskAccountNumber } from '@/lib/mask-utils';
 
 const CACHE_KEY = 'snaptrade_brokerage_data';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -98,7 +99,7 @@ export function useBrokerageData(uid: string | null | undefined) {
     const brokerageAccounts: BrokerageAccount[] = rawAccounts.map((a: any) => ({
       id: a.id || '',
       name: a.name || '',
-      number: a.number || '',
+      number: maskAccountNumber(a.number || ''),
       institution_name: a.institution_name || a.name || 'Unknown',
       type: a.meta?.type || a.type || '',
       balance: a.balance?.total?.amount ?? 0,

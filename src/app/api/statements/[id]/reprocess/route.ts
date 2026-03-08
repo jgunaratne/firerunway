@@ -4,6 +4,7 @@ import { getStatement, getStatementPdf, deleteHoldingsForStatement, insertHoldin
 import { parsePdf } from '@/lib/gemini-pdf';
 import { validateExtraction } from '@/lib/validator';
 import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
+import { maskAccountNumber } from '@/lib/mask-utils';
 
 export async function POST(
   request: Request,
@@ -28,7 +29,7 @@ export async function POST(
 
   await updateStatementMetadata(userId, id, {
     broker: (extraction.broker as string) ?? 'unknown',
-    accountNumber: (extraction.accountNumber as string) ?? '',
+    accountNumber: maskAccountNumber((extraction.accountNumber as string) ?? ''),
     accountType: (extraction.accountType as string) ?? '',
     statementDate: (extraction.statementDate as string) ?? '',
     totalValue: (extraction.totalValue as number) ?? 0,
