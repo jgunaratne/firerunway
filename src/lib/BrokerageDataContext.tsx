@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { maskAccountNumber } from '@/lib/mask-utils';
+import {
+  isDemoMode,
+  DEMO_BROKERAGE_ACCOUNTS, DEMO_POSITIONS,
+  DEMO_PLAID_ACCOUNTS, DEMO_TOTAL_INVESTMENT,
+} from '@/lib/demo-data';
 
 const CACHE_KEY = 'snaptrade_brokerage_data';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -316,6 +321,16 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
   }, [refresh]);
 
   useEffect(() => {
+    // Demo mode — return hardcoded data immediately
+    if (isDemoMode()) {
+      setAccounts(DEMO_BROKERAGE_ACCOUNTS);
+      setPositions(DEMO_POSITIONS);
+      setTotalInvestment(DEMO_TOTAL_INVESTMENT);
+      setPlaidAccounts(DEMO_PLAID_ACCOUNTS);
+      setLoading(false);
+      return;
+    }
+
     if (!uid) {
       setLoading(false);
       return;

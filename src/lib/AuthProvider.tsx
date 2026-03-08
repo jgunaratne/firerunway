@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode} from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { auth, onAuthStateChanged, type User } from '@/lib/firebase';
+import { isDemoMode } from '@/lib/demo-data';
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // In demo mode, create a fake user and skip Firebase
+    if (isDemoMode()) {
+      setUser({ uid: 'demo', email: 'demo@firerunway.app', displayName: 'Demo User', photoURL: null } as unknown as User);
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -48,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, loading, pathname, router]);
 
   const getIdToken = async () => {
+    if (isDemoMode()) return 'demo-token';
     if (!user) return null;
     return user.getIdToken();
   };

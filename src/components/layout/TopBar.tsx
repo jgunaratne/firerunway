@@ -11,6 +11,7 @@ import { useTheme } from '@/lib/ThemeProvider';
 import { useAuth } from '@/lib/AuthProvider';
 import { signOut } from '@/lib/firebase';
 import { useNetWorth } from '@/hooks/useNetWorth';
+import { isDemoMode, disableDemoMode } from '@/lib/demo-data';
 import { Sun, Moon, Flame, RefreshCw, LogOut } from 'lucide-react';
 
 export default function TopBar() {
@@ -52,6 +53,7 @@ export default function TopBar() {
   };
 
   const handleSignOut = async () => {
+    const wasDemo = isDemoMode();
     try {
       localStorage.removeItem('user_data_cache');
       const keys = Object.keys(localStorage);
@@ -62,9 +64,17 @@ export default function TopBar() {
       }
     } catch { /* SSR guard */ }
     clearBrokerageCache();
+    disableDemoMode();
+    if (wasDemo) {
+      // Full reload to clear demo state from all providers
+      window.location.href = '/';
+      return;
+    }
     await signOut();
     router.push('/');
   };
+
+  const demoMode = typeof window !== 'undefined' && isDemoMode();
 
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
@@ -98,6 +108,9 @@ export default function TopBar() {
             <span className="font-semibold text-accent">
               <AnimatedNumber value={fiScore} />
             </span>
+            {demoMode && (
+              <span className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Demo</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-text-secondary">Net Worth</span>

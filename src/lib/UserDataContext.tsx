@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthProvider';
+import {
+  isDemoMode,
+  DEMO_PROFILE, DEMO_RSU_GRANTS, DEMO_REAL_ESTATE,
+  DEMO_ACCOUNTS, DEMO_NET_WORTH_HISTORY, DEMO_INCOME_TAX_RECORDS,
+} from '@/lib/demo-data';
 
 const CACHE_KEY = 'user_data_cache';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -160,6 +165,20 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchData = useCallback(async () => {
+    // Demo mode — return hardcoded data, no API call
+    if (isDemoMode()) {
+      setData({
+        profile: DEMO_PROFILE,
+        rsuGrants: DEMO_RSU_GRANTS,
+        realEstate: DEMO_REAL_ESTATE,
+        accounts: DEMO_ACCOUNTS,
+        netWorthHistory: DEMO_NET_WORTH_HISTORY,
+        incomeTaxRecords: DEMO_INCOME_TAX_RECORDS,
+        isLoading: false,
+      });
+      return;
+    }
+
     if (!uid) {
     // No user logged in — show empty state
       setData({

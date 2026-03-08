@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { signInWithGoogle } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthProvider';
+import { enableDemoMode } from '@/lib/demo-data';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -39,6 +40,12 @@ export default function LandingPage() {
       console.error('Sign-in failed:', error);
       setIsSigningIn(false);
     }
+  };
+
+  const handleDemo = () => {
+    enableDemoMode();
+    // Full reload so AuthProvider re-initializes with demo flag
+    window.location.href = '/dashboard';
   };
 
   // If already logged in, the screen will transition to the dashboard, skip the rendering
@@ -125,7 +132,10 @@ export default function LandingPage() {
               {isSigningIn ? 'Connecting...' : 'Continue with Google'}
               {!isSigningIn && <ArrowRight className="w-4 h-4" />}
             </button>
-            <button className="h-12 px-8 rounded-lg bg-bg-surface border border-border text-text-primary font-medium hover:bg-bg-elevated transition-colors flex items-center gap-2 w-full sm:w-auto justify-center">
+            <button
+              onClick={handleDemo}
+              className="h-12 px-8 rounded-lg bg-bg-surface border border-border text-text-primary font-medium hover:bg-bg-elevated transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
+            >
               View Demo
             </button>
           </motion.div>
