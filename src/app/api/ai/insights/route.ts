@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, MODEL } from '@/lib/gemini-pdf';
 
-// AI provider abstraction — Gemini/Vertex AI default, Claude fallback
+// AI provider — Gemini/Vertex AI
 async function callGemini(prompt: string, systemPrompt: string): Promise<string> {
   const client = getClient(); // Uses Vertex AI if GCP_PROJECT_ID is set, else GEMINI_API_KEY
   const response = await client.models.generateContent({
@@ -17,55 +17,6 @@ async function callGemini(prompt: string, systemPrompt: string): Promise<string>
   return response.text ?? '';
 }
 
-async function callClaude(prompt: string, systemPrompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Claude API error: ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text ?? '';
-}
-
-async function callAI(prompt: string, systemPrompt: string): Promise<string> {
-  const provider = process.env.DEFAULT_AI_PROVIDER ?? 'gemini';
-
-  try {
-    if (provider === 'gemini') {
-      return await callGemini(prompt, systemPrompt);
-    } else {
-      return await callClaude(prompt, systemPrompt);
-    }
-  } catch (primaryError) {
-    // Fallback to the other provider
-    console.warn(`Primary AI provider (${provider}) failed, trying fallback:`, primaryError);
-    try {
-      if (provider === 'gemini') {
-        return await callClaude(prompt, systemPrompt);
-      } else {
-        return await callGemini(prompt, systemPrompt);
-      }
-    } catch (fallbackError) {
-      console.error('Both AI providers failed:', fallbackError);
-      throw new Error('All AI providers unavailable');
-    }
-  }
-}
-
 const FINANCIAL_SYSTEM_PROMPT = `You are a financial analysis assistant for FireRunway, a financial independence dashboard for tech workers. 
 Provide concise, data-driven observations about the user's financial situation.
 Focus on actionable insights.
@@ -76,7 +27,7 @@ Return valid JSON when asked for structured output.`;
 // POST /api/ai/insights
 // Generate AI-powered financial insights
 export async function POST(request: NextRequest) {
-  const hasAnyKey = process.env.GCP_PROJECT_ID || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const hasAnyKey = process.env.GCP_PROJECT_ID || process.env.GEMINI_API_KEY;
 
   if (!hasAnyKey) {
     // Return mock insights when no AI provider is configured
@@ -136,7 +87,7 @@ Respond with ONLY the JSON array.`;
         prompt = `Analyze this financial data and provide a brief observation: ${JSON.stringify(financialData)}`;
     }
 
-    const response = await callAI(prompt, FINANCIAL_SYSTEM_PROMPT);
+    const response = await callGemini(prompt, FINANCIAL_SYSTEM_PROMPT);
 
     // Try to parse as JSON, fallback to text
     let parsed;
@@ -148,7 +99,7 @@ Respond with ONLY the JSON array.`;
 
     return NextResponse.json({
       result: parsed,
-      source: process.env.DEFAULT_AI_PROVIDER ?? 'gemini',
+      source: 'gemini',
     });
   } catch (error) {
     console.error('AI insights error:', error);

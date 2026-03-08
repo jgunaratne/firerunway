@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         .select('current_value, mortgage_balance')
         .eq('user_id', user.id);
 
-      // TODO: Fetch RSU grants and current stock prices from Polygon.io
+      // TODO: Fetch RSU grants and current stock prices from Massive.com
       //       to calculate RSU value for net worth snapshot
       // Calculate totals
       const investmentValue = accounts
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         ?.reduce((sum, p) => sum + (p.mortgage_balance || 0), 0) ?? 0;
 
       // RSU value would need current stock price — simplified for now
-      const rsuValue = 0; // TODO: fetch from Polygon.io
+      const rsuValue = 0; // TODO: fetch from Massive.com stock API
 
       const totalNetWorth = investmentValue + retirementValue + realEstateEquity + rsuValue;
 

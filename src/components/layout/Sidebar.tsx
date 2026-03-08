@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, TrendingUp, PieChart, Home, Briefcase,
-  Flame, BarChart3, FileText, DollarSign, Receipt,
+  Flame, BarChart3, FileText, DollarSign,
   ClipboardList, Link as LinkIcon, MoreHorizontal,
   type LucideIcon,
 } from 'lucide-react';
@@ -19,7 +19,6 @@ const navItems: { href: string; icon: LucideIcon; label: string }[] = [
   { href: '/monte-carlo', icon: BarChart3, label: 'Monte Carlo' },
   { href: '/statements', icon: FileText, label: 'Statements' },
   { href: '/income-tax', icon: DollarSign, label: 'Income & Tax' },
-  { href: '/expenses', icon: Receipt, label: 'Expenses' },
   { href: '/spending-plan', icon: ClipboardList, label: 'Spending Plan' },
   { href: '/portfolio?tab=accounts', icon: LinkIcon, label: 'Accounts' },
 ];

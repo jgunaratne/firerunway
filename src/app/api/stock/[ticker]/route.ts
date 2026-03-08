@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/stock/[ticker]
-// Fetches current stock price from Polygon.io
+// Fetches current stock price from Massive.com (formerly Polygon.io)
 export async function GET(
   request: NextRequest,
   { params }: { params: { ticker: string } }
@@ -11,7 +11,7 @@ export async function GET(
   const apiKey = process.env.POLYGON_API_KEY;
 
   if (!apiKey) {
-    // Return mock price when Polygon is not configured
+    // Return mock price when Massive.com API key is not configured
     const mockPrices: Record<string, number> = {
       AMZN: 190.50,
       AAPL: 178.25,
@@ -29,14 +29,14 @@ export async function GET(
   }
 
   try {
-    // Massive (formerly Polygon.io) previous day close
+    // Massive.com (formerly Polygon.io) previous day close
     const res = await fetch(
       `https://api.massive.com/v2/aggs/ticker/${ticker.toUpperCase()}/prev?adjusted=true&apiKey=${apiKey}`,
       { next: { revalidate: 300 } } // Cache for 5 minutes
     );
 
     if (!res.ok) {
-      throw new Error(`Polygon API error: ${res.status}`);
+      throw new Error(`Massive.com API error: ${res.status}`);
     }
 
     const data = await res.json();
@@ -56,11 +56,11 @@ export async function GET(
       high: result.h,
       low: result.l,
       volume: result.v,
-      source: 'polygon',
+      source: 'massive',
       timestamp: new Date(result.t).toISOString(),
     });
   } catch (error) {
-    console.error('Polygon API error:', error);
+    console.error('Massive.com API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch stock price' },
       { status: 500 }

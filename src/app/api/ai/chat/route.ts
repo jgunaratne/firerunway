@@ -143,7 +143,7 @@ interface ChatMessage {
 }
 
 export async function POST(request: NextRequest) {
-  const hasAnyKey = process.env.GCP_PROJECT_ID || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const hasAnyKey = process.env.GCP_PROJECT_ID || process.env.GEMINI_API_KEY;
 
   if (!hasAnyKey) {
     return NextResponse.json({
@@ -197,33 +197,8 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ reply: response.text ?? '' });
     } catch (geminiError) {
-      console.warn('Gemini chat failed, trying Claude fallback:', geminiError);
-
-      // Claude fallback
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) throw geminiError;
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2048,
-          system: systemInstruction,
-          messages: messages.map(m => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            content: m.content,
-          })),
-        }),
-      });
-
-      if (!res.ok) throw new Error(`Claude API error: ${res.status}`);
-      const data = await res.json();
-      return NextResponse.json({ reply: data.content?.[0]?.text ?? '' });
+      console.error('Gemini chat error:', geminiError);
+      throw geminiError;
     }
   } catch (error) {
     console.error('AI chat error:', error);
