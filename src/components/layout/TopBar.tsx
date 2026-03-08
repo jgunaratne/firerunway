@@ -52,6 +52,17 @@ export default function TopBar() {
   };
 
   const handleSignOut = async () => {
+    // Clear all cached data
+    try {
+      localStorage.removeItem('user_data_cache');
+      const keys = Object.keys(localStorage);
+      for (const key of keys) {
+        if (key.startsWith('stock_price_cache_') || key.startsWith('brokerage_')) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch { /* SSR guard */ }
+    clearBrokerageCache();
     await signOut();
     router.push('/sign-in');
   };
