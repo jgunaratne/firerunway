@@ -49,7 +49,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function StatementsPage() {
-  const { clerkId } = useUserData();
+  const { uid } = useUserData();
   const [statements, setStatements] = useState<Statement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function StatementsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/statements?clerkId=${clerkId}`);
+      const res = await fetch(`/api/statements?uid=${uid}`);
       const data = await res.json();
       setStatements(data.statements ?? []);
     } catch (err) {
@@ -66,14 +66,14 @@ export default function StatementsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [uid]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this statement? Holdings will also be removed.')) return;
     try {
-      await fetch(`/api/statements/${id}?clerkId=${clerkId}`, { method: 'DELETE' });
+      await fetch(`/api/statements/${id}?uid=${uid}`, { method: 'DELETE' });
       setStatements((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
@@ -82,7 +82,7 @@ export default function StatementsPage() {
 
   const handleReprocess = async (id: string) => {
     try {
-      await fetch(`/api/statements/${id}/reprocess?clerkId=${clerkId}`, { method: 'POST' });
+      await fetch(`/api/statements/${id}/reprocess?uid=${uid}`, { method: 'POST' });
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Reprocess failed');

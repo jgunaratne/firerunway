@@ -223,7 +223,7 @@ function getScoreLabel(score: number) {
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function FireScorePage() {
-  const { profile, rsuGrants, realEstate, incomeTaxRecords, isLoading, clerkId: userId, refresh } = useUserData();
+  const { profile, rsuGrants, realEstate, incomeTaxRecords, isLoading, uid: userId, refresh } = useUserData();
   const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
   const [saving, setSaving] = useState(false);
 
@@ -286,7 +286,7 @@ export default function FireScorePage() {
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: userId, [field]: value }),
+        body: JSON.stringify({ uid: userId, [field]: value }),
       });
       if (res.ok) {
         await refresh();

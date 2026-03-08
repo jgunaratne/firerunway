@@ -6,10 +6,10 @@ import { createServerClient } from '@/lib/supabase';
 // Save a Monte Carlo scenario to Supabase
 export async function POST(request: NextRequest) {
   try {
-    const { clerkId, name, params, resultSummary } = await request.json();
+    const { uid, name, params, resultSummary } = await request.json();
 
-    if (!clerkId || !name) {
-      return NextResponse.json({ error: 'clerkId and name are required' }, { status: 400 });
+    if (!uid || !name) {
+      return NextResponse.json({ error: 'uid and name are required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user) {
@@ -45,13 +45,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/scenarios?clerkId=xxx
+// GET /api/scenarios?uid=xxx
 // List all saved scenarios for a user
 export async function GET(request: NextRequest) {
-  const clerkId = request.nextUrl.searchParams.get('clerkId');
+  const uid = request.nextUrl.searchParams.get('uid');
 
-  if (!clerkId) {
-    return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
+  if (!uid) {
+    return NextResponse.json({ error: 'uid is required' }, { status: 400 });
   }
 
   try {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user) {

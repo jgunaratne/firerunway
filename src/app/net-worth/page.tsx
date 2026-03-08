@@ -10,8 +10,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { TrendingUp, Home, Briefcase } from 'lucide-react';
-import { useBrokerageData } from '@/lib/BrokerageDataContext';
-import { useStockPrice } from '@/hooks/useStockPrice';
+import { useNetWorth } from '@/hooks/useNetWorth';
 import Link from 'next/link';
 
 
@@ -38,20 +37,18 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 }
 
 export default function NetWorthPage() {
-  const { rsuGrants, realEstate, netWorthHistory, isLoading, clerkId: userId } = useUserData();
-  const { totalInvestment, loading: holdingsLoading } = useBrokerageData();
+  const { netWorthHistory, isLoading, uid: userId } = useUserData();
   const [timeRange, setTimeRange] = useState<string>('All');
 
-  // Derive totals from context + SnapTrade
-  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
-  const stockPrice = useStockPrice(ticker);
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
-  const totalPropertyValue = realEstate.reduce((sum, p) => sum + p.current_value, 0);
-  const totalMortgage = realEstate.reduce((sum, p) => sum + p.mortgage_balance, 0);
-  const realEstateEquity = totalPropertyValue - totalMortgage;
-  const investmentAccounts = totalInvestment; // Real portfolio value from SnapTrade
-  const totalAssets = rsuValue + totalPropertyValue + investmentAccounts;
-  const netWorth = totalAssets - totalMortgage;
+  const {
+    totalNetWorth: netWorth,
+    investable: investmentAccounts,
+    rsuValue,
+    totalPropertyValue,
+    totalMortgageDebt: totalMortgage,
+    realEstateEquity,
+    isLoading: nwLoading,
+  } = useNetWorth();
 
   // Use real history if available, otherwise show current value as single data point
   const historyData = netWorthHistory.length > 0
@@ -61,12 +58,12 @@ export default function NetWorthPage() {
   const chartData = getFilteredHistory(timeRange, historyData);
 
   const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
-    const res = await fetch(`/api/net-worth/analyze?clerkId=${userId}`, { method: 'POST' });
+    const res = await fetch(`/api/net-worth/analyze?uid=${userId}`, { method: 'POST' });
     if (!res.ok) throw new Error('Analysis failed');
     return res.json();
   }, [userId]);
 
-  if (isLoading || holdingsLoading) return (
+  if (isLoading || nwLoading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-4" />
@@ -76,11 +73,12 @@ export default function NetWorthPage() {
   );
 
 
+  const totalAssets = investmentAccounts + rsuValue + totalPropertyValue;
   const assetClasses = [
     { key: 'investmentValue', label: 'Investment Accounts', value: investmentAccounts, color: '#6366f1', pct: totalAssets > 0 ? Math.round(investmentAccounts / totalAssets * 100 * 10) / 10 : 0, icon: <TrendingUp size={16} />, href: '/portfolio' },
     { key: 'realEstateEquity', label: 'Real Estate Equity', value: realEstateEquity, color: '#10b981', pct: totalAssets > 0 ? Math.round(realEstateEquity / totalAssets * 100 * 10) / 10 : 0, icon: <Home size={16} />, href: '/real-estate' },
     { key: 'rsuValue', label: 'RSU Value (vested)', value: rsuValue, color: '#f59e0b', pct: totalAssets > 0 ? Math.round(rsuValue / totalAssets * 100 * 10) / 10 : 0, icon: <Briefcase size={16} />, href: '/equity' },
-  ].filter(a => a.value > 0 || a.key === 'rsuValue'); // Only show non-zero or RSU
+  ].filter(a => a.value > 0 || a.key === 'rsuValue');
 
   // Calculate change from first to last data point
   const firstValue = chartData[0]?.totalNetWorth || 0;

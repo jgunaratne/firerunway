@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
 import "./globals.css";
 import TopBar from "@/components/layout/TopBar";
 import Sidebar from "@/components/layout/Sidebar";
@@ -17,15 +15,18 @@ export const metadata: Metadata = {
   },
 };
 
-// Force dynamic rendering so pages aren't prerendered during build
-// (Clerk requires publishableKey at render time)
 export const dynamic = 'force-dynamic';
 import { UserDataProvider } from "@/lib/UserDataContext";
 import { PageContextProvider } from "@/lib/PageContextProvider";
 import BrokerageWrapper from "@/components/layout/BrokerageWrapper";
 import { ThemeProvider } from "@/lib/ThemeProvider";
+import { AuthProvider } from "@/lib/AuthProvider";
 
-function AppShell({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -37,54 +38,28 @@ function AppShell({ children }: { children: React.ReactNode }) {
         />
       </head>
       <body className="antialiased">
-        <ThemeProvider>
-          <UserDataProvider>
-            <BrokerageWrapper>
-              <PageContextProvider>
-                <UploadProvider>
-                  <TopBar />
-                  <Sidebar />
-                  <main className="pt-14 lg:pl-56 min-h-screen pb-20 lg:pb-0">
-                    <div className="max-w-[1400px] mx-auto p-4 lg:p-6">
-                      {children}
-                    </div>
-                  </main>
-                  <UploadNotification />
-                  <ChatRail />
-                </UploadProvider>
-              </PageContextProvider>
-            </BrokerageWrapper>
-          </UserDataProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <UserDataProvider>
+              <BrokerageWrapper>
+                <PageContextProvider>
+                  <UploadProvider>
+                    <TopBar />
+                    <Sidebar />
+                    <main className="pt-14 lg:pl-56 min-h-screen pb-20 lg:pb-0">
+                      <div className="max-w-[1400px] mx-auto p-4 lg:p-6">
+                        {children}
+                      </div>
+                    </main>
+                    <UploadNotification />
+                    <ChatRail />
+                  </UploadProvider>
+                </PageContextProvider>
+              </BrokerageWrapper>
+            </UserDataProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
-  );
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  // If Clerk is not configured, render without auth (dev/demo mode)
-  if (!clerkKey) {
-    return <AppShell>{children}</AppShell>;
-  }
-
-  // Clerk uses dark base theme; light mode users still see dark Clerk modals
-  // This is acceptable since Clerk modals are overlays
-  return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: '#6366f1',
-        },
-      }}
-    >
-      <AppShell>{children}</AppShell>
-    </ClerkProvider>
   );
 }

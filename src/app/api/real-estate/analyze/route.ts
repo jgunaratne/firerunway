@@ -2,13 +2,13 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { saveAnalysis, getAnalysis } from '@/lib/supabase-db';
 import { analyzeWithGemini } from '@/lib/gemini-pdf';
-import { extractClerkId, resolveUserId } from '@/lib/auth-helpers';
+import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 import { createServerClient } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
     const supabase = createServerClient();
@@ -78,8 +78,8 @@ Properties:${propertyLines.join('\n')}`;
 
 export async function GET(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
     const result = await getAnalysis(userId, 'real_estate');

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { saveAnalysis, getAnalysis } from '@/lib/supabase-db';
 import { analyzeWithGemini } from '@/lib/gemini-pdf';
-import { extractClerkId, resolveUserId } from '@/lib/auth-helpers';
+import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 import { createServerClient } from '@/lib/supabase';
 import { getAllHoldings as snapGetAllHoldings } from '@/lib/snaptrade';
 
@@ -18,8 +18,8 @@ interface Position {
 
 export async function POST(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
     const supabase = createServerClient();
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (userRow?.snaptrade_user_secret) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const holdings: any[] = await snapGetAllHoldings(clerkId ?? '', userRow.snaptrade_user_secret as string);
+        const holdings: any[] = await snapGetAllHoldings(userRow.snaptrade_user_id ?? '', userRow.snaptrade_user_secret as string);
         for (const account of holdings) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const acctObj = account.account as Record<string, any> | undefined;
@@ -127,8 +127,8 @@ ${dataSummary}`;
 
 export async function GET(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
     const result = await getAnalysis(userId, 'portfolio');

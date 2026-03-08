@@ -6,10 +6,10 @@ import { createServerClient } from '@/lib/supabase';
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clerkId, ...fields } = body;
+    const { uid, ...fields } = body;
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
+    if (!uid) {
+      return NextResponse.json({ error: 'uid is required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (userError || !user) {

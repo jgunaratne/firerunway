@@ -68,7 +68,7 @@ function formatCategoryName(category: string | null) {
 }
 
 export default function ExpensesPage() {
-  const { clerkId } = useUserData();
+  const { uid } = useUserData();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [months, setMonths] = useState(3);
@@ -76,17 +76,17 @@ export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!clerkId) {
+    if (!uid) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    fetch(`/api/plaid/transactions?clerkId=${clerkId}&months=${months}`)
+    fetch(`/api/plaid/transactions?uid=${uid}&months=${months}`)
       .then(r => r.json())
       .then(d => setTransactions(d.transactions || []))
       .catch(() => setTransactions([]))
       .finally(() => setLoading(false));
-  }, [clerkId, months]);
+  }, [uid, months]);
 
   // Filter out income / transfers for expense analysis
   const expenses = useMemo(

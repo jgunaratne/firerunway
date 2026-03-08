@@ -2,26 +2,67 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 
-// GET /api/user/data?clerkId=xxx
+// GET /api/user/data?uid=xxx
 // Fetches all user financial data from Supabase for dashboard rendering
 export async function GET(request: NextRequest) {
-  const clerkId = request.nextUrl.searchParams.get('clerkId');
+  const uid = request.nextUrl.searchParams.get('uid');
 
-  if (!clerkId) {
-    return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
+  if (!uid) {
+    return NextResponse.json({ error: 'uid is required' }, { status: 400 });
   }
 
   try {
     const supabase = createServerClient();
+    const email = request.nextUrl.searchParams.get('email');
 
-    // Get user
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', clerkId)
-      .single();
+    let user: { id: string } | null = null;
 
-    if (userError || !user) {
+    // Try 1: Look up by firebase_uid
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('firebase_uid', uid)
+        .single();
+      if (data) user = data;
+    } catch {
+      // Column may not exist yet — that's fine
+    }
+
+    // Try 2: Look up by email (migration from Clerk)
+    if (!user && email) {
+      const { data: emailUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (emailUser) {
+        user = emailUser;
+        // Try to auto-link firebase_uid (non-fatal if column doesn't exist)
+        try {
+          await supabase
+            .from('users')
+            .update({ firebase_uid: uid })
+            .eq('id', emailUser.id);
+          console.log(`[Auth] Auto-linked firebase_uid to user ${emailUser.id}`);
+        } catch {
+          console.log(`[Auth] Could not auto-link firebase_uid (column may not exist)`);
+        }
+      }
+    }
+
+    // Try 3: Fall back to snaptrade_user_id column (treats uid as snaptrade_user_id)
+    if (!user) {
+      const { data: legacyUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('snaptrade_user_id', uid)
+        .single();
+      if (legacyUser) user = legacyUser;
+    }
+
+    if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 

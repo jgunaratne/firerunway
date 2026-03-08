@@ -10,9 +10,9 @@ import { createServerClient } from '@/lib/supabase';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { clerkId } = await req.json();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId required' }, { status: 400 });
+    const { uid } = await req.json();
+    if (!uid) {
+      return NextResponse.json({ error: 'uid required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
     const { data: existing } = await supabase
       .from('users')
       .select('snaptrade_user_secret')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (existing?.snaptrade_user_secret) {
       return NextResponse.json({
-        userId: clerkId,
+        userId: uid,
         userSecret: existing.snaptrade_user_secret,
         alreadyRegistered: true,
       });
@@ -35,15 +35,15 @@ export async function POST(req: NextRequest) {
     // Try to register with SnapTrade
     let userSecret: string;
     try {
-      const result = await registerUser(clerkId);
+      const result = await registerUser(uid);
       userSecret = result.userSecret as string;
     } catch (regErr: unknown) {
       // If user already exists on SnapTrade (code 1010), delete and re-register
       const errBody = (regErr as { responseBody?: { code?: string } })?.responseBody;
       if (errBody?.code === '1010') {
         console.log('User already exists on SnapTrade, deleting and re-registering...');
-        await deleteUser(clerkId);
-        const result = await registerUser(clerkId);
+        await deleteUser(uid);
+        const result = await registerUser(uid);
         userSecret = result.userSecret as string;
       } else {
         throw regErr;
@@ -54,15 +54,15 @@ export async function POST(req: NextRequest) {
     const { error: upsertError } = await supabase
       .from('users')
       .upsert(
-        { clerk_id: clerkId, snaptrade_user_secret: userSecret },
-        { onConflict: 'clerk_id' }
+        { firebase_uid: uid, snaptrade_user_secret: userSecret },
+        { onConflict: 'firebase_uid' }
       );
 
     if (upsertError) {
       console.error('Failed to store SnapTrade secret in Supabase:', upsertError);
     }
 
-    return NextResponse.json({ userId: clerkId, userSecret });
+    return NextResponse.json({ userId: uid, userSecret });
   } catch (err: unknown) {
     console.error('SnapTrade register error:', err);
     const message = err instanceof Error ? err.message : 'Unknown error';

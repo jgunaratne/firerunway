@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@/lib/AuthProvider';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { Flame, TrendingUp, Landmark, PiggyBank, CheckCircle2 } from 'lucide-react';
@@ -448,7 +448,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
-  const { user } = useUser();
+  const { user } = useAuth();
 
   // Form state
   const [profile, setProfile] = useState<UserProfile>({
@@ -482,8 +482,8 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clerkId: user?.id,
-          email: user?.primaryEmailAddress?.emailAddress,
+          uid: user?.uid,
+          email: user?.email,
           profile,
           rsuGrants: validGrants,
           realEstate: validProperties,

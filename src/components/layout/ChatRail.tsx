@@ -215,11 +215,11 @@ export default function ChatRail() {
 
   return (
     <>
-      {/* Toggle Button */}
+      {/* Toggle Button — hidden when panel is open (header X button closes it) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed right-4 bottom-20 lg:bottom-6 z-[60] w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${isOpen
-          ? 'bg-accent/20 border border-accent/40 text-accent rotate-0'
+          ? 'pointer-events-none opacity-0'
           : 'bg-bg-elevated border border-border text-text-secondary hover:text-accent hover:border-accent/40'
           }`}
         title="Chat with AI"

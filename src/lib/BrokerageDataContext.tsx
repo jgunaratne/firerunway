@@ -95,7 +95,7 @@ export const clearHoldingsCache = clearBrokerageCache;
 
 // ─── Provider ───────────────────────────────────────────────────────
 
-export function BrokerageDataProvider({ clerkId, children }: { clerkId: string | null; children: ReactNode }) {
+export function BrokerageDataProvider({ uid, children }: { uid: string | null; children: ReactNode }) {
   const [accounts, setAccounts] = useState<BrokerageAccount[]>([]);
   const [positions, setPositions] = useState<BrokeragePosition[]>([]);
   const [totalInvestment, setTotalInvestment] = useState(0);
@@ -127,9 +127,9 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
   const fetchAndCache = useCallback(async (userId: string): Promise<CachedBrokerageData> => {
     // Fetch accounts, holdings, and Plaid accounts in parallel
     const [acctRes, holdRes, plaidRes] = await Promise.all([
-      fetch(`/api/snaptrade/accounts?clerkId=${userId}`),
-      fetch(`/api/snaptrade/holdings?clerkId=${userId}`),
-      fetch(`/api/plaid/accounts?clerkId=${userId}`).catch(() => null),
+      fetch(`/api/snaptrade/accounts?uid=${userId}`),
+      fetch(`/api/snaptrade/holdings?uid=${userId}`),
+      fetch(`/api/plaid/accounts?uid=${userId}`).catch(() => null),
     ]);
 
     const acctData = await acctRes.json();
@@ -297,17 +297,17 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!clerkId) return;
+    if (!uid) return;
     setLoading(true);
     try {
-      const cached = await fetchAndCache(clerkId);
+      const cached = await fetchAndCache(uid);
       applyCache(cached);
     } catch {
       console.error('Failed to refresh brokerage data');
     } finally {
       setLoading(false);
     }
-  }, [clerkId, fetchAndCache, applyCache]);
+  }, [uid, fetchAndCache, applyCache]);
 
   const forceRefresh = useCallback(async () => {
     clearBrokerageCache();
@@ -315,7 +315,7 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
   }, [refresh]);
 
   useEffect(() => {
-    if (!clerkId) {
+    if (!uid) {
       setLoading(false);
       return;
     }
@@ -331,7 +331,7 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
     // Cache miss — fetch fresh
     (async () => {
       try {
-        const fresh = await fetchAndCache(clerkId);
+        const fresh = await fetchAndCache(uid);
         applyCache(fresh);
       } catch {
         console.error('Failed to fetch brokerage data');
@@ -339,7 +339,7 @@ export function BrokerageDataProvider({ clerkId, children }: { clerkId: string |
         setLoading(false);
       }
     })();
-  }, [clerkId, loadFromCache, fetchAndCache, applyCache]);
+  }, [uid, loadFromCache, fetchAndCache, applyCache]);
 
   return (
     <BrokerageDataContext.Provider value={{ accounts, positions, totalInvestment, plaidAccounts, loading, refresh, forceRefresh }}>

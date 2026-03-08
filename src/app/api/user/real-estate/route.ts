@@ -6,17 +6,17 @@ import { createServerClient } from '@/lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clerkId, ...property } = body;
+    const { uid, ...property } = body;
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
+    if (!uid) {
+      return NextResponse.json({ error: 'uid is required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (userError || !user) {
@@ -63,17 +63,17 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clerkId, propertyId, ...fields } = body;
+    const { uid, propertyId, ...fields } = body;
 
-    if (!clerkId || !propertyId) {
-      return NextResponse.json({ error: 'clerkId and propertyId are required' }, { status: 400 });
+    if (!uid || !propertyId) {
+      return NextResponse.json({ error: 'uid and propertyId are required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (userError || !user) {
@@ -117,13 +117,13 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE /api/user/real-estate?clerkId=xxx&propertyId=xxx
+// DELETE /api/user/real-estate?uid=xxx&propertyId=xxx
 export async function DELETE(request: NextRequest) {
-  const clerkId = request.nextUrl.searchParams.get('clerkId');
+  const uid = request.nextUrl.searchParams.get('uid');
   const propertyId = request.nextUrl.searchParams.get('propertyId');
 
-  if (!clerkId || !propertyId) {
-    return NextResponse.json({ error: 'clerkId and propertyId required' }, { status: 400 });
+  if (!uid || !propertyId) {
+    return NextResponse.json({ error: 'uid and propertyId required' }, { status: 400 });
   }
 
   try {
@@ -131,7 +131,7 @@ export async function DELETE(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (userError || !user) {

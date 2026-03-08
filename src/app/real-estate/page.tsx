@@ -383,7 +383,7 @@ function PropertyFormPanel({
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function RealEstatePage() {
-  const { realEstate, isLoading, refresh, clerkId: userId } = useUserData();
+  const { realEstate, isLoading, refresh, uid: userId } = useUserData();
   const { totalInvestment } = useBrokerageData();
 
   const [formMode, setFormMode] = useState<'hidden' | 'add' | 'edit'>('hidden');
@@ -393,7 +393,7 @@ export default function RealEstatePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
-    const res = await fetch(`/api/real-estate/analyze?clerkId=${userId}`, { method: 'POST' });
+    const res = await fetch(`/api/real-estate/analyze?uid=${userId}`, { method: 'POST' });
     if (!res.ok) throw new Error('Analysis failed');
     return res.json();
   }, [userId]);
@@ -436,7 +436,7 @@ export default function RealEstatePage() {
     setSaveError(null);
 
     const payload = {
-      clerkId: userId,
+      uid: userId,
       address: form.address.trim(),
       property_type: form.property_type || 'primary',
       purchase_price: form.purchase_price ? Number(form.purchase_price) : null,
@@ -488,7 +488,7 @@ export default function RealEstatePage() {
   const handleDelete = async (propertyId: string) => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/user/real-estate?clerkId=${userId}&propertyId=${propertyId}`, {
+      const res = await fetch(`/api/user/real-estate?uid=${userId}&propertyId=${propertyId}`, {
         method: 'DELETE',
       });
       if (res.ok) {

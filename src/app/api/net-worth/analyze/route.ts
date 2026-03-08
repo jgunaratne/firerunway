@@ -2,14 +2,14 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { saveAnalysis, getAnalysis } from '@/lib/supabase-db';
 import { analyzeWithGemini } from '@/lib/gemini-pdf';
-import { extractClerkId, resolveUserId } from '@/lib/auth-helpers';
+import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 import { createServerClient } from '@/lib/supabase';
 import { listAccounts as snapListAccounts } from '@/lib/snaptrade';
 
 export async function POST(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
     const supabase = createServerClient();
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (secretRow?.snaptrade_user_secret) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const accounts: any[] = await snapListAccounts(clerkId!, secretRow.snaptrade_user_secret as string);
+        const accounts: any[] = await snapListAccounts(uid!, secretRow.snaptrade_user_secret as string);
         snapAccounts = accounts.map(a => ({
           name: a.name || '',
           institution: a.institution_name || '',
@@ -112,8 +112,8 @@ ${dataSummary}`;
 
 export async function GET(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
     const result = await getAnalysis(userId, 'net_worth');

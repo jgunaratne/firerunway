@@ -98,7 +98,7 @@ function SectionHeader({ title, pct, targetRange, actual }: {
 }
 
 export default function SpendingPlanPage() {
-  const { profile, rsuGrants, realEstate, clerkId, incomeTaxRecords } = useUserData();
+  const { profile, rsuGrants, realEstate, uid, incomeTaxRecords } = useUserData();
   const { totalInvestment, plaidAccounts } = useBrokerageData();
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -107,13 +107,13 @@ export default function SpendingPlanPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!clerkId) { setLoading(false); return; }
-    fetch(`/api/plaid/transactions?clerkId=${clerkId}&months=1`)
+    if (!uid) { setLoading(false); return; }
+    fetch(`/api/plaid/transactions?uid=${uid}&months=1`)
       .then(r => r.json())
       .then(d => setTransactions(d.transactions || []))
       .catch(() => setTransactions([]))
       .finally(() => setLoading(false));
-  }, [clerkId]);
+  }, [uid]);
 
   // === Upload State (persisted to localStorage) ===
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -4,23 +4,23 @@ import { getTransactions } from '@/lib/plaid';
 import { createServerClient } from '@/lib/supabase';
 
 /**
- * GET /api/plaid/transactions?clerkId=xxx&months=3
+ * GET /api/plaid/transactions?uid=xxx&months=3
  * Fetch transactions from all Plaid items for the given time range.
  */
 export async function GET(req: NextRequest) {
   try {
-    const clerkId = req.nextUrl.searchParams.get('clerkId');
+    const uid = req.nextUrl.searchParams.get('uid');
     const months = parseInt(req.nextUrl.searchParams.get('months') || '3', 10);
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId required' }, { status: 400 });
+    if (!uid) {
+      return NextResponse.json({ error: 'uid required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user?.id) {

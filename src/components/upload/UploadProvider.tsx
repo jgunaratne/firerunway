@@ -34,7 +34,7 @@ export function useUpload() {
 }
 
 export function UploadProvider({ children }: { children: ReactNode }) {
-  const { clerkId } = useUserData();
+  const { uid } = useUserData();
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [uploading, setUploading] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -43,7 +43,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
     if (pollingRef.current) return;
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/statements/jobs?clerkId=${clerkId}`);
+        const res = await fetch(`/api/statements/jobs?uid=${uid}`);
         const data = await res.json();
         setJobs(data.jobs);
 
@@ -59,7 +59,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
         // Silently fail polling
       }
     }, 2000);
-  }, []);
+  }, [uid]);
 
   useEffect(() => {
     return () => {
@@ -73,7 +73,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       const formData = new FormData();
       files.forEach((f) => formData.append('files', f));
 
-      const res = await fetch(`/api/statements/upload?clerkId=${clerkId}`, {
+      const res = await fetch(`/api/statements/upload?uid=${uid}`, {
         method: 'POST',
         body: formData,
       });
@@ -90,7 +90,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       setJobs([{ filename: 'Upload', status: 'error', error: err instanceof Error ? err.message : 'Unknown error' }]);
       setUploading(false);
     }
-  }, [startPolling]);
+  }, [uid, startPolling]);
 
   const dismiss = useCallback(async (jobId: string) => {
     setJobs((prev) => prev.filter((j) => j.jobId !== jobId));

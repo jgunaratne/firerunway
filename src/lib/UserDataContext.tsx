@@ -1,10 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useUser } from '@clerk/nextjs';
-
-// Resolved at build time — determines if Clerk hooks are called
-const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+import { useAuth } from '@/lib/AuthProvider';
 
 const CACHE_KEY = 'user_data_cache';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -96,7 +93,7 @@ interface UserData {
   accounts: AccountSnapshot[];
   netWorthHistory: NetWorthEntry[];
   incomeTaxRecords: IncomeTaxRecord[];
-  clerkId: string | null;
+  uid: string | null;
   isLoading: boolean;
   refresh: () => Promise<void>;
 }
@@ -110,7 +107,7 @@ const UserDataContext = createContext<UserData>({
   accounts: [],
   netWorthHistory: [],
   incomeTaxRecords: [],
-  clerkId: null,
+  uid: null,
   isLoading: true,
   refresh: () => Promise.resolve(),
 });
@@ -134,13 +131,10 @@ export function clearUserDataCache() {
 // ─── Provider ───────────────────────────────────────────────────────
 
 export function UserDataProvider({ children }: { children: ReactNode }) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const clerkData = CLERK_ENABLED ? useUser() : { user: null, isLoaded: true };
-  const user = clerkData.user;
-  const clerkLoaded = clerkData.isLoaded;
-  const clerkId = user?.id ?? null;
+  const { user, loading: authLoading, getIdToken } = useAuth();
+  const uid = user?.uid ?? null;
 
-  const [data, setData] = useState<Omit<UserData, 'refresh' | 'clerkId'>>({
+  const [data, setData] = useState<Omit<UserData, 'refresh' | 'uid'>>({
     profile: null,
     rsuGrants: [],
     realEstate: [],
@@ -166,8 +160,8 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchData = useCallback(async () => {
-    if (!user?.id) {
-      // No user logged in — show empty state (no mock data)
+    if (!uid) {
+    // No user logged in — show empty state
       setData({
         profile: null,
         rsuGrants: [],
@@ -181,8 +175,14 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const res = await fetch(`/api/user/data?clerkId=${user.id}&_t=${Date.now()}`, {
+      const token = await getIdToken();
+      const headers: Record<string, string> = { cache: 'no-store' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const email = user?.email ? `&email=${encodeURIComponent(user.email)}` : '';
+      const res = await fetch(`/api/user/data?uid=${uid}${email}&_t=${Date.now()}`, {
         cache: 'no-store',
+        headers,
       });
       if (res.ok) {
         const json = await res.json();
@@ -213,18 +213,17 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
 
     // Fallback — empty data, not mock
     setData(prev => ({ ...prev, isLoading: false }));
-  }, [user?.id]);
+  }, [uid, user?.email, getIdToken]);
 
   const refresh = useCallback(async () => {
-    // Clear cache so we always fetch fresh after mutations
     clearUserDataCache();
     await fetchData();
   }, [fetchData]);
 
   useEffect(() => {
-    if (!clerkLoaded) return;
+    if (authLoading) return;
 
-    if (!user?.id) {
+    if (!uid) {
       fetchData();
       return;
     }
@@ -246,10 +245,10 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
 
     // Cache miss — fetch fresh
     fetchData();
-  }, [clerkLoaded, user?.id, loadFromCache, fetchData]);
+  }, [authLoading, uid, loadFromCache, fetchData]);
 
   return (
-    <UserDataContext.Provider value={{ ...data, clerkId, refresh }}>
+    <UserDataContext.Provider value={{ ...data, uid, refresh }}>
       {children}
     </UserDataContext.Provider>
   );

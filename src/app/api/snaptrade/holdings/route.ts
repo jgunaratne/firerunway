@@ -4,28 +4,28 @@ import { getAllHoldings } from '@/lib/snaptrade';
 import { createServerClient } from '@/lib/supabase';
 
 /**
- * GET /api/snaptrade/holdings?clerkId=xxx
+ * GET /api/snaptrade/holdings?uid=xxx
  * Fetch all holdings across connected brokerage accounts.
  */
 export async function GET(req: NextRequest) {
   try {
-    const clerkId = req.nextUrl.searchParams.get('clerkId');
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId required' }, { status: 400 });
+    const uid = req.nextUrl.searchParams.get('uid');
+    if (!uid) {
+      return NextResponse.json({ error: 'uid required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
     const { data: user } = await supabase
       .from('users')
-      .select('snaptrade_user_secret')
-      .eq('clerk_id', clerkId)
+      .select('id, snaptrade_user_id, snaptrade_user_secret')
+      .eq('firebase_uid', uid)
       .single();
 
-    if (!user?.snaptrade_user_secret) {
+    if (!user?.snaptrade_user_secret || !user?.snaptrade_user_id) {
       return NextResponse.json({ holdings: [] });
     }
 
-    const holdings = await getAllHoldings(clerkId, user.snaptrade_user_secret);
+    const holdings = await getAllHoldings(user.snaptrade_user_id, user.snaptrade_user_secret);
 
     // Save a snapshot to Supabase for historical tracking
     if (Array.isArray(holdings) && holdings.length > 0) {
@@ -93,17 +93,17 @@ export async function GET(req: NextRequest) {
 
       // Upsert account snapshot
       const today = new Date().toISOString().split('T')[0];
-      const { data: userId } = await supabase
+      const { data: userRow } = await supabase
         .from('users')
         .select('id')
-        .eq('clerk_id', clerkId)
+        .eq('firebase_uid', uid)
         .single();
 
-      if (userId?.id) {
+      if (userRow?.id) {
         await supabase
           .from('account_snapshots')
           .upsert({
-            user_id: userId.id,
+            user_id: userRow.id,
             snapshot_date: today,
             total_investment: Math.round(totalInvestment),
             positions: allPositions,

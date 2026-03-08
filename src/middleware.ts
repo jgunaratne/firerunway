@@ -1,37 +1,11 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-// Only import and use Clerk middleware when the publishable key is set.
-// In production without Clerk, all routes are public.
-export default async function middleware(request: NextRequest) {
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  if (!clerkKey) {
-    // No Clerk configured — allow all requests through
-    return NextResponse.next();
-  }
-
-  // Dynamically import Clerk middleware only when key exists
-  const { clerkMiddleware, createRouteMatcher } = await import('@clerk/nextjs/server');
-
-  const isPublicRoute = createRouteMatcher([
-    '/',
-    '/sign-in(.*)',
-    '/sign-up(.*)',
-    '/onboarding(.*)',
-    '/api/cron(.*)',
-    '/api/plaid(.*)',
-    '/api/snaptrade(.*)',
-    '/api/ai(.*)',
-  ]);
-
-  const handler = clerkMiddleware(async (auth, req) => {
-    if (!isPublicRoute(req)) {
-      await auth.protect();
-    }
-  });
-
-  return handler(request, {} as never);
+// Firebase auth is verified per-route in API handlers.
+// Middleware only handles redirects for unauthenticated users on protected pages.
+export default function middleware() {
+  // All routes pass through — auth is handled client-side (AuthProvider redirect)
+  // and server-side (verifyIdToken in API routes)
+  return NextResponse.next();
 }
 
 export const config = {

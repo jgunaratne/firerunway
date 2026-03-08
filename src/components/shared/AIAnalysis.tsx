@@ -68,14 +68,14 @@ function getSectionStyle(header: string): string {
 }
 
 export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) {
-  const { clerkId } = useUserData();
+  const { uid } = useUserData();
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!clerkId) return;
+    if (!uid) return;
     let cancelled = false;
     async function loadSaved() {
       try {
@@ -87,7 +87,7 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
           real_estate: '/api/real-estate/analyze',
           monte_carlo: '/api/monte-carlo/analyze',
         };
-        const res = await fetch(`${prefixMap[type]}?clerkId=${clerkId}`);
+        const res = await fetch(`${prefixMap[type]}?uid=${uid}`);
         if (res.ok) {
           const data = await res.json();
           if (!cancelled && data.analysis) {
@@ -101,7 +101,7 @@ export default function AIAnalysis({ type, onAnalyze, ready }: AIAnalysisProps) 
     }
     loadSaved();
     return () => { cancelled = true; };
-  }, [type, clerkId]);
+  }, [type, uid]);
 
   const handleAnalyze = useCallback(async () => {
     setLoading(true);

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { parseRsuPdf, parseRsuText } from '@/lib/gemini-pdf';
 import { createServerClient } from '@/lib/supabase';
-import { extractClerkId, resolveUserId } from '@/lib/auth-helpers';
+import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 
 interface ExtractedGrant {
   company_ticker: string;
@@ -14,7 +14,7 @@ interface ExtractedGrant {
   cliff_months: number;
 }
 
-// POST /api/rsu/upload?clerkId=xxx&action=extract|save
+// POST /api/rsu/upload?uid=xxx&action=extract|save
 // action=extract: Parse PDF, return grants for preview (does NOT save)
 // action=save: Save grants directly to database
 export async function POST(request: Request) {
@@ -22,8 +22,8 @@ export async function POST(request: Request) {
     const url = new URL(request.url);
     const action = url.searchParams.get('action') || 'extract';
 
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
@@ -132,11 +132,11 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE /api/rsu/upload?clerkId=xxx — Delete all RSU grants for the user
+// DELETE /api/rsu/upload?uid=xxx — Delete all RSU grants for the user
 export async function DELETE(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

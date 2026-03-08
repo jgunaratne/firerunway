@@ -5,7 +5,7 @@ import { validateExtraction } from '@/lib/validator';
 import { aggregatePortfolio } from '@/lib/aggregator';
 import { insertStatement, insertHoldings, getAllHoldings, insertSnapshot } from '@/lib/supabase-db';
 import { processingJobs } from '@/lib/job-tracker';
-import { extractClerkId, resolveUserId } from '@/lib/auth-helpers';
+import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 
 async function processStatement(userId: string, jobId: string, filename: string, pdfBytes: Buffer): Promise<void> {
   const job = processingJobs.get(jobId);
@@ -66,8 +66,8 @@ async function processStatement(userId: string, jobId: string, filename: string,
 
 export async function POST(request: Request) {
   try {
-    const clerkId = extractClerkId(request);
-    const userId = await resolveUserId(clerkId);
+    const uid = await extractUserId(request);
+    const userId = await resolveUserId(uid);
     if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

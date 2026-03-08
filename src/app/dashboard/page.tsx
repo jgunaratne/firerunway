@@ -5,7 +5,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency, calculateFIScore } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
-import { useStockPrice } from '@/hooks/useStockPrice';
+import { useNetWorth } from '@/hooks/useNetWorth';
 import Link from 'next/link';
 import {
   CheckCircle2, AlertTriangle, AlertCircle,
@@ -122,13 +122,7 @@ export default function DashboardPage() {
   const fireNumber = profile?.fire_number || 0;
 
   // Derive totals from real data
-  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
-  const stockPrice = useStockPrice(ticker);
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
-  const realEstateEquity = realEstate.reduce((sum, p) => sum + (p.current_value - p.mortgage_balance), 0);
-  // Use real portfolio value from SnapTrade if available, otherwise fall back to RSU estimate
-  const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
-  const totalNetWorth = investable + realEstateEquity;
+  const { totalNetWorth, investable, rsuValue, stockPrice } = useNetWorth();
 
   const fiScore = calculateFIScore({
     currentInvestableAssets: investable,

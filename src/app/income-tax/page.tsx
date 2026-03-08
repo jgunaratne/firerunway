@@ -121,7 +121,7 @@ function BreakdownTable({ items, labels, colors }: {
 }
 
 export default function IncomeTaxPage() {
-  const { clerkId } = useUserData();
+  const { uid } = useUserData();
   const [records, setRecords] = useState<IncomeTaxRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -130,9 +130,9 @@ export default function IncomeTaxPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!clerkId) return;
+    if (!uid) return;
     try {
-      const res = await fetch(`/api/income-tax?clerkId=${clerkId}`);
+      const res = await fetch(`/api/income-tax?uid=${uid}`);
       const data = await res.json();
       setRecords(data.records ?? []);
     } catch (err) {
@@ -140,9 +140,9 @@ export default function IncomeTaxPage() {
     } finally {
       setLoading(false);
     }
-  }, [clerkId]);
+  }, [uid]);
 
-  useEffect(() => { if (clerkId) load(); }, [clerkId, load]);
+  useEffect(() => { if (uid) load(); }, [uid, load]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -163,7 +163,7 @@ export default function IncomeTaxPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`/api/income-tax/upload?clerkId=${clerkId}`, {
+      const res = await fetch(`/api/income-tax/upload?uid=${uid}`, {
         method: 'POST',
         body: formData,
       });
@@ -184,12 +184,12 @@ export default function IncomeTaxPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/income-tax/${id}?clerkId=${clerkId}`, { method: 'DELETE' });
+    await fetch(`/api/income-tax/${id}?uid=${uid}`, { method: 'DELETE' });
     await load();
   };
 
   const handleAnalyze = async (): Promise<{ analysis: string }> => {
-    const res = await fetch(`/api/income-tax/analyze?clerkId=${clerkId}`, { method: 'POST' });
+    const res = await fetch(`/api/income-tax/analyze?uid=${uid}`, { method: 'POST' });
     if (!res.ok) throw new Error('Analysis failed');
     return res.json();
   };

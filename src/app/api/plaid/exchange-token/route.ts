@@ -10,9 +10,9 @@ import { createServerClient } from '@/lib/supabase';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { clerkId, publicToken, institutionName } = await req.json();
-    if (!clerkId || !publicToken) {
-      return NextResponse.json({ error: 'clerkId and publicToken required' }, { status: 400 });
+    const { uid, publicToken, institutionName } = await req.json();
+    if (!uid || !publicToken) {
+      return NextResponse.json({ error: 'uid and publicToken required' }, { status: 400 });
     }
 
     // Exchange public token for access token
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user?.id) {

@@ -20,21 +20,21 @@ interface PlaidAccountResponse {
 }
 
 /**
- * GET /api/plaid/accounts?clerkId=xxx
+ * GET /api/plaid/accounts?uid=xxx
  * Fetch all Plaid-connected accounts with balances.
  */
 export async function GET(req: NextRequest) {
   try {
-    const clerkId = req.nextUrl.searchParams.get('clerkId');
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId required' }, { status: 400 });
+    const uid = req.nextUrl.searchParams.get('uid');
+    if (!uid) {
+      return NextResponse.json({ error: 'uid required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user?.id) {
@@ -92,16 +92,16 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const { clerkId, itemId } = await req.json();
-    if (!clerkId || !itemId) {
-      return NextResponse.json({ error: 'clerkId and itemId required' }, { status: 400 });
+    const { uid, itemId } = await req.json();
+    if (!uid || !itemId) {
+      return NextResponse.json({ error: 'uid and itemId required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
     const { data: user } = await supabase
       .from('users')
       .select('id')
-      .eq('clerk_id', clerkId)
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user?.id) {

@@ -10,9 +10,9 @@ import { createServerClient } from '@/lib/supabase';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { clerkId, broker } = await req.json();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId required' }, { status: 400 });
+    const { uid, broker } = await req.json();
+    if (!uid) {
+      return NextResponse.json({ error: 'uid required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     // Get the user's SnapTrade secret
     const { data: user } = await supabase
       .from('users')
-      .select('snaptrade_user_secret')
-      .eq('clerk_id', clerkId)
+      .select('snaptrade_user_id, snaptrade_user_secret')
+      .eq('firebase_uid', uid)
       .single();
 
     if (!user?.snaptrade_user_secret) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const customRedirect = `${origin}/snaptrade-callback`;
 
     const result = await generateConnectionPortalUrl(
-      clerkId,
+      user.snaptrade_user_id,
       user.snaptrade_user_secret,
       { broker, customRedirect }
     );

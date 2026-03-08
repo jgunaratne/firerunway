@@ -8,12 +8,12 @@ import { createLinkToken } from '@/lib/plaid';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { clerkId } = await req.json();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId required' }, { status: 400 });
+    const { uid } = await req.json();
+    if (!uid) {
+      return NextResponse.json({ error: 'uid required' }, { status: 400 });
     }
 
-    const data = await createLinkToken(clerkId);
+    const data = await createLinkToken(uid);
     return NextResponse.json({ linkToken: data.link_token });
   } catch (err: unknown) {
     const plaidError = err as { response?: { data?: { error_code?: string; error_message?: string; error_type?: string } } };

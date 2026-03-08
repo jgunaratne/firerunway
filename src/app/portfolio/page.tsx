@@ -371,7 +371,7 @@ const brokerages = [
 
 
 function AccountsTab() {
-  const { clerkId: userId, refresh: refreshUserData } = useUserData();
+  const { uid: userId, refresh: refreshUserData } = useUserData();
   const { accounts: cachedAccounts, plaidAccounts, forceRefresh: refreshBrokerage, loading: brokerageLoading } = useBrokerageData();
   const [connecting, setConnecting] = useState(false);
   const [connectingPlaid, setConnectingPlaid] = useState(false);
@@ -394,14 +394,14 @@ function AccountsTab() {
       await fetch('/api/snaptrade/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: userId }),
+        body: JSON.stringify({ uid: userId }),
       });
 
       // Step 2: Get connection portal URL
       const connectRes = await fetch('/api/snaptrade/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: userId, broker: brokerId || undefined }),
+        body: JSON.stringify({ uid: userId, broker: brokerId || undefined }),
       });
       const connectData = await connectRes.json();
 
@@ -452,7 +452,7 @@ function AccountsTab() {
       const res = await fetch('/api/plaid/link-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: userId }),
+        body: JSON.stringify({ uid: userId }),
       });
       const data = await res.json();
 
@@ -484,7 +484,7 @@ function AccountsTab() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                clerkId: userId,
+                uid: userId,
                 publicToken,
                 institutionName: metadata.institution?.name || 'Unknown',
               }),
@@ -515,7 +515,7 @@ function AccountsTab() {
       await fetch('/api/snaptrade/accounts', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: userId, authorizationId }),
+        body: JSON.stringify({ uid: userId, authorizationId }),
       });
       refreshBrokerage();
       refreshUserData();
@@ -530,7 +530,7 @@ function AccountsTab() {
       await fetch('/api/plaid/accounts', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: userId, itemId }),
+        body: JSON.stringify({ uid: userId, itemId }),
       });
       refreshBrokerage();
       refreshUserData();
@@ -748,7 +748,7 @@ export default function PortfolioPage() {
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>(
     tabParam === 'accounts' ? 'Accounts' : 'Holdings'
   );
-  const { clerkId } = useUserData();
+  const { uid } = useUserData();
   const { positions } = useBrokerageData();
 
   // Sync tab state when URL search params change (e.g., sidebar nav click)
@@ -757,10 +757,10 @@ export default function PortfolioPage() {
   }, [tabParam]);
 
   const handleAnalyze = useCallback(async (): Promise<{ analysis: string }> => {
-    const res = await fetch(`/api/portfolio/analyze?clerkId=${clerkId}`, { method: 'POST' });
+    const res = await fetch(`/api/portfolio/analyze?uid=${uid}`, { method: 'POST' });
     if (!res.ok) throw new Error('Analysis failed');
     return res.json();
-  }, [clerkId]);
+  }, [uid]);
 
   return (
     <div className="space-y-8">

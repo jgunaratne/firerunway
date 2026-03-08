@@ -7,10 +7,10 @@ import { createServerClient } from '@/lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clerkId, email, profile, rsuGrants, realEstate } = body;
+    const { uid, email, profile, rsuGrants, realEstate } = body;
 
-    if (!clerkId) {
-      return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
+    if (!uid) {
+      return NextResponse.json({ error: 'uid is required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     // 1. Upsert user
     const { data: user, error: userError } = await supabase
       .from('users')
-      .upsert({ clerk_id: clerkId, email }, { onConflict: 'clerk_id' })
+      .upsert({ firebase_uid: uid, email }, { onConflict: 'firebase_uid' })
       .select('id')
       .single();
 

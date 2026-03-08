@@ -185,7 +185,7 @@ function CustomFanTooltip({ active, payload, label }: { active?: boolean; payloa
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate, isLoading, clerkId } = useUserData();
+  const { profile, rsuGrants, realEstate, isLoading, uid } = useUserData();
   const { totalInvestment } = useBrokerageData();
   const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
   const stockPrice = useStockPrice(ticker);
@@ -432,7 +432,7 @@ export default function MonteCarloPage() {
   }, []);
 
   const handleAnalyze = useCallback(async () => {
-    const res = await fetch(`/api/monte-carlo/analyze?clerkId=${clerkId || ''}`, {
+    const res = await fetch(`/api/monte-carlo/analyze?uid=${uid || ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -452,7 +452,7 @@ export default function MonteCarloPage() {
     });
     if (!res.ok) throw new Error('Analysis failed');
     return res.json();
-  }, [params, result, fireYear, conservativeFireYear, events, clerkId]);
+  }, [params, result, fireYear, conservativeFireYear, events, uid]);
 
   return (
     <div className="space-y-8">

@@ -48,7 +48,7 @@ function ConcentrationGauge({ pct, size = 220 }: { pct: number; size?: number })
 }
 
 export default function EquityPage() {
-  const { rsuGrants, realEstate, clerkId: userId, refresh } = useUserData();
+  const { rsuGrants, realEstate, uid: userId, refresh } = useUserData();
   const { totalInvestment } = useBrokerageData();
   const [priceAdjust, setPriceAdjust] = useState(0);
   const [currentPrice, setCurrentPrice] = useState(190);
@@ -149,7 +149,7 @@ export default function EquityPage() {
       const formData = new FormData();
       pdfFiles.forEach(f => formData.append('files', f));
 
-      const res = await fetch(`/api/rsu/upload?clerkId=${userId}&action=extract`, {
+      const res = await fetch(`/api/rsu/upload?uid=${userId}&action=extract`, {
         method: 'POST',
         body: formData,
       });
@@ -184,7 +184,7 @@ export default function EquityPage() {
     setPreviewGrants(null);
 
     try {
-      const res = await fetch(`/api/rsu/upload?clerkId=${userId}&action=extract-text`, {
+      const res = await fetch(`/api/rsu/upload?uid=${userId}&action=extract-text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: pastedText }),
@@ -219,7 +219,7 @@ export default function EquityPage() {
     setUploadError(null);
 
     try {
-      const res = await fetch(`/api/rsu/upload?clerkId=${userId}&action=save`, {
+      const res = await fetch(`/api/rsu/upload?uid=${userId}&action=save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grants: previewGrants }),
@@ -256,7 +256,7 @@ export default function EquityPage() {
     if (!confirm('Delete all RSU grants and start fresh? This cannot be undone.')) return;
     setResetting(true);
     try {
-      const res = await fetch(`/api/rsu/upload?clerkId=${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/rsu/upload?uid=${userId}`, { method: 'DELETE' });
       if (res.ok) {
         await refresh();
         setPreviewGrants(null);

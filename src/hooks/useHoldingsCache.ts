@@ -55,7 +55,7 @@ export const clearHoldingsCache = clearBrokerageCache;
  * merges them into a single cached data structure in localStorage.
  * All pages share the same cache so APIs are only called once per TTL window.
  */
-export function useBrokerageData(clerkId: string | null | undefined) {
+export function useBrokerageData(uid: string | null | undefined) {
   const [accounts, setAccounts] = useState<BrokerageAccount[]>([]);
   const [positions, setPositions] = useState<BrokeragePosition[]>([]);
   const [totalInvestment, setTotalInvestment] = useState(0);
@@ -85,8 +85,8 @@ export function useBrokerageData(clerkId: string | null | undefined) {
   const fetchAndCache = useCallback(async (userId: string): Promise<CachedBrokerageData> => {
     // Fetch accounts and holdings in parallel
     const [acctRes, holdRes] = await Promise.all([
-      fetch(`/api/snaptrade/accounts?clerkId=${userId}`),
-      fetch(`/api/snaptrade/holdings?clerkId=${userId}`),
+      fetch(`/api/snaptrade/accounts?uid=${userId}`),
+      fetch(`/api/snaptrade/holdings?uid=${userId}`),
     ]);
 
     const acctData = await acctRes.json();
@@ -138,17 +138,17 @@ export function useBrokerageData(clerkId: string | null | undefined) {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!clerkId) return;
+    if (!uid) return;
     setLoading(true);
     try {
-      const cached = await fetchAndCache(clerkId);
+      const cached = await fetchAndCache(uid);
       applyCache(cached);
     } catch {
       console.error('Failed to refresh brokerage data');
     } finally {
       setLoading(false);
     }
-  }, [clerkId, fetchAndCache, applyCache]);
+  }, [uid, fetchAndCache, applyCache]);
 
   /** Clear localStorage cache, then re-fetch fresh data from the APIs. */
   const forceRefresh = useCallback(async () => {
@@ -157,7 +157,7 @@ export function useBrokerageData(clerkId: string | null | undefined) {
   }, [refresh]);
 
   useEffect(() => {
-    if (!clerkId) return;
+    if (!uid) return;
 
     // Try cache first
     const cached = loadFromCache();
@@ -170,7 +170,7 @@ export function useBrokerageData(clerkId: string | null | undefined) {
     // Cache miss — fetch fresh
     (async () => {
       try {
-        const fresh = await fetchAndCache(clerkId);
+        const fresh = await fetchAndCache(uid);
         applyCache(fresh);
       } catch {
         console.error('Failed to fetch brokerage data');
@@ -178,7 +178,7 @@ export function useBrokerageData(clerkId: string | null | undefined) {
         setLoading(false);
       }
     })();
-  }, [clerkId, loadFromCache, fetchAndCache, applyCache]);
+  }, [uid, loadFromCache, fetchAndCache, applyCache]);
 
   return { accounts, positions, totalInvestment, loading, refresh, forceRefresh };
 }
@@ -187,7 +187,7 @@ export function useBrokerageData(clerkId: string | null | undefined) {
  * Backwards-compatible hook alias.
  * Returns the same shape as the old useHoldingsCache for existing consumers.
  */
-export function useHoldingsCache(clerkId: string | null | undefined) {
-  const { positions, totalInvestment, loading, refresh, forceRefresh } = useBrokerageData(clerkId);
+export function useHoldingsCache(uid: string | null | undefined) {
+  const { positions, totalInvestment, loading, refresh, forceRefresh } = useBrokerageData(uid);
   return { positions, totalInvestment, loading, refresh, forceRefresh };
 }
