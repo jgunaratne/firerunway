@@ -87,8 +87,8 @@ function SectionHeader({ title, pct, targetRange, actual }: {
     ? 'text-red-400' : actual < parseFloat(targetRange.split('-')[0].replace('%', ''))
     ? 'text-amber-400' : 'text-emerald-400';
   return (
-    <div className="flex items-center justify-between py-2.5 px-3 bg-white/[0.03] rounded-t-lg border-b border-border">
-      <span className="text-sm font-bold text-text-primary uppercase tracking-wide">{title}</span>
+    <div className="flex items-center justify-between py-2.5 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border">
+      <span className="text-sm font-bold text-text-primary">{title}</span>
       <div className="flex items-center gap-3">
         <span className="text-sm text-text-secondary">Target: {targetRange}</span>
         <span className={`text-sm font-bold ${color}`}>{pct.toFixed(0)}%</span>
@@ -183,7 +183,7 @@ export default function SpendingPlanPage() {
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const realEstateValue = realEstate.reduce((sum, p) => sum + p.current_value, 0);
   const realEstateDebt = realEstate.reduce((sum, p) => sum + p.mortgage_balance, 0);
-  const realEstateEquity = realEstateValue - realEstateDebt;
+  // realEstateEquity used for net worth display below
   const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
 
   const bankBalances = plaidAccounts.filter(a => a.type === 'depository').reduce((sum, a) => sum + (a.currentBalance || 0), 0);
@@ -273,16 +273,14 @@ export default function SpendingPlanPage() {
 
     for (const cat of FIXED_COST_CATEGORIES) {
       const amount = categoryTotals.get(cat) || 0;
-      if (amount > 0) {
-        items.push({ label: FIXED_COST_SUBCATEGORIES[cat] || cat, amount });
-      }
+      items.push({ label: FIXED_COST_SUBCATEGORIES[cat] || cat, amount });
     }
-    if (groceries > 0) items.push({ label: 'Groceries & Dining', amount: groceries });
-    if (shopping > 0) items.push({ label: 'Clothes / Shopping', amount: shopping });
+    items.push({ label: 'Groceries & Dining', amount: groceries });
+    items.push({ label: 'Clothes / Shopping', amount: shopping });
 
     // Subscriptions
     const subs = categoryTotals.get('ENTERTAINMENT') || 0;
-    if (subs > 0) items.push({ label: 'Subscriptions / Entertainment', amount: subs });
+    items.push({ label: 'Subscriptions / Entertainment', amount: subs });
 
     items.sort((a, b) => b.amount - a.amount);
     // Apply manual overrides
@@ -307,7 +305,8 @@ export default function SpendingPlanPage() {
 
   // Guilt-free spending = what's left (include uploaded extras)
   const guiltFreeExtra = categoryTotals.get('GUILT_FREE_EXTRA') || 0;
-  const guiltFreeSpending = Math.max(0, netMonthlyIncome - fixedCostsTotalWithMisc - monthlyInvestments - savingsGoals) + guiltFreeExtra;
+  const guiltFreeBase = Math.max(0, netMonthlyIncome - fixedCostsTotalWithMisc - monthlyInvestments - savingsGoals) + guiltFreeExtra;
+  const guiltFreeSpending = manualOverrides['__guilt_free'] ?? guiltFreeBase;
 
   // Override investments/savings from uploaded data + manual edits
   const uploadedSavingsInvestments = categoryTotals.get('SAVINGS_INVESTMENTS') || 0;
@@ -403,7 +402,7 @@ export default function SpendingPlanPage() {
             <p className="stat-label">{bucket.label}</p>
             <p className="number-display text-2xl font-bold text-text-primary mt-1">{formatCurrency(bucket.amount)}</p>
             <div className="flex items-center gap-2 mt-2">
-              <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+              <div className="flex-1 h-2 rounded-full bg-[var(--overlay-hover)] overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(bucket.pct, 100)}%`, backgroundColor: bucket.color }} />
               </div>
               <span className="text-sm font-bold" style={{ color: bucket.color }}>{bucket.pct.toFixed(0)}%</span>
@@ -415,8 +414,8 @@ export default function SpendingPlanPage() {
 
       {/* Net Worth */}
       <Card>
-        <div className="py-2 px-3 bg-white/[0.03] rounded-t-lg border-b border-border mb-1">
-          <span className="text-sm font-bold text-text-primary uppercase tracking-wide">Net Worth</span>
+        <div className="py-2 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border mb-1">
+          <span className="text-sm font-bold text-text-primary">Net Worth</span>
         </div>
         <PlanRow label="Assets (real estate, property)" amount={totalAssets} indent />
         <PlanRow label="Investments (401k, brokerage)" amount={totalInvestments} indent />
@@ -427,34 +426,32 @@ export default function SpendingPlanPage() {
 
       {/* Income */}
       <Card>
-        <div className="py-2 px-3 bg-white/[0.03] rounded-t-lg border-b border-border mb-1 flex items-center justify-between">
-          <span className="text-sm font-bold text-text-primary uppercase tracking-wide">Income</span>
-          {incomeTaxRecords.length > 0 && (
-            <button
-              onClick={importIncomeFromTax}
+        <div className="py-2 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border mb-1 flex items-center justify-between">
+          <span className="text-sm font-bold text-text-primary">Income</span>
+          <button
+            onClick={incomeTaxRecords.length > 0 ? importIncomeFromTax : undefined}
               className={`flex items-center gap-1.5 text-sm font-medium px-2 py-1 rounded-lg transition-all ${incomeOverride
                 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
                 : 'text-text-secondary hover:text-accent hover:bg-accent/10'
                 }`}
-              title={`Import from ${incomeTaxRecords[0].document_type} (${incomeTaxRecords[0].tax_year})`}
+            title={incomeTaxRecords.length > 0 ? `Import from ${incomeTaxRecords[0].document_type} (${incomeTaxRecords[0].tax_year})` : 'Enter income manually by clicking the amounts below'}
             >
               <Wand2 size={14} />
-              {incomeOverride ? 'Imported from W-2' : 'Import from Tax'}
-            </button>
-          )}
+            {incomeOverride ? (incomeTaxRecords.length > 0 ? 'Imported from W-2' : 'Income Set') : (incomeTaxRecords.length > 0 ? 'Import from Tax' : 'Set Income')}
+          </button>
         </div>
         <PlanRow
           label="Gross monthly income (before taxes)"
           amount={grossMonthlyIncome}
           indent
-          onAmountChange={incomeOverride ? (val) => setIncomeOverride(prev => prev ? { ...prev, gross: val } : { gross: val, net: val * 0.7 }) : undefined}
+          onAmountChange={(val) => setIncomeOverride(prev => prev ? { ...prev, gross: val } : { gross: val, net: val * 0.7 })}
         />
         <PlanRow
           label="Net monthly income (after taxes)"
           amount={netMonthlyIncome}
           bold
           highlight
-          onAmountChange={incomeOverride ? (val) => setIncomeOverride(prev => prev ? { ...prev, net: val } : { gross: val / 0.7, net: val }) : undefined}
+          onAmountChange={(val) => setIncomeOverride(prev => prev ? { ...prev, net: val } : { gross: val / 0.7, net: val })}
         />
       </Card>
 
@@ -467,12 +464,9 @@ export default function SpendingPlanPage() {
             label={item.label}
             amount={item.amount}
             indent
-            onAmountChange={uploadedData ? (val) => setOverride(item.label, val) : undefined}
+            onAmountChange={(val) => setOverride(item.label, val)}
           />
         ))}
-        {fixedCostItems.length === 0 && (
-          <PlanRow label="No transaction data yet" amount="—" indent dimLabel />
-        )}
         <PlanRow label="Miscellaneous (15% buffer)" amount={miscellaneous} indent dimLabel />
         <PlanRow label="FIXED COSTS TOTAL" amount={fixedCostsTotalWithMisc} bold highlight />
       </Card>
@@ -484,7 +478,7 @@ export default function SpendingPlanPage() {
           label="Post-Tax Retirement / Brokerage"
           amount={effectiveInvestments}
           indent
-          onAmountChange={uploadedData ? (val) => setOverride('__investments', val) : undefined}
+          onAmountChange={(val) => setOverride('__investments', val)}
         />
         <PlanRow label="INVESTMENTS TOTAL" amount={effectiveInvestments} bold highlight />
       </Card>
@@ -496,7 +490,7 @@ export default function SpendingPlanPage() {
           label="Emergency Fund / Vacations / Gifts"
           amount={effectiveSavings}
           indent
-          onAmountChange={uploadedData ? (val) => setOverride('__savings', val) : undefined}
+          onAmountChange={(val) => setOverride('__savings', val)}
         />
         <PlanRow label="SAVINGS TOTAL" amount={effectiveSavings} bold highlight />
       </Card>
@@ -504,7 +498,7 @@ export default function SpendingPlanPage() {
       {/* Guilt-Free Spending */}
       <Card>
         <SectionHeader title="Guilt-Free Spending" pct={guiltFreePct} targetRange="20-35%" actual={guiltFreePct} />
-        <PlanRow label="Dining out, movies, anything you want!" amount={guiltFreeSpending} indent />
+        <PlanRow label="Dining out, movies, anything you want!" amount={guiltFreeSpending} indent onAmountChange={(val) => setOverride('__guilt_free', val)} />
         <PlanRow label="GUILT-FREE SPENDING TOTAL" amount={guiltFreeSpending} bold highlight />
       </Card>
 

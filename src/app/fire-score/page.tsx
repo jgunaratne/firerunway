@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, ReactNode } from 'react';
 import Card from '@/components/shared/Card';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { calculateFIScore, formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useStockPrice } from '@/hooks/useStockPrice';
+import {
+  TrendingDown, BarChart3, TrendingUp, PieChart, Coins,
+  Landmark, Target, Banknote, PartyPopper,
+} from 'lucide-react';
 
 // ─── Milestone labels for the progress bar ─────────────────────────
 
@@ -52,7 +56,7 @@ function EditableAmount({
 
   return (
     <div className="text-center">
-      <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-sm text-text-secondary mb-1">{label}</p>
       {editing ? (
         <input
           autoFocus
@@ -88,10 +92,10 @@ function computeProjections(
   annualSavings: number,
   fireNumber: number,
 ) {
-  const scenarios = [
-    { label: 'Bear Case', emoji: '🐻', percentile: '10th percentile', realReturn: 0.03 },
-    { label: 'Base Case', emoji: '📊', percentile: '50th percentile', realReturn: 0.06 },
-    { label: 'Bull Case', emoji: '🐂', percentile: '90th percentile', realReturn: 0.10 },
+  const scenarios: Array<{ label: string; icon: ReactNode; percentile: string; realReturn: number }> = [
+    { label: 'Bear Case', icon: <TrendingDown size={24} className="text-red-400" />, percentile: '10th percentile', realReturn: 0.03 },
+    { label: 'Base Case', icon: <BarChart3 size={24} className="text-accent" />, percentile: '50th percentile', realReturn: 0.06 },
+    { label: 'Bull Case', icon: <TrendingUp size={24} className="text-emerald-400" />, percentile: '90th percentile', realReturn: 0.10 },
   ];
 
   const currentYear = new Date().getFullYear();
@@ -131,14 +135,14 @@ function generateRecommendations(
   annualIncome: number,
   fireNumber: number,
 ) {
-  const recs: { action: string; impact: string; icon: string; priority: number }[] = [];
+  const recs: { action: string; impact: string; icon: ReactNode; priority: number }[] = [];
 
   if (concentrationPct > 0.25) {
     const potentialGain = Math.round(concentrationPct * 10);
     recs.push({
       action: `Your employer stock is ${Math.round(concentrationPct * 100)}% of net worth — diversifying to <20% would reduce concentration risk significantly`,
       impact: `+${Math.min(potentialGain, 6)}`,
-      icon: '📊',
+      icon: <PieChart size={16} className="text-accent" />,
       priority: 1,
     });
   }
@@ -148,14 +152,14 @@ function generateRecommendations(
     recs.push({
       action: `Increasing savings rate from ${Math.round(savingsRate * 100)}% to 35% would add ${formatCurrency(targetIncrease)}/yr to investments`,
       impact: '+3',
-      icon: '💰',
+      icon: <Coins size={16} className="text-accent-amber" />,
       priority: 2,
     });
   } else if (savingsRate < 0.5 && annualIncome > 0) {
     recs.push({
       action: `Your ${Math.round(savingsRate * 100)}% savings rate is good — pushing to 50% would accelerate your timeline by ~2 years`,
       impact: '+2',
-      icon: '💰',
+      icon: <Coins size={16} className="text-accent-amber" />,
       priority: 3,
     });
   }
@@ -164,7 +168,7 @@ function generateRecommendations(
     recs.push({
       action: `You're ${Math.round(fundingRatio * 100)}% to your FIRE number — maximizing tax-advantaged accounts (401k/IRA) would accelerate progress`,
       impact: '+2',
-      icon: '🏦',
+      icon: <Landmark size={16} className="text-accent" />,
       priority: 2,
     });
   }
@@ -173,7 +177,7 @@ function generateRecommendations(
     recs.push({
       action: 'Set your FIRE number above to get accurate projections and tracking',
       impact: '—',
-      icon: '🎯',
+      icon: <Target size={16} className="text-accent" />,
       priority: 0,
     });
   }
@@ -182,7 +186,7 @@ function generateRecommendations(
     recs.push({
       action: 'Set your annual income to calculate savings rate and contribution projections',
       impact: '—',
-      icon: '💵',
+      icon: <Banknote size={16} className="text-accent" />,
       priority: 0,
     });
   }
@@ -191,7 +195,7 @@ function generateRecommendations(
     recs.push({
       action: `You're ${Math.round(fundingRatio * 100)}% funded! Consider building a 2-year cash buffer before transitioning`,
       impact: '+1',
-      icon: '🎉',
+      icon: <PartyPopper size={16} className="text-emerald-400" />,
       priority: 4,
     });
   }
@@ -329,14 +333,14 @@ export default function FireScorePage() {
 
         {/* Progress bar with milestones */}
         <div className="mt-8 px-4 lg:px-16 relative z-10">
-          <div className="relative h-3 bg-white/[0.03] rounded-full overflow-hidden">
+          <div className="relative h-3 bg-[var(--overlay-bg-secondary)] rounded-full overflow-hidden">
             <div
-              className="absolute left-0 top-0 h-full rounded-full"
+              className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
               style={{
                 background: `linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #10b981 70%, #6366f1 100%)`,
                 boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)',
+                width: `${Math.min(score, 100)}%`,
               }}
-              animate={{ width: `${Math.min(score, 100)}%` }}
             />
           </div>
           <div className="flex justify-between mt-3">
@@ -397,13 +401,13 @@ export default function FireScorePage() {
             </p>
           </Card>
           <Card className="text-center">
-            <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">Savings Rate</p>
+            <p className="text-sm text-text-secondary mb-1">Savings Rate</p>
             <p className={`number-display text-2xl font-bold ${savingsRate >= 0.3 ? 'text-emerald-400' : savingsRate > 0 ? 'text-amber-400' : 'text-text-primary'}`}>
               {annualIncome > 0 && annualSpend > 0 ? `${Math.round(savingsRate * 100)}%` : '—'}
             </p>
           </Card>
           <Card className="text-center">
-            <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">Runway</p>
+            <p className="text-sm text-text-secondary mb-1">Runway</p>
             <p className="number-display text-2xl font-bold text-text-primary">
               {annualSpend > 0 ? `${(investable / annualSpend).toFixed(1)} yrs` : '—'}
             </p>
@@ -459,7 +463,7 @@ export default function FireScorePage() {
               <Card key={proj.label} hover className="text-center">
                 <div
                 >
-                  <span className="text-3xl">{proj.emoji}</span>
+                  {proj.icon}
                   <p className="text-sm font-semibold text-text-primary mt-2">{proj.label}</p>
                   <p className="text-sm text-text-secondary">{proj.percentile}</p>
                   <p className="number-display text-3xl font-bold text-text-primary mt-3">{proj.year}</p>
@@ -486,9 +490,9 @@ export default function FireScorePage() {
             {recommendations.map((rec, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-border/50 hover:border-accent/20 transition-colors"
+                className="flex items-start gap-3 p-3 rounded-lg bg-[var(--overlay-subtle)] border border-border/50 hover:border-accent/20 transition-colors"
               >
-                <span className="text-xl">{rec.icon}</span>
+                <span className="flex-shrink-0">{rec.icon}</span>
                 <div className="flex-1">
                   <p className="text-sm text-text-primary">{rec.action}</p>
                 </div>
@@ -520,10 +524,10 @@ export default function FireScorePage() {
                         {formatCurrency(item.value, true)} ({pct.toFixed(1)}%)
                       </span>
                     </div>
-                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-2 bg-[var(--overlay-hover)] rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${item.color}`}
-                        animate={{ width: `${pct}%` }}
+                        className={`h-full rounded-full transition-all duration-700 ${item.color}`}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                   </div>

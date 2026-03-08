@@ -10,7 +10,7 @@ import AIAnalysis from '@/components/shared/AIAnalysis';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
-import { useBrokerageData, BrokerageAccount } from '@/lib/BrokerageDataContext';
+import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useUserData } from '@/lib/UserDataContext';
 import {
   TrendingUp, Building2, CreditCard, Landmark,
@@ -141,7 +141,7 @@ function HoldingsTab() {
                   </thead>
                   <tbody>
                     {group.holdings.map((h, j) => (
-                      <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
+                      <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 transition-colors themed-hover">
                         <td className="py-2">
                           <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
                           <p className="text-sm text-text-secondary hidden md:block">{h.name}</p>
@@ -230,8 +230,8 @@ function AllocationTab() {
                 <Pie data={allocationData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" animationDuration={1000}>
                   {allocationData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v) => `${v}%`} contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} />
-                <Legend wrapperStyle={{ fontSize: 12, color: '#8888aa' }} />
+                <Tooltip formatter={(v) => `${v}%`} contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -246,8 +246,8 @@ function AllocationTab() {
                 <Pie data={recommendedData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" animationDuration={1000} animationBegin={200}>
                   {recommendedData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
                 </Pie>
-                <Tooltip formatter={(v) => `${v}%`} contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} />
-                <Legend wrapperStyle={{ fontSize: 12, color: '#8888aa' }} />
+                <Tooltip formatter={(v) => `${v}%`} contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -298,7 +298,7 @@ function AllocationTab() {
           },
         ].map(({ category, etfs }) => (
           <div key={category} className="mb-4 last:mb-0">
-            <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">{category}</p>
+            <p className="text-sm text-text-secondary mb-2">{category}</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-sm text-text-secondary border-b border-border/50">
@@ -339,7 +339,7 @@ function PerformanceTab() {
       <Card>
         <h4 className="text-sm font-semibold text-text-primary mb-4">Portfolio Performance</h4>
         <div className="text-center py-8">
-          <p className="text-text-secondary/60 text-sm uppercase tracking-wider mb-2">Current Portfolio Value</p>
+          <p className="text-text-secondary/60 text-sm mb-2">Current Portfolio Value</p>
           <p className="number-display text-3xl font-bold text-text-primary">
             {totalInvestment > 0 ? <AnimatedNumber value={totalInvestment} format={(n) => formatCurrency(n)} /> : '—'}
           </p>
@@ -369,14 +369,6 @@ const brokerages = [
   { id: '', name: 'Other Brokerage', color: 'text-text-secondary' },
 ];
 
-interface ConnectedAccount {
-  id: string;
-  name: string;
-  number: string;
-  institution_name: string;
-  meta?: { type?: string };
-  balance?: { total?: { amount?: number; currency?: string } };
-}
 
 function AccountsTab() {
   const { clerkId: userId, refresh: refreshUserData } = useUserData();
@@ -625,7 +617,7 @@ function AccountsTab() {
             {Object.values(plaidByInstitution).map((group) => (
               <div key={group.itemId}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-text-primary uppercase tracking-wider">{group.institutionName}</p>
+                  <p className="text-sm font-semibold text-text-primary">{group.institutionName}</p>
                   <button
                     onClick={() => disconnectPlaidItem(group.itemId)}
                     className="text-sm text-red-400/60 hover:text-red-400 transition-colors px-3 py-1 border border-red-400/20 rounded-md hover:border-red-400/40"

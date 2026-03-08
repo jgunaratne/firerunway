@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (secretRow?.snaptrade_user_secret) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const accounts: any[] = await snapListAccounts(clerkId, secretRow.snaptrade_user_secret as string);
+        const accounts: any[] = await snapListAccounts(clerkId!, secretRow.snaptrade_user_secret as string);
         snapAccounts = accounts.map(a => ({
           name: a.name || '',
           institution: a.institution_name || '',

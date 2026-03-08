@@ -31,7 +31,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   if (!active || !payload?.length) return null;
   return (
     <div className="tooltip-content">
-      <p className="text-sm text-text-secondary mb-1 uppercase tracking-wider">{label}</p>
+      <p className="text-sm text-text-secondary mb-1">{label}</p>
       <p className="number-display text-sm font-bold text-text-primary glow-text">{formatCurrency(payload[0].value)}</p>
     </div>
   );
@@ -121,9 +121,8 @@ export default function NetWorthPage() {
           {assetClasses.map((asset) => (
             <div
               key={asset.key}
-              className="h-full relative group"
-              style={{ backgroundColor: asset.color }}
-              animate={{ width: `${asset.pct}%` }}
+              className="h-full relative group transition-all duration-700"
+              style={{ backgroundColor: asset.color, width: `${asset.pct}%` }}
             >
               <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 tooltip-content whitespace-nowrap z-10 transition-opacity">
                 {asset.label}: {formatCurrency(asset.value)}
@@ -191,16 +190,16 @@ export default function NetWorthPage() {
               </defs>
               <XAxis
                 dataKey="date"
-                stroke="#2a2a3a"
-                tick={{ fill: '#8888aa', fontSize: 11 }}
+                stroke="var(--border)"
+                tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
                 tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
                 tickLine={false}
                 axisLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                stroke="#2a2a3a"
-                tick={{ fill: '#8888aa', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+                stroke="var(--border)"
+                tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
                 tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`}
                 tickLine={false}
                 axisLine={false}

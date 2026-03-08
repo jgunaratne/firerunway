@@ -495,8 +495,8 @@ export default function MonteCarloPage() {
                       <stop offset="100%" stopColor="#6366f1" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="year" stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11, fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
+                  <XAxis dataKey="year" stroke="var(--border)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--border)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
                   <Tooltip content={<CustomFanTooltip />} />
                   <ReferenceLine y={params.fireNumber} stroke="#10b981" strokeDasharray="6 4" strokeWidth={2} label={{ value: `FIRE: ${formatCurrency(params.fireNumber, true)}`, position: 'right', fill: '#10b981', fontSize: 11 }} />
                   {/* Event markers */}
@@ -665,7 +665,7 @@ export default function MonteCarloPage() {
               </div>
 
               <div>
-                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">Portfolio</p>
+                <p className="text-sm text-text-secondary mb-2">Portfolio</p>
                 <div className="space-y-2">
                   <div>
                     <label className="text-sm text-text-secondary">Starting value</label>
@@ -689,15 +689,15 @@ export default function MonteCarloPage() {
 
               {/* Real Estate Toggle */}
               <div className="border-t border-border pt-4">
-                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">Real Estate</p>
-                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] border border-border/50">
+                <p className="text-sm text-text-secondary mb-2">Real Estate</p>
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--overlay-subtle)] border border-border/50">
                   <div>
                     <p className="text-sm text-text-primary font-medium">Include equity</p>
                     <p className="text-sm text-text-secondary">{formatCurrency(realEstateEquity, true)}</p>
                   </div>
                   <button
                     onClick={() => setParams(p => ({ ...p, includeRealEstate: !p.includeRealEstate }))}
-                    className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full transition-colors ${params.includeRealEstate ? 'bg-accent' : 'bg-white/10'
+                    className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full transition-colors ${params.includeRealEstate ? 'bg-accent' : 'bg-[var(--overlay-border)]'
                       }`}
                   >
                     <span
@@ -709,7 +709,7 @@ export default function MonteCarloPage() {
               </div>
 
               <div className="border-t border-border pt-4">
-                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">Expenses</p>
+                <p className="text-sm text-text-secondary mb-2">Expenses</p>
                 <div className="space-y-2">
                   <div>
                     <label className="text-sm text-text-secondary">Current annual spend</label>
@@ -723,7 +723,7 @@ export default function MonteCarloPage() {
               </div>
 
               <div className="border-t border-border pt-4">
-                <p className="text-sm text-text-secondary uppercase tracking-wider mb-2">FIRE Parameters</p>
+                <p className="text-sm text-text-secondary mb-2">FIRE Parameters</p>
                 <div className="space-y-2">
                   <div>
                     <label className="text-sm text-text-secondary">FIRE number</label>

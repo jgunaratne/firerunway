@@ -155,7 +155,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
               className={`w-full text-left px-3 py-2.5 text-sm transition-colors border-b border-border/50 last:border-none ${
                 i === activeIndex
                   ? 'bg-accent/15 text-text-primary'
-                  : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
+                  : 'text-text-secondary hover:bg-[var(--overlay-hover)] hover:text-text-primary'
               }`}
             >
               <MapPin size={14} className="mr-2 text-text-secondary/60 flex-shrink-0" />

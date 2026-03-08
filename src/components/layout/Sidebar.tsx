@@ -32,7 +32,9 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <nav className="hidden lg:flex fixed left-0 top-14 bottom-0 w-56 border-r border-white/[0.04] bg-bg-primary/40 backdrop-blur-2xl flex-col py-5 px-3 z-40">
+      <nav className="hidden lg:flex fixed left-0 top-14 bottom-0 w-56 flex-col py-5 px-3 z-40"
+        style={{ background: 'var(--bg-primary)', borderRight: '1px solid var(--overlay-separator)' }}
+      >
         <div className="flex flex-col gap-0.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -42,8 +44,11 @@ export default function Sidebar() {
                 href={item.href}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive
                   ? 'text-text-primary'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
+                  : 'text-text-secondary hover:text-text-primary'
                   }`}
+                style={!isActive ? { ['--hover-bg' as string]: 'var(--overlay-bg-secondary)' } : undefined}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--overlay-bg-secondary)'; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
                 {isActive && (
                   <div
@@ -58,7 +63,7 @@ export default function Sidebar() {
         </div>
 
         {/* Disclaimer */}
-        <div className="mt-auto pt-4 border-t border-white/[0.04]">
+        <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--overlay-separator)' }}>
           <p className="text-sm text-text-secondary/40 leading-relaxed px-2">
             FireRunway provides financial information for educational purposes only. Not investment advice.
           </p>
@@ -66,7 +71,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Mobile bottom tabs */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.04] bg-bg-primary/80 backdrop-blur-2xl">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
+        style={{ background: 'var(--bg-primary)', borderTop: '1px solid var(--overlay-separator)', backdropFilter: 'blur(20px)' }}
+      >
         <div className="flex justify-around items-center h-16 px-1">
           {navItems.slice(0, 5).map((item) => {
             const isActive = pathname === item.href;

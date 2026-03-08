@@ -6,7 +6,7 @@ import { useUserData } from '@/lib/UserDataContext';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { usePageContext as usePageLocalContext } from '@/lib/PageContextProvider';
 import { formatCurrency } from '@/lib/calculations';
-import { MessageSquare, Sparkles } from 'lucide-react';
+import { MessageSquare, Sparkles, X } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -152,11 +152,15 @@ export default function ChatRail() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input when opened
+  // Toggle body class to push main content + focus input
   useEffect(() => {
     if (isOpen) {
+      document.body.classList.add('chat-open');
       setTimeout(() => inputRef.current?.focus(), 300);
+    } else {
+      document.body.classList.remove('chat-open');
     }
+    return () => document.body.classList.remove('chat-open');
   }, [isOpen]);
 
   // Clear chat on page nav
@@ -245,7 +249,7 @@ export default function ChatRail() {
         className={`fixed top-14 right-0 bottom-0 w-full sm:w-[380px] z-[56] flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         style={{
-          background: 'rgba(17, 17, 24, 0.97)',
+          background: 'var(--chat-bg)',
           borderLeft: '1px solid var(--border)',
           backdropFilter: 'blur(20px)',
         }}
@@ -291,13 +295,18 @@ export default function ChatRail() {
               Ramsey
             </button>
             <button
-              onClick={() => {
-                setMessages([]);
-              }}
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-white/5"
+              onClick={() => setMessages([])}
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded"
               title="Clear chat"
             >
               Clear
+            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-text-secondary hover:text-text-primary transition-colors p-1 rounded"
+              title="Close"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>

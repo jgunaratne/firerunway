@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (userRow?.snaptrade_user_secret) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const holdings: any[] = await snapGetAllHoldings(clerkId, userRow.snaptrade_user_secret as string);
+        const holdings: any[] = await snapGetAllHoldings(clerkId ?? '', userRow.snaptrade_user_secret as string);
         for (const account of holdings) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const acctObj = account.account as Record<string, any> | undefined;

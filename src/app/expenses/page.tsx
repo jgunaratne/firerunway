@@ -217,10 +217,10 @@ export default function ExpensesPage() {
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                <XAxis dataKey="label" tick={{ fill: '#8888aa', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#8888aa', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="label" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
-                  contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: '8px', fontSize: '12px' }}
+                  contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '12px' }}
                   labelStyle={{ color: '#f0f0ff' }}
                   formatter={(value?: number) => [formatCurrency(value ?? 0), 'Spending']}
                 />
@@ -252,7 +252,7 @@ export default function ExpensesPage() {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: '8px', fontSize: '12px' }}
+                  contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '12px' }}
                   formatter={(value?: number) => [formatCurrency(value ?? 0), 'Spent']}
                 />
               </PieChart>
@@ -283,7 +283,7 @@ export default function ExpensesPage() {
                 </div>
                 <p className="number-display text-sm font-bold text-text-primary">{formatCurrency(cat.value)}</p>
                 {/* Progress bar */}
-                <div className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden">
+                <div className="mt-2 h-1 rounded-full bg-[var(--overlay-hover)] overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
@@ -326,7 +326,7 @@ export default function ExpensesPage() {
         </div>
         <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1">
           {filteredTransactions.slice(0, 100).map(tx => (
-            <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/3 transition-colors border-b border-border/30 last:border-0">
+            <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-[var(--overlay-subtle)] transition-colors border-b border-border/30 last:border-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <span className="text-lg flex-shrink-0">{getCategoryIcon(tx.personalFinanceCategory)}</span>
                 <div className="min-w-0 flex-1">

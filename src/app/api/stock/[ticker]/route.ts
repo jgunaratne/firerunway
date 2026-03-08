@@ -15,7 +15,8 @@ export async function GET(
     const mockPrices: Record<string, number> = {
       AMZN: 190.50,
       AAPL: 178.25,
-      GOOGL: 142.80,
+      GOOG: 297.18,
+      GOOGL: 297.38,
       MSFT: 415.60,
       META: 485.30,
     };
@@ -28,9 +29,9 @@ export async function GET(
   }
 
   try {
-    // Polygon.io previous day close
+    // Massive (formerly Polygon.io) previous day close
     const res = await fetch(
-      `https://api.polygon.io/v2/aggs/ticker/${ticker.toUpperCase()}/prev?adjusted=true&apiKey=${apiKey}`,
+      `https://api.massive.com/v2/aggs/ticker/${ticker.toUpperCase()}/prev?adjusted=true&apiKey=${apiKey}`,
       { next: { revalidate: 300 } } // Cache for 5 minutes
     );
 

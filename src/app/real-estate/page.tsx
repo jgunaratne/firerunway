@@ -233,9 +233,9 @@ function PropertyCard({ property, onEdit, onDelete }: { property: any; onEdit: (
                   <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={amortization.filter((_, i) => i % 12 === 0)}>
-                        <XAxis dataKey="month" tick={{ fill: '#8888aa', fontSize: 10 }} tickFormatter={(v) => `Yr ${Math.round(v / 12)}`} />
-                        <YAxis tick={{ fill: '#8888aa', fontSize: 10, fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} width={50} />
-                        <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 12 }} formatter={(v) => formatCurrency(Number(v))} />
+                        <XAxis dataKey="month" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickFormatter={(v) => `Yr ${Math.round(v / 12)}`} />
+                        <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} width={50} />
+                        <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 8, fontSize: 12 }} formatter={(v) => formatCurrency(Number(v))} />
                         <Area type="monotone" dataKey="balance" stroke="#ef4444" fill="rgba(239,68,68,0.1)" strokeWidth={2} name="Balance" isAnimationActive={false} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -319,7 +319,7 @@ function PropertyFormPanel({
         </div>
 
         <div className="md:col-span-2 border-t border-border pt-4 mt-2">
-          <p className="text-sm text-text-secondary uppercase tracking-wider mb-1">Mortgage Details (optional)</p>
+          <p className="text-sm text-text-secondary mb-1">Mortgage Details (optional)</p>
         </div>
 
         <div>
@@ -628,9 +628,9 @@ export default function RealEstatePage() {
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="date" stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis stroke="#2a2a3a" tick={{ fill: '#8888aa', fontSize: 11, fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
-                <Tooltip contentStyle={{ background: '#1a1a24', border: '1px solid #2a2a3a', borderRadius: 8, fontSize: 13 }} formatter={(v) => formatCurrency(Number(v))} />
+                <XAxis dataKey="date" stroke="var(--border)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis stroke="var(--border)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
+                <Tooltip contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 8, fontSize: 12 }} formatter={(v) => formatCurrency(Number(v))} />
                 <Area type="monotone" dataKey="value" stroke="#6366f1" fill="none" strokeWidth={2} name="Property Value" isAnimationActive={false} />
                 <Area type="monotone" dataKey="equity" stroke="#10b981" fill="url(#eqGrad)" strokeWidth={2} name="Equity" isAnimationActive={false} />
                 <Area type="monotone" dataKey="mortgage" stroke="#ef4444" fill="none" strokeWidth={1} strokeDasharray="4 4" name="Mortgage" isAnimationActive={false} />

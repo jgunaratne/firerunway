@@ -5,6 +5,7 @@ import Card from '@/components/shared/Card';
 import UploadZone from '@/components/upload/UploadZone';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
+import { FileText, AlertTriangle } from 'lucide-react';
 
 interface Statement {
   id: string;
@@ -121,7 +122,7 @@ export default function StatementsPage() {
 
       {/* Statements list */}
       <Card>
-        <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-4">
+        <h3 className="text-sm font-medium text-text-secondary mb-4">
           Uploaded Statements ({statements.length})
         </h3>
 
@@ -131,7 +132,7 @@ export default function StatementsPage() {
 
         {!loading && statements.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-4xl mb-4">📄</div>
+            <FileText size={40} className="text-text-secondary/40 mx-auto mb-4" />
             <p className="text-text-primary text-lg font-medium">No statements uploaded yet</p>
             <p className="text-text-secondary text-sm mt-1">Upload a PDF statement above to get started</p>
           </div>
@@ -176,7 +177,7 @@ export default function StatementsPage() {
                 </div>
                 {stmt.extraction_notes && stmt.extraction_confidence !== 'high' && (
                   <div className="text-sm text-accent-amber mt-1 truncate">
-                    ⚠ {stmt.extraction_notes}
+                    <AlertTriangle size={14} className="text-accent-amber inline mr-1" /> {stmt.extraction_notes}
                   </div>
                 )}
               </div>

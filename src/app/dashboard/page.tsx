@@ -33,7 +33,7 @@ function ArcGauge({ value, max = 100, size = 180, label }: { value: number; max?
         <path
           d={`M 12,${size / 2 + 12} A ${radius},${radius} 0 0,1 ${size - 12},${size / 2 + 12}`}
           fill="none"
-          stroke="rgba(255,255,255,0.04)"
+          stroke="var(--overlay-separator)"
           strokeWidth="6"
           strokeLinecap="round"
         />
@@ -64,7 +64,7 @@ function ArcGauge({ value, max = 100, size = 180, label }: { value: number; max?
           x={size / 2}
           y={size / 2 + 14}
           textAnchor="middle"
-          fill="#7878a0"
+          fill="var(--text-secondary)"
           fontSize="12"
           fontWeight="500"
         >
@@ -82,7 +82,7 @@ function LayoffItem({ status, label, detail }: { status: 'green' | 'amber' | 're
   const textColor = status === 'green' ? 'text-emerald-400' : status === 'amber' ? 'text-amber-400' : 'text-red-400';
   const glowClass = status === 'green' ? 'glow-text-green' : status === 'amber' ? 'glow-text-amber' : 'glow-text-red';
   return (
-    <div className="flex items-start gap-3 py-2.5 px-3 rounded-xl transition-colors hover:bg-white/[0.02]">
+    <div className="flex items-start gap-3 py-2.5 px-3 rounded-xl transition-colors themed-hover">
       <StatusIcon size={18} className={`mt-0.5 flex-shrink-0 ${textColor}`} />
       <div>
         <p className={`text-sm font-medium ${textColor} ${glowClass}`}>{label}</p>

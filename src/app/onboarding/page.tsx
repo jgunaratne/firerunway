@@ -121,7 +121,7 @@ function ConnectAccountsStep({ onNext }: { onNext: () => void }) {
               <p className="text-sm font-medium text-text-primary">{account.label}</p>
               <p className="text-sm text-text-secondary">{account.desc}</p>
             </div>
-            {connected[account.key as keyof typeof connected] ? <CheckCircle2 size={18} className="text-emerald-400" /> : <span className="text-lg text-text-secondary/30">○</span>}
+            {connected[account.key as keyof typeof connected] ? <CheckCircle2 size={18} className="text-emerald-400" /> : <span className="text-text-secondary/30"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /></svg></span>}
           </button>
         ))}
       </div>
@@ -402,7 +402,7 @@ function FirstLookStep({ onFinish, data, saving }: { onFinish: () => void; data:
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm text-text-secondary uppercase tracking-wider">Your FI Score</p>
+        <p className="text-sm text-text-secondary">Your FI Score</p>
         <p className="number-display text-7xl lg:text-8xl font-bold text-accent">
           <AnimatedNumber value={fiScore.total} duration={1500} />
         </p>

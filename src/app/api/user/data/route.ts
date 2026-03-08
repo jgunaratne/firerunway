@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const userId = user.id;
 
     // Fetch real estate separately to avoid any potential interference
-    const { data: properties, error: propError } = await supabase
+    const { data: properties } = await supabase
       .from('real_estate_properties')
       .select('*')
       .eq('user_id', userId);
