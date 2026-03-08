@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect unauthenticated users to sign-in
   useEffect(() => {
     if (loading) return;
-    const isPublicPath = pathname === '/' || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
+    const isPublicPath = PUBLIC_PATHS.includes(pathname) || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
     if (!user && !isPublicPath) {
       router.push('/');
     }
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Show nothing while redirecting unauthenticated users
-  const isPublicPath = pathname === '/' || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
+  const isPublicPath = PUBLIC_PATHS.includes(pathname) || pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
   if (!loading && !user && !isPublicPath) {
     return null;
   }

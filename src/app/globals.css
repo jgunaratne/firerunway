@@ -1,28 +1,114 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-green: var(--accent-green);
+  --color-accent-amber: var(--accent-amber);
+  --color-accent-red: var(--accent-red);
+
+  /* font variables are injected by next/font/google in layout.tsx */
+
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+
+  --shadow-glow-sm: 0 0 15px var(--glow-accent);
+  --shadow-glow-md: 0 0 30px var(--glow-accent);
+  --shadow-glow-lg: 0 0 60px var(--glow-accent);
+  --shadow-glow-green: 0 0 30px var(--glow-green);
+  --shadow-glow-amber: 0 0 30px var(--glow-amber);
+  --shadow-glow-red: 0 0 30px var(--glow-red);
+
+  --animate-fade-in: fadeIn 0.6s ease-out;
+  --animate-slide-up: slideUp 0.6s ease-out;
+  --animate-count-up: countUp 0.9s ease-out;
+  --animate-pulse-glow: pulseGlow 3s ease-in-out infinite;
+  --animate-shimmer: shimmer 3s ease-in-out infinite;
+  --animate-float: float 4s ease-in-out infinite;
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulseGlow {
+
+    0%,
+    100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+                                                                50% {
+                                                                  transform: translateY(-4px);
+                                                                }
+                                                                }
+                                                                }
 
 /* ── Dark Theme (default) ── */
 /* :root provides initial fallback before JS sets data-theme */
 :root {
-  --bg-primary: #050508;
-  --bg-surface: #0c0c14;
-    --bg-elevated: #141420;
-    --border: #1e1e30;
-  --text-primary: #f0f0ff;
-  --text-secondary: #7878a0;
+  --bg-primary: #050505;
+    --bg-surface: #0a0a0a;
+    --bg-elevated: #141414;
+    --border: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
   --accent: #6366f1;
   --accent-green: #10b981;
   --accent-amber: #f59e0b;
   --accent-red: #ef4444;
   --glow-accent: rgba(99, 102, 241, 0.15);
   --glow-green: rgba(16, 185, 129, 0.15);
-    --glow-amber: rgba(245, 158, 11, 0.15);
+  --glow-amber: rgba(245, 158, 11, 0.15);
     --glow-red: rgba(239, 68, 68, 0.15);
   --overlay-subtle: rgba(255, 255, 255, 0.02);
-    --overlay-hover: rgba(255, 255, 255, 0.05);
+  --overlay-hover: rgba(255, 255, 255, 0.05);
     --overlay-border: rgba(255, 255, 255, 0.06);
     --overlay-bg-secondary: rgba(255, 255, 255, 0.03);
     --overlay-border-strong: rgba(255, 255, 255, 0.08);
@@ -35,12 +121,12 @@
   /* These selectors have same specificity as :root but come AFTER it,
          so they win via cascade order when data-theme is present */
   [data-theme="dark"] {
-    --bg-primary: #050508;
-    --bg-surface: #0c0c14;
-    --bg-elevated: #141420;
-    --border: #1e1e30;
-    --text-primary: #f0f0ff;
-    --text-secondary: #7878a0;
+  --bg-primary: #050505;
+    --bg-surface: #0a0a0a;
+    --bg-elevated: #141414;
+    --border: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
     --accent: #6366f1;
     --accent-green: #10b981;
     --accent-amber: #f59e0b;
@@ -87,10 +173,12 @@
     color-scheme: light;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+  
 }
 
 body {
@@ -598,4 +686,8 @@ main {
   .landing-subtitle {
     font-size: 0.95rem;
   }
+}
+.no-visible-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 }

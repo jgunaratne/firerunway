@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
-import TopBar from "@/components/layout/TopBar";
-import Sidebar from "@/components/layout/Sidebar";
-import ChatRail from "@/components/layout/ChatRail";
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+});
+
 import { UploadProvider } from "@/components/upload/UploadProvider";
 import UploadNotification from "@/components/upload/UploadNotification";
+import LayoutShell from '@/components/layout/LayoutShell';
 
 export const metadata: Metadata = {
   title: "FireRunway — Financial Independence Dashboard",
@@ -28,12 +38,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         {/* Blocking script: set data-theme before first paint to prevent flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('firerunway-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}else if(window.matchMedia('(prefers-color-scheme:light)').matches){document.documentElement.setAttribute('data-theme','light')}else{document.documentElement.setAttribute('data-theme','dark')}}catch(e){document.documentElement.setAttribute('data-theme','dark')}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('firerunway-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}else{document.documentElement.setAttribute('data-theme','dark')}}catch(e){document.documentElement.setAttribute('data-theme','dark')}})()`,
           }}
         />
       </head>
@@ -43,17 +53,12 @@ export default function RootLayout({
             <UserDataProvider>
               <BrokerageWrapper>
                 <PageContextProvider>
-                  <UploadProvider>
-                    <TopBar />
-                    <Sidebar />
-                    <main className="pt-14 lg:pl-56 min-h-screen pb-20 lg:pb-0">
-                      <div className="max-w-[1400px] mx-auto p-4 lg:p-6">
-                        {children}
-                      </div>
-                    </main>
-                    <UploadNotification />
-                    <ChatRail />
-                  </UploadProvider>
+                  <LayoutShell>
+                    <UploadProvider>
+                      <UploadNotification />
+                      {children}
+                    </UploadProvider>
+                  </LayoutShell>
                 </PageContextProvider>
               </BrokerageWrapper>
             </UserDataProvider>

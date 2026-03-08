@@ -46,9 +46,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem('firerunway-theme') as Theme | null;
       if (stored === 'light' || stored === 'dark') {
         initial = stored;
-      } else if (window.matchMedia?.('(prefers-color-scheme: light)').matches) {
-        initial = 'light';
       }
+      // Removed prefers-color-scheme: light to enforce dark theme by default
     } catch { /* ignore */ }
     setThemeState(initial);
     document.documentElement.setAttribute('data-theme', initial);
