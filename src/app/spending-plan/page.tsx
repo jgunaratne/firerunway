@@ -41,24 +41,80 @@ const FIXED_COST_SUBCATEGORIES: Record<string, string> = {
   'GENERAL_MERCHANDISE': 'Shopping / Clothes',
 };
 
-// Detailed Plaid categories that should be remapped to FOOD_AND_DRINK
-// These are stores that sell groceries as their primary business
-const GROCERY_DETAILED_CATEGORIES = new Set([
-  'GENERAL_MERCHANDISE_SUPERSTORES',      // Fred Meyer, Walmart, Target
-  'GENERAL_MERCHANDISE_WAREHOUSE_CLUBS',  // Costco, Sam's Club
-  'GENERAL_MERCHANDISE_PHARMACIES',       // Walgreens, CVS
-]);
+// Comprehensive detailed category remapping
+// Maps Plaid's detailed categories to the correct spending bucket
+const DETAILED_CATEGORY_REMAP: Record<string, string> = {
+  // Superstores/warehouse/pharmacies → groceries (they primarily sell food)
+  'GENERAL_MERCHANDISE_SUPERSTORES': 'FOOD_AND_DRINK',
+  'GENERAL_MERCHANDISE_WAREHOUSE_CLUBS': 'FOOD_AND_DRINK',
+  'GENERAL_MERCHANDISE_PHARMACIES': 'FOOD_AND_DRINK',
+  'GENERAL_MERCHANDISE_DISCOUNT_STORES': 'FOOD_AND_DRINK',
+
+  // Pet supplies → general services (not clothing)
+  'GENERAL_MERCHANDISE_PET_SUPPLIES': 'GENERAL_SERVICES',
+
+  // Online marketplaces → keep as shopping
+  'GENERAL_MERCHANDISE_ONLINE_MARKETPLACES': 'GENERAL_MERCHANDISE',
+
+  // Subscriptions that come through as entertainment → entertainment
+  'ENTERTAINMENT_TV_AND_MOVIES': 'ENTERTAINMENT',
+  'ENTERTAINMENT_MUSIC_AND_AUDIO': 'ENTERTAINMENT',
+  'ENTERTAINMENT_VIDEO_GAMES': 'ENTERTAINMENT',
+
+  // Gas stations → transportation
+  'FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR': 'FOOD_AND_DRINK',
+  'FOOD_AND_DRINK_VENDING_MACHINES': 'FOOD_AND_DRINK',
+};
+
+// Merchant name patterns → category overrides (case-insensitive matching)
+const MERCHANT_OVERRIDES: [RegExp, string][] = [
+  // Grocery stores
+  [/fred\s*meyer|kroger|safeway|albertsons|qfc|winco|grocery|trader\s*joe|whole\s*foods|aldi|lidl|sprouts|publix|h-?e-?b|meijer|food\s*lion|piggly|wegmans|stop\s*&?\s*shop|giant\s*(eagle|food)?|harris\s*teeter|market\s*basket/i, 'FOOD_AND_DRINK'],
+  // Warehouse clubs (primarily groceries)
+  [/costco|sam'?s\s*club|bj'?s\s*wholesale/i, 'FOOD_AND_DRINK'],
+  // Big box stores with groceries
+  [/walmart|target|winco/i, 'FOOD_AND_DRINK'],
+  // Pharmacies (OTC, personal care)
+  [/walgreens|cvs|rite\s*aid/i, 'PERSONAL_CARE'],
+  // Gas stations → transportation
+  [/shell|chevron|arco|76|exxon|mobil|bp\b|texaco|valero|marathon|speedway|circle\s*k|wawa|sheetz|pilot|loves|flying\s*j|gas|petro|fuel/i, 'TRANSPORTATION'],
+  // Streaming/subscriptions → entertainment
+  [/netflix|hulu|disney\+?|spotify|apple\s*(music|tv)|youtube|hbo|paramount|peacock|crunchyroll|amazon\s*prime/i, 'ENTERTAINMENT'],
+  // Ride-share → transportation
+  [/uber(?!\s*eats)|lyft|taxi|cab\b/i, 'TRANSPORTATION'],
+  // Food delivery → food
+  [/uber\s*eats|doordash|grubhub|postmates|instacart|gopuff/i, 'FOOD_AND_DRINK'],
+  // Insurance → medical
+  [/insurance|geico|allstate|state\s*farm|progressive|usaa/i, 'MEDICAL'],
+  // Utilities → rent & utilities
+  [/comcast|xfinity|spectrum|at&?t|verizon|t-?mobile|sprint|electric|power|energy|water|sewage|gas\s*(co|company)|pge|pg&e|duke\s*energy|con\s*edison/i, 'RENT_AND_UTILITIES'],
+  // Gym → personal care
+  [/gym|fitness|planet\s*fitness|equinox|orangetheory|24\s*hour|ymca|crossfit|peloton/i, 'PERSONAL_CARE'],
+  // Coffee shops → food
+  [/starbucks|dunkin|peet'?s|dutch\s*bros|coffee/i, 'FOOD_AND_DRINK'],
+  // Restaurants → food
+  [/restaurant|mcdonald|burger|wendy|chick-?fil|taco\s*bell|subway|chipotle|panera|five\s*guys|in-?n-?out|domino|pizza\s*hut|papa\s*john/i, 'FOOD_AND_DRINK'],
+];
 
 // Resolve the effective spending category, correcting common Plaid misclassifications
 function resolveCategory(tx: Transaction): string {
   const primary = tx.personalFinanceCategory || 'OTHER';
   const detailed = tx.personalFinanceCategoryDetailed || '';
+  const merchant = (tx.merchantName || tx.name || '').toLowerCase();
 
-  // Remap superstores/warehouse clubs to groceries
-  if (primary === 'GENERAL_MERCHANDISE' && GROCERY_DETAILED_CATEGORIES.has(detailed)) {
-    return 'FOOD_AND_DRINK';
+  // 1. Check detailed category remap first
+  if (detailed && DETAILED_CATEGORY_REMAP[detailed]) {
+    return DETAILED_CATEGORY_REMAP[detailed];
   }
 
+  // 2. Check merchant name patterns
+  for (const [pattern, category] of MERCHANT_OVERRIDES) {
+    if (pattern.test(merchant)) {
+      return category;
+    }
+  }
+
+  // 3. Fall back to Plaid's primary category
   return primary;
 }
 
