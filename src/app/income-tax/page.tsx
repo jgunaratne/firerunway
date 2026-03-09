@@ -129,6 +129,22 @@ export default function IncomeTaxPage() {
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Manual income breakdown (persisted)
+  const [manualIncome, setManualIncome] = useState<Record<string, number>>({});
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('income_manual_breakdown');
+      if (saved) setManualIncome(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+  const updateManualIncome = (key: string, value: number) => {
+    setManualIncome(prev => {
+      const next = { ...prev, [key]: value };
+      localStorage.setItem('income_manual_breakdown', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const load = useCallback(async () => {
     if (!uid) return;
     try {
@@ -211,7 +227,14 @@ export default function IncomeTaxPage() {
     }
   }
 
-  const effectiveRate = totalIncome > 0 ? (totalTax / totalIncome) * 100 : 0;
+  // Merge manual income into aggregated (manual takes priority)
+  const hasManualIncome = Object.values(manualIncome).some(v => v > 0);
+  const displayIncome = hasManualIncome ? { ...manualIncome } : aggregatedIncome;
+  const displayTotalIncome = hasManualIncome
+    ? Object.values(manualIncome).reduce((s, v) => s + v, 0)
+    : totalIncome;
+
+  const effectiveRate = displayTotalIncome > 0 ? (totalTax / displayTotalIncome) * 100 : 0;
 
   return (
     <div className="space-y-8">
@@ -261,23 +284,63 @@ export default function IncomeTaxPage() {
         </div>
       )}
 
-      {!loading && records.length === 0 && (
+      {!loading && records.length === 0 && !hasManualIncome && (
         <Card className="text-center">
           <div className="py-6">
             <FileText size={40} className="text-text-secondary/40 mx-auto mb-4" />
             <p className="text-text-primary text-lg font-medium">No tax documents yet</p>
-            <p className="text-text-secondary text-sm mt-1">Upload a W-2, 1099, or tax return to see your income and tax breakdown</p>
+            <p className="text-text-secondary text-sm mt-1">Upload a W-2, 1099, or tax return — or enter your income breakdown manually below</p>
           </div>
         </Card>
       )}
 
-      {records.length > 0 && (
+      {/* Manual Income Breakdown */}
+      <Card>
+        <h3 className="section-title">Income Breakdown</h3>
+        <p className="text-text-secondary text-sm mb-4">{hasManualIncome ? 'Your annual income breakdown' : 'Enter your annual income components'}</p>
+        <div className="space-y-3">
+          {[
+            { key: 'salary', label: 'Base Salary', color: INCOME_COLORS.salary },
+            { key: 'bonus', label: 'Bonus', color: INCOME_COLORS.bonus },
+            { key: 'rsu', label: 'RSU / Stock Comp', color: INCOME_COLORS.rsu },
+          ].map(({ key, label, color }) => (
+            <div key={key} className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+              <span className="text-text-secondary text-sm flex-1">{label}</span>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-secondary/40 text-sm">$</span>
+                <input
+                  type="number"
+                  value={manualIncome[key] || ''}
+                  onChange={(e) => updateManualIncome(key, parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-36 bg-bg-elevated border border-border rounded-lg px-2.5 pl-6 py-1.5 text-sm number-display text-text-primary text-right focus:outline-none focus:border-accent/40"
+                />
+              </div>
+            </div>
+          ))}
+          {hasManualIncome && (
+            <div className="flex items-center gap-3 pt-2 border-t border-border/30">
+              <div className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className="text-text-primary text-sm font-semibold flex-1">Total Compensation</span>
+              <span className="number-display text-accent font-bold text-sm pr-1">{formatCurrency(displayTotalIncome)}</span>
+            </div>
+          )}
+        </div>
+        {hasManualIncome && (
+          <div className="mt-4">
+            <BreakdownBar items={displayIncome} total={displayTotalIncome} colors={INCOME_COLORS} />
+          </div>
+        )}
+      </Card>
+
+      {(records.length > 0 || hasManualIncome) && (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <Card>
               <div className="stat-label mb-2">Total Income</div>
-              <div className="number-display text-3xl font-bold text-accent-green glow-text-green">{formatCurrency(totalIncome)}</div>
+              <div className="number-display text-3xl font-bold text-accent-green glow-text-green">{formatCurrency(displayTotalIncome)}</div>
             </Card>
             <Card>
               <div className="stat-label mb-2">Total Tax</div>
@@ -286,63 +349,67 @@ export default function IncomeTaxPage() {
             <Card>
               <div className="stat-label mb-2">Effective Tax Rate</div>
               <div className="number-display text-3xl font-bold text-accent-amber glow-text-amber">{effectiveRate.toFixed(1)}%</div>
-              <div className="text-text-secondary text-sm mt-2">Take-home: {formatCurrency(totalIncome - totalTax)}</div>
+              <div className="text-text-secondary text-sm mt-2">Take-home: {formatCurrency(displayTotalIncome - totalTax)}</div>
             </Card>
           </div>
 
           {/* Breakdowns */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <h3 className="section-title">Income Breakdown</h3>
-              <BreakdownBar items={aggregatedIncome} total={totalIncome} colors={INCOME_COLORS} />
-              <div className="mt-4">
-                <BreakdownTable items={aggregatedIncome} labels={INCOME_LABELS} colors={INCOME_COLORS} />
-              </div>
-            </Card>
+          {records.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <h3 className="section-title">W-2 Income Breakdown</h3>
+                <BreakdownBar items={aggregatedIncome} total={totalIncome} colors={INCOME_COLORS} />
+                <div className="mt-4">
+                  <BreakdownTable items={aggregatedIncome} labels={INCOME_LABELS} colors={INCOME_COLORS} />
+                </div>
+              </Card>
 
-            <Card>
-              <h3 className="section-title">Tax & Deductions Breakdown</h3>
-              <BreakdownBar items={aggregatedTax} total={totalTax} colors={TAX_COLORS} />
-              <div className="mt-4">
-                <BreakdownTable items={aggregatedTax} labels={TAX_LABELS} colors={TAX_COLORS} />
-              </div>
-            </Card>
-          </div>
+              <Card>
+                <h3 className="section-title">Tax & Deductions Breakdown</h3>
+                <BreakdownBar items={aggregatedTax} total={totalTax} colors={TAX_COLORS} />
+                <div className="mt-4">
+                  <BreakdownTable items={aggregatedTax} labels={TAX_LABELS} colors={TAX_COLORS} />
+                </div>
+              </Card>
+            </div>
+          )}
 
           {/* Documents List */}
-          <Card>
-            <h3 className="section-title">Uploaded Documents</h3>
-            <div className="space-y-3">
-              {records.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-bg-elevated/50 border border-border/50"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-accent/20 text-accent flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {r.document_type === 'w2' ? 'W2' : r.document_type.toUpperCase().slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-text-primary text-sm font-medium truncate">
-                      {r.employer || r.filename}
-                    </div>
-                    <div className="text-text-secondary text-sm">
-                      {r.document_type.toUpperCase()} · Tax Year {r.tax_year} · {r.extraction_confidence}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="number-display text-text-primary text-sm">{formatCurrency(r.total_income)}</div>
-                    <div className="number-display text-accent-red text-sm">-{formatCurrency(r.total_tax)}</div>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(r.id)}
-                    className="text-text-secondary hover:text-accent-red text-sm transition-colors"
+          {records.length > 0 && (
+            <Card>
+              <h3 className="section-title">Uploaded Documents</h3>
+              <div className="space-y-3">
+                {records.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-4 p-3 rounded-lg bg-bg-elevated/50 border border-border/50"
                   >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          </Card>
+                    <div className="w-10 h-10 rounded-lg bg-accent/20 text-accent flex items-center justify-center text-sm font-bold flex-shrink-0">
+                      {r.document_type === 'w2' ? 'W2' : r.document_type.toUpperCase().slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-text-primary text-sm font-medium truncate">
+                        {r.employer || r.filename}
+                      </div>
+                      <div className="text-text-secondary text-sm">
+                        {r.document_type.toUpperCase()} · Tax Year {r.tax_year} · {r.extraction_confidence}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="number-display text-text-primary text-sm">{formatCurrency(r.total_income)}</div>
+                      <div className="number-display text-accent-red text-sm">-{formatCurrency(r.total_tax)}</div>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      className="text-text-secondary hover:text-accent-red text-sm transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* AI Analysis */}
           <AIAnalysis
