@@ -4,9 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Card from '@/components/shared/Card';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useBrokerageData } from '@/lib/BrokerageDataContext';
-import { useStockPrice } from '@/hooks/useStockPrice';
-import { Upload, FileText, X, Wand2 } from 'lucide-react';
+import { Upload, FileText, X, Wand2, Users, Link2, Unlink } from 'lucide-react';
 
 interface Transaction {
   amount: number;
@@ -16,6 +14,7 @@ interface Transaction {
   name: string;
   date: string;
   merchantName: string | null;
+  ownerName?: string;
 }
 
 // Map Plaid categories to spending plan buckets
@@ -179,7 +178,14 @@ function PlanRow({ label, amount, indent = false, bold = false, highlight = fals
           {transactions.sort((a, b) => b.amount - a.amount).map((tx, i) => (
             <div key={i} className="flex items-center justify-between py-1 px-3 pl-10 text-xs border-b border-border/10 last:border-b-0">
               <div className="flex-1 min-w-0">
-                <span className="text-text-secondary truncate block">{tx.merchantName || tx.name}</span>
+                <div className="flex items-center gap-1.5">
+                  {tx.ownerName && (
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[9px] font-bold flex-shrink-0" title={tx.ownerName}>
+                      {tx.ownerName.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="text-text-secondary truncate">{tx.merchantName || tx.name}</span>
+                </div>
                 <span className="text-text-secondary/40">{tx.date}</span>
               </div>
               <span className="number-display text-text-secondary ml-2 flex-shrink-0">{formatCurrency(tx.amount)}</span>
@@ -209,23 +215,72 @@ function SectionHeader({ title, pct, targetRange, actual }: {
 }
 
 export default function SpendingPlanPage() {
-  const { profile, rsuGrants, realEstate, uid, incomeTaxRecords } = useUserData();
-  const { totalInvestment, plaidAccounts } = useBrokerageData();
-  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
-  const stockPrice = useStockPrice(ticker);
+  const { profile, uid, incomeTaxRecords } = useUserData();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [categorizing, setCategorizing] = useState(false);
   const [aiCorrections, setAiCorrections] = useState<Record<string, string>>({});
+  const [partner, setPartner] = useState<{ id: string; email: string; name: string } | null>(null);
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [linkingPartner, setLinkingPartner] = useState(false);
+  const [partnerError, setPartnerError] = useState('');
 
+  // Fetch partner info
+  useEffect(() => {
+    if (!uid) return;
+    fetch(`/api/household?uid=${uid}`)
+      .then(r => r.json())
+      .then(d => { if (d.partner) setPartner(d.partner); })
+      .catch(() => { /* no partner */ });
+  }, [uid]);
+
+  // Fetch transactions (re-fetch when partner changes)
   useEffect(() => {
     if (!uid) { setLoading(false); return; }
-    fetch(`/api/plaid/transactions?uid=${uid}&months=1`)
+    setLoading(true);
+    const params = new URLSearchParams({ uid, months: '1' });
+    if (partner) params.set('includePartner', 'true');
+    fetch(`/api/plaid/transactions?${params}`)
       .then(r => r.json())
       .then(d => setTransactions(d.transactions || []))
       .catch(() => setTransactions([]))
       .finally(() => setLoading(false));
+  }, [uid, partner]);
+
+  const handleLinkPartner = useCallback(async () => {
+    if (!partnerEmail.trim()) return;
+    setLinkingPartner(true);
+    setPartnerError('');
+    try {
+      const res = await fetch('/api/household', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, partnerEmail: partnerEmail.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setPartnerError(data.error);
+      } else if (data.partner) {
+        setPartner(data.partner);
+        setPartnerEmail('');
+      }
+    } catch {
+      setPartnerError('Failed to link partner');
+    } finally {
+      setLinkingPartner(false);
+    }
+  }, [uid, partnerEmail]);
+
+  const handleUnlinkPartner = useCallback(async () => {
+    try {
+      await fetch('/api/household', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid }),
+      });
+      setPartner(null);
+    } catch { /* ignore */ }
   }, [uid]);
 
   // Hydrate AI corrections from localStorage
@@ -330,22 +385,6 @@ export default function SpendingPlanPage() {
       setUploading(false);
     }
   }, []);
-
-  // === Net Worth ===
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
-  const realEstateValue = realEstate.reduce((sum, p) => sum + p.current_value, 0);
-  const realEstateDebt = realEstate.reduce((sum, p) => sum + p.mortgage_balance, 0);
-  // realEstateEquity used for net worth display below
-  const investable = totalInvestment > 0 ? totalInvestment : rsuValue;
-
-  const bankBalances = plaidAccounts.filter(a => a.type === 'depository').reduce((sum, a) => sum + (a.currentBalance || 0), 0);
-  const creditDebt = plaidAccounts.filter(a => a.type === 'credit').reduce((sum, a) => sum + (a.currentBalance || 0), 0);
-
-  const totalAssets = realEstateValue;
-  const totalInvestments = investable;
-  const totalSavings = bankBalances;
-  const totalDebt = realEstateDebt + creditDebt;
-  const totalNetWorth = totalAssets + totalInvestments + totalSavings - totalDebt;
 
   // === Income ===
   const [incomeOverride, setIncomeOverride] = useState<{ gross: number; net: number } | null>(null);
@@ -554,6 +593,43 @@ export default function SpendingPlanPage() {
         )}
       </div>
 
+      {/* Partner Link */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Users size={16} className="text-text-secondary/60" />
+        {partner ? (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20">
+            <Link2 size={14} className="text-accent" />
+            <span className="text-sm text-accent">Shared with <strong>{partner.name}</strong></span>
+            <button
+              onClick={handleUnlinkPartner}
+              className="ml-1 text-text-secondary/40 hover:text-red-400 transition-colors"
+              title="Unlink partner"
+            >
+              <Unlink size={12} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <input
+              type="email"
+              placeholder="Partner's email..."
+              value={partnerEmail}
+              onChange={(e) => setPartnerEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleLinkPartner(); }}
+              className="bg-bg-elevated border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary w-52 focus:outline-none focus:border-accent/40"
+            />
+            <button
+              onClick={handleLinkPartner}
+              disabled={linkingPartner || !partnerEmail.trim()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-sm hover:bg-accent/20 transition-all disabled:opacity-50"
+            >
+              <Link2 size={14} />
+              {linkingPartner ? 'Linking...' : 'Link Partner'}
+            </button>
+          </>
+        )}
+        {partnerError && <span className="text-sm text-red-400">{partnerError}</span>}
+      </div>
       {/* Four-bucket overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
