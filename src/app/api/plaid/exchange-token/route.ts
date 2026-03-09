@@ -16,9 +16,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Exchange public token for access token
-    const data = await exchangePublicToken(publicToken);
-    const accessToken = data.access_token;
-    const itemId = data.item_id;
+    let accessToken: string;
+    let itemId: string;
+    try {
+      const data = await exchangePublicToken(publicToken);
+      accessToken = data.access_token;
+      itemId = data.item_id;
+    } catch (plaidErr) {
+      console.error('Plaid token exchange failed:', plaidErr);
+      const msg = plaidErr instanceof Error ? plaidErr.message : 'Unknown Plaid error';
+      return NextResponse.json({ error: `Plaid exchange failed: ${msg}` }, { status: 500 });
+    }
 
     // Look up user, creating a row if needed (new users may not have completed onboarding)
     const supabase = createServerClient();
@@ -42,22 +50,28 @@ export async function POST(req: NextRequest) {
 
       if (insertError || !newUser?.id) {
         console.error('Failed to create user for Plaid:', insertError);
-        return NextResponse.json({ error: 'Failed to resolve user' }, { status: 500 });
+        return NextResponse.json({ error: `User creation failed: ${insertError?.message || 'unknown'}` }, { status: 500 });
       }
       userId = newUser.id;
     }
 
     // Store access token
-    await supabase.from('plaid_items').upsert({
+    const { error: plaidItemError } = await supabase.from('plaid_items').upsert({
       user_id: userId,
       plaid_item_id: itemId,
       access_token: accessToken,
       institution_name: institutionName || 'Unknown',
     }, { onConflict: 'user_id,plaid_item_id' });
 
+    if (plaidItemError) {
+      console.error('Failed to store Plaid item:', plaidItemError);
+      return NextResponse.json({ error: `Failed to store connection: ${plaidItemError.message}` }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true, itemId });
   } catch (err) {
     console.error('Plaid exchange-token error:', err);
-    return NextResponse.json({ error: 'Failed to exchange token' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: `Exchange failed: ${msg}` }, { status: 500 });
   }
 }

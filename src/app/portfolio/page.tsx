@@ -500,7 +500,8 @@ function AccountsTab() {
             refreshUserData();
           } catch (err) {
             console.error('Plaid token exchange error:', err);
-            setError('Failed to save connection.');
+            const msg = err instanceof Error ? err.message : 'Failed to save connection';
+            setError(msg);
           }
           setConnectingPlaid(false);
         },
