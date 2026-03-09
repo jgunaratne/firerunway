@@ -12,6 +12,7 @@ import { formatCurrency } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
 import { useBrokerageData } from '@/lib/BrokerageDataContext';
 import { useUserData } from '@/lib/UserDataContext';
+import { useAuth } from '@/lib/AuthProvider';
 import {
   TrendingUp, Building2, CreditCard, Landmark,
   PiggyBank, CircleCheck,
@@ -371,6 +372,7 @@ const brokerages = [
 
 
 function AccountsTab() {
+  const { user } = useAuth();
   const { uid: userId, refresh: refreshUserData } = useUserData();
   const { accounts: cachedAccounts, plaidAccounts, forceRefresh: refreshBrokerage, loading: brokerageLoading } = useBrokerageData();
   const [connecting, setConnecting] = useState(false);
@@ -485,6 +487,7 @@ function AccountsTab() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 uid: userId,
+                email: user?.email || null,
                 publicToken,
                 institutionName: metadata.institution?.name || 'Unknown',
               }),
