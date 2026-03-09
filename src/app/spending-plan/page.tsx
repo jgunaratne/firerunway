@@ -79,7 +79,7 @@ const MERCHANT_OVERRIDES: [RegExp, string][] = [
   // Gas stations → transportation
   [/shell|chevron|arco|76|exxon|mobil|bp\b|texaco|valero|marathon|speedway|circle\s*k|wawa|sheetz|pilot|loves|flying\s*j|gas|petro|fuel/i, 'TRANSPORTATION'],
   // Streaming/subscriptions → entertainment
-  [/netflix|hulu|disney\+?|spotify|apple\s*(music|tv)|youtube|hbo|paramount|peacock|crunchyroll|amazon\s*prime/i, 'ENTERTAINMENT'],
+  [/netflix|hulu|disney\+?|spotify|apple\s*(music|tv)|youtube|hbo|paramount|peacock|crunchyroll|amazon\s*prime|seattle\s*times|new\s*york\s*times|nytimes|wall\s*street\s*journal|wsj|washington\s*post|newspaper|news\s*sub/i, 'ENTERTAINMENT'],
   // Ride-share → transportation
   [/uber(?!\s*eats)|lyft|taxi|cab\b/i, 'TRANSPORTATION'],
   // Food delivery → food
