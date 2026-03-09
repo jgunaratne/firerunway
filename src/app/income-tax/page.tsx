@@ -229,9 +229,14 @@ export default function IncomeTaxPage() {
 
   // Merge manual income into aggregated (manual takes priority)
   const hasManualIncome = Object.values(manualIncome).some(v => v > 0);
-  const displayIncome = hasManualIncome ? { ...manualIncome } : aggregatedIncome;
+  // Auto-calculate RSU remainder if not manually set
+  const autoRsu = !manualIncome.rsu && totalIncome > 0 && hasManualIncome
+    ? Math.max(0, totalIncome - (manualIncome.salary || 0) - (manualIncome.bonus || 0))
+    : 0;
+  const effectiveManualIncome = autoRsu > 0 ? { ...manualIncome, rsu: autoRsu } : manualIncome;
+  const displayIncome = hasManualIncome ? { ...effectiveManualIncome } : aggregatedIncome;
   const displayTotalIncome = hasManualIncome
-    ? Object.values(manualIncome).reduce((s, v) => s + v, 0)
+    ? Object.values(effectiveManualIncome).reduce((s, v) => s + v, 0)
     : totalIncome;
 
   const effectiveRate = displayTotalIncome > 0 ? (totalTax / displayTotalIncome) * 100 : 0;
@@ -303,7 +308,14 @@ export default function IncomeTaxPage() {
             { key: 'salary', label: 'Base Salary', color: INCOME_COLORS.salary },
             { key: 'bonus', label: 'Bonus', color: INCOME_COLORS.bonus },
             { key: 'rsu', label: 'RSU / Stock Comp', color: INCOME_COLORS.rsu },
-          ].map(({ key, label, color }) => (
+          ].map(({ key, label, color }) => {
+            // Auto-calculate RSU as remainder if W-2 total exists and RSU not manually set
+            const autoRsu = key === 'rsu' && !manualIncome.rsu && totalIncome > 0
+              ? Math.max(0, totalIncome - (manualIncome.salary || 0) - (manualIncome.bonus || 0))
+              : 0;
+            const displayValue = manualIncome[key] || (key === 'rsu' ? autoRsu : 0);
+
+            return (
             <div key={key} className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
               <span className="text-text-secondary text-sm flex-1">{label}</span>
@@ -313,12 +325,13 @@ export default function IncomeTaxPage() {
                   type="number"
                   value={manualIncome[key] || ''}
                   onChange={(e) => updateManualIncome(key, parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-36 bg-bg-elevated border border-border rounded-lg px-2.5 pl-6 py-1.5 text-sm number-display text-text-primary text-right focus:outline-none focus:border-accent/40"
+                    placeholder={key === 'rsu' && autoRsu > 0 ? autoRsu.toLocaleString() : '0'}
+                    className={`w-36 bg-bg-elevated border border-border rounded-lg px-2.5 pl-6 py-1.5 text-sm number-display text-right focus:outline-none focus:border-accent/40 ${!manualIncome[key] && displayValue > 0 ? 'text-text-secondary/50' : 'text-text-primary'}`}
                 />
               </div>
             </div>
-          ))}
+            );
+          })}
           {hasManualIncome && (
             <div className="flex items-center gap-3 pt-2 border-t border-border/30">
               <div className="w-2.5 h-2.5 flex-shrink-0" />
