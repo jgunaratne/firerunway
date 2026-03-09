@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       // Create user row for first-time Plaid connector
       const { data: newUser, error: insertError } = await supabase
         .from('users')
-        .insert({ firebase_uid: uid, email: email || null })
+        .insert({ firebase_uid: uid, email: email || null, snaptrade_user_id: uid })
         .select('id')
         .single();
 
