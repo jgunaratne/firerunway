@@ -12,6 +12,9 @@ interface Transaction {
   amount: number;
   personalFinanceCategory: string | null;
   category: string[];
+  name: string;
+  date: string;
+  merchantName: string | null;
 }
 
 // Map Plaid categories to spending plan buckets
@@ -37,44 +40,74 @@ const FIXED_COST_SUBCATEGORIES: Record<string, string> = {
   'GENERAL_MERCHANDISE': 'Shopping / Clothes',
 };
 
-function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange }: {
+function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange, transactions }: {
   label: string; amount: number | string; indent?: boolean; bold?: boolean; highlight?: boolean; dimLabel?: boolean;
   onAmountChange?: (val: number) => void;
+  transactions?: Transaction[];
 }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const editable = !!onAmountChange && typeof amount === 'number';
+  const hasDetails = transactions && transactions.length > 0;
 
   return (
-    <div className={`flex items-center justify-between py-2 px-3 ${bold ? 'border-t border-border' : 'border-b border-border/20'} ${highlight ? 'bg-accent/5' : ''}`}>
-      <span className={`text-sm ${indent ? 'pl-4' : ''} ${bold ? 'font-semibold text-text-primary' : dimLabel ? 'text-text-secondary/60' : 'text-text-secondary'}`}>
-        {label}
-      </span>
-      {editing ? (
-        <input
-          autoFocus
-          type="number"
-          className="w-28 bg-bg-elevated border border-accent/40 rounded px-2 py-0.5 text-sm text-text-primary text-right number-display focus:outline-none"
-          value={editVal}
-          onChange={(e) => setEditVal(e.target.value)}
-          onBlur={() => {
-            const n = parseFloat(editVal);
-            if (!isNaN(n) && n >= 0) onAmountChange!(n);
-            setEditing(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-            if (e.key === 'Escape') setEditing(false);
-          }}
-        />
-      ) : (
-        <span
-          className={`number-display text-sm ${bold ? 'font-bold text-accent' : 'text-text-primary'} ${editable ? 'cursor-pointer hover:text-accent/80 hover:underline decoration-dotted underline-offset-2' : ''}`}
-          onClick={editable ? () => { setEditVal(String(Math.round(amount as number))); setEditing(true); } : undefined}
-          title={editable ? 'Click to edit' : undefined}
-        >
-          {typeof amount === 'number' ? formatCurrency(amount) : amount}
-        </span>
+    <div>
+      <div className={`flex items-center justify-between py-2 px-3 ${bold ? 'border-t border-border' : 'border-b border-border/20'} ${highlight ? 'bg-accent/5' : ''}`}>
+        <div className="flex items-center gap-1.5">
+          {hasDetails && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-accent/60 hover:text-accent text-xs w-4 flex-shrink-0 transition-colors"
+              title={expanded ? 'Collapse' : 'Show transactions'}
+            >
+              {expanded ? '▾' : '▸'}
+            </button>
+          )}
+          <span className={`text-sm ${indent && !hasDetails ? 'pl-4' : ''} ${bold ? 'font-semibold text-text-primary' : dimLabel ? 'text-text-secondary/60' : 'text-text-secondary'}`}>
+            {label}
+            {hasDetails && <span className="text-text-secondary/40 ml-1 text-xs">({transactions.length})</span>}
+          </span>
+        </div>
+        {editing ? (
+          <input
+            autoFocus
+            type="number"
+            className="w-28 bg-bg-elevated border border-accent/40 rounded px-2 py-0.5 text-sm text-text-primary text-right number-display focus:outline-none"
+            value={editVal}
+            onChange={(e) => setEditVal(e.target.value)}
+            onBlur={() => {
+              const n = parseFloat(editVal);
+              if (!isNaN(n) && n >= 0) onAmountChange!(n);
+              setEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+              if (e.key === 'Escape') setEditing(false);
+            }}
+          />
+        ) : (
+          <span
+            className={`number-display text-sm ${bold ? 'font-bold text-accent' : 'text-text-primary'} ${editable ? 'cursor-pointer hover:text-accent/80 hover:underline decoration-dotted underline-offset-2' : ''}`}
+            onClick={editable ? () => { setEditVal(String(Math.round(amount as number))); setEditing(true); } : undefined}
+            title={editable ? 'Click to edit' : undefined}
+          >
+            {typeof amount === 'number' ? formatCurrency(amount) : amount}
+          </span>
+        )}
+      </div>
+      {expanded && hasDetails && (
+        <div className="bg-bg-elevated/50 border-b border-border/20">
+          {transactions.sort((a, b) => b.amount - a.amount).map((tx, i) => (
+            <div key={i} className="flex items-center justify-between py-1 px-3 pl-10 text-xs border-b border-border/10 last:border-b-0">
+              <div className="flex-1 min-w-0">
+                <span className="text-text-secondary truncate block">{tx.merchantName || tx.name}</span>
+                <span className="text-text-secondary/40">{tx.date}</span>
+              </div>
+              <span className="number-display text-text-secondary ml-2 flex-shrink-0">{formatCurrency(tx.amount)}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -233,54 +266,57 @@ export default function SpendingPlanPage() {
   );
 
   // Build category totals from Plaid OR uploaded data
-  const categoryTotals = useMemo(() => {
-    const map = new Map<string, number>();
+  const { categoryTotals, categoryTransactions } = useMemo(() => {
+    const totals = new Map<string, number>();
+    const txByCategory = new Map<string, Transaction[]>();
 
     if (uploadedData) {
       // Use uploaded data — convert annual to monthly if needed
       const divisor = uploadedData.period === 'annual' ? 12 : 1;
       const cats = uploadedData.categories;
-      if (cats.rent_mortgage) map.set('RENT_AND_UTILITIES', (cats.rent_mortgage + (cats.utilities || 0)) / divisor);
-      if (cats.transportation) map.set('TRANSPORTATION', cats.transportation / divisor);
-      if (cats.debt_payments) map.set('LOAN_PAYMENTS', cats.debt_payments / divisor);
-      if (cats.insurance || cats.medical) map.set('MEDICAL', ((cats.insurance || 0) + (cats.medical || 0)) / divisor);
-      if (cats.personal_care) map.set('PERSONAL_CARE', cats.personal_care / divisor);
-      if (cats.home_maintenance) map.set('HOME_IMPROVEMENT', cats.home_maintenance / divisor);
-      if (cats.groceries || cats.dining_out) map.set('FOOD_AND_DRINK', ((cats.groceries || 0) + (cats.dining_out || 0)) / divisor);
-      if (cats.clothing) map.set('GENERAL_MERCHANDISE', cats.clothing / divisor);
-      if (cats.subscriptions || cats.entertainment) map.set('ENTERTAINMENT', ((cats.subscriptions || 0) + (cats.entertainment || 0)) / divisor);
-      if (cats.childcare) map.set('GENERAL_SERVICES', cats.childcare / divisor);
-      // Put travel, education, gifts into guilt-free via OTHER
+      if (cats.rent_mortgage) totals.set('RENT_AND_UTILITIES', (cats.rent_mortgage + (cats.utilities || 0)) / divisor);
+      if (cats.transportation) totals.set('TRANSPORTATION', cats.transportation / divisor);
+      if (cats.debt_payments) totals.set('LOAN_PAYMENTS', cats.debt_payments / divisor);
+      if (cats.insurance || cats.medical) totals.set('MEDICAL', ((cats.insurance || 0) + (cats.medical || 0)) / divisor);
+      if (cats.personal_care) totals.set('PERSONAL_CARE', cats.personal_care / divisor);
+      if (cats.home_maintenance) totals.set('HOME_IMPROVEMENT', cats.home_maintenance / divisor);
+      if (cats.groceries || cats.dining_out) totals.set('FOOD_AND_DRINK', ((cats.groceries || 0) + (cats.dining_out || 0)) / divisor);
+      if (cats.clothing) totals.set('GENERAL_MERCHANDISE', cats.clothing / divisor);
+      if (cats.subscriptions || cats.entertainment) totals.set('ENTERTAINMENT', ((cats.subscriptions || 0) + (cats.entertainment || 0)) / divisor);
+      if (cats.childcare) totals.set('GENERAL_SERVICES', cats.childcare / divisor);
       const guiltFreeExtra = ((cats.travel || 0) + (cats.education || 0) + (cats.gifts_donations || 0) + (cats.other || 0)) / divisor;
-      if (guiltFreeExtra > 0) map.set('GUILT_FREE_EXTRA', guiltFreeExtra);
-      // Savings/investments
-      if (cats.savings_investments) map.set('SAVINGS_INVESTMENTS', cats.savings_investments / divisor);
+      if (guiltFreeExtra > 0) totals.set('GUILT_FREE_EXTRA', guiltFreeExtra);
+      if (cats.savings_investments) totals.set('SAVINGS_INVESTMENTS', cats.savings_investments / divisor);
     } else {
-    // Use Plaid transaction data
+      // Use Plaid transaction data — track both totals and individual transactions
       for (const tx of expenses) {
         const cat = tx.personalFinanceCategory || 'OTHER';
-        map.set(cat, (map.get(cat) || 0) + tx.amount);
+        totals.set(cat, (totals.get(cat) || 0) + tx.amount);
+        if (!txByCategory.has(cat)) txByCategory.set(cat, []);
+        txByCategory.get(cat)!.push(tx);
       }
     }
-    return map;
+    return { categoryTotals: totals, categoryTransactions: txByCategory };
   }, [expenses, uploadedData]);
 
   // Fixed Costs
   const fixedCostItems = useMemo(() => {
-    const items: { label: string; amount: number }[] = [];
+    const items: { label: string; amount: number; transactions: Transaction[] }[] = [];
     const groceries = categoryTotals.get('FOOD_AND_DRINK') || 0;
+    const groceryTxs = categoryTransactions.get('FOOD_AND_DRINK') || [];
     const shopping = (categoryTotals.get('GENERAL_MERCHANDISE') || 0) + (categoryTotals.get('SHOPPING') || 0);
+    const shoppingTxs = [...(categoryTransactions.get('GENERAL_MERCHANDISE') || []), ...(categoryTransactions.get('SHOPPING') || [])];
 
     for (const cat of FIXED_COST_CATEGORIES) {
       const amount = categoryTotals.get(cat) || 0;
-      items.push({ label: FIXED_COST_SUBCATEGORIES[cat] || cat, amount });
+      items.push({ label: FIXED_COST_SUBCATEGORIES[cat] || cat, amount, transactions: categoryTransactions.get(cat) || [] });
     }
-    items.push({ label: 'Groceries & Dining', amount: groceries });
-    items.push({ label: 'Clothes / Shopping', amount: shopping });
+    items.push({ label: 'Groceries & Dining', amount: groceries, transactions: groceryTxs });
+    items.push({ label: 'Clothes / Shopping', amount: shopping, transactions: shoppingTxs });
 
     // Subscriptions
     const subs = categoryTotals.get('ENTERTAINMENT') || 0;
-    items.push({ label: 'Subscriptions / Entertainment', amount: subs });
+    items.push({ label: 'Subscriptions / Entertainment', amount: subs, transactions: categoryTransactions.get('ENTERTAINMENT') || [] });
 
     items.sort((a, b) => b.amount - a.amount);
     // Apply manual overrides
@@ -288,7 +324,7 @@ export default function SpendingPlanPage() {
       ...item,
       amount: manualOverrides[item.label] ?? item.amount,
     }));
-  }, [categoryTotals, manualOverrides]);
+  }, [categoryTotals, categoryTransactions, manualOverrides]);
 
   const fixedCostsTotal = fixedCostItems.reduce((sum, i) => sum + i.amount, 0);
   // Add 15% miscellaneous buffer
@@ -465,6 +501,7 @@ export default function SpendingPlanPage() {
             amount={item.amount}
             indent
             onAmountChange={(val) => setOverride(item.label, val)}
+            transactions={item.transactions}
           />
         ))}
         <PlanRow label="Miscellaneous (15% buffer)" amount={miscellaneous} indent dimLabel />
