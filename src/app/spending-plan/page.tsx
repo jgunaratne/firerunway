@@ -160,6 +160,8 @@ export default function SpendingPlanPage() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categorizing, setCategorizing] = useState(false);
+  const [aiCorrections, setAiCorrections] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!uid) { setLoading(false); return; }
@@ -169,6 +171,45 @@ export default function SpendingPlanPage() {
       .catch(() => setTransactions([]))
       .finally(() => setLoading(false));
   }, [uid]);
+
+  // Hydrate AI corrections from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('csp_ai_corrections');
+      if (saved) setAiCorrections(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist AI corrections
+  useEffect(() => {
+    if (Object.keys(aiCorrections).length > 0) {
+      localStorage.setItem('csp_ai_corrections', JSON.stringify(aiCorrections));
+    } else {
+      localStorage.removeItem('csp_ai_corrections');
+    }
+  }, [aiCorrections]);
+
+  const handleAiCategorize = useCallback(async () => {
+    if (transactions.length === 0) return;
+    setCategorizing(true);
+    try {
+      const res = await fetch('/api/ai/categorize-transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactions }),
+      });
+      const data = await res.json();
+      if (data.corrections) {
+        setAiCorrections(data.corrections);
+        // Clear manual overrides since categories changed
+        setManualOverrides({});
+      }
+    } catch (err) {
+      console.error('AI categorization error:', err);
+    } finally {
+      setCategorizing(false);
+    }
+  }, [transactions]);
 
   // === Upload State (persisted to localStorage) ===
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -287,6 +328,15 @@ export default function SpendingPlanPage() {
     [transactions]
   );
 
+  // Resolve category with AI corrections applied
+  const resolveCategoryWithAi = useCallback((tx: Transaction, index: number): string => {
+    // AI correction takes priority
+    if (aiCorrections[String(index)]) {
+      return aiCorrections[String(index)];
+    }
+    return resolveCategory(tx);
+  }, [aiCorrections]);
+
   // Build category totals from Plaid OR uploaded data
   const { categoryTotals, categoryTransactions } = useMemo(() => {
     const totals = new Map<string, number>();
@@ -311,15 +361,18 @@ export default function SpendingPlanPage() {
       if (cats.savings_investments) totals.set('SAVINGS_INVESTMENTS', cats.savings_investments / divisor);
     } else {
       // Use Plaid transaction data — track both totals and individual transactions
-      for (const tx of expenses) {
-        const cat = resolveCategory(tx);
+      // We need to map expense index back to original transaction index for AI corrections
+      for (let i = 0; i < expenses.length; i++) {
+        const tx = expenses[i];
+        const originalIdx = transactions.indexOf(tx);
+        const cat = resolveCategoryWithAi(tx, originalIdx);
         totals.set(cat, (totals.get(cat) || 0) + tx.amount);
         if (!txByCategory.has(cat)) txByCategory.set(cat, []);
         txByCategory.get(cat)!.push(tx);
       }
     }
     return { categoryTotals: totals, categoryTransactions: txByCategory };
-  }, [expenses, uploadedData]);
+  }, [expenses, uploadedData, resolveCategoryWithAi, transactions]);
 
   // Fixed Costs
   const fixedCostItems = useMemo(() => {
@@ -515,7 +568,34 @@ export default function SpendingPlanPage() {
 
       {/* Fixed Costs */}
       <Card>
-        <SectionHeader title="Fixed Costs" pct={fixedPct} targetRange="50-60%" actual={fixedPct} />
+        <div className="flex items-center justify-between py-2.5 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border">
+          <span className="text-sm font-bold text-text-primary">Fixed Costs</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleAiCategorize}
+              disabled={categorizing || transactions.length === 0}
+              className={`flex items-center gap-1.5 text-sm font-medium px-2 py-1 rounded-lg transition-all ${Object.keys(aiCorrections).length > 0
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                : 'text-text-secondary hover:text-accent hover:bg-accent/10'
+                } disabled:opacity-50`}
+              title="Use AI to recategorize transactions"
+            >
+              <Wand2 size={14} className={categorizing ? 'animate-spin' : ''} />
+              {categorizing ? 'Categorizing...' : Object.keys(aiCorrections).length > 0 ? `${Object.keys(aiCorrections).length} corrected` : 'AI Categorize'}
+            </button>
+            {Object.keys(aiCorrections).length > 0 && (
+              <button
+                onClick={() => { setAiCorrections({}); setManualOverrides({}); }}
+                className="text-xs text-text-secondary/60 hover:text-red-400 transition-colors"
+                title="Clear AI corrections"
+              >
+                <X size={12} />
+              </button>
+            )}
+            <span className="text-sm text-text-secondary">Target: 50-60%</span>
+            <span className={`text-sm font-bold ${fixedPct > 60 ? 'text-red-400' : fixedPct < 50 ? 'text-amber-400' : 'text-emerald-400'}`}>{fixedPct.toFixed(0)}%</span>
+          </div>
+        </div>
         {fixedCostItems.map((item) => (
           <PlanRow
             key={item.label}
