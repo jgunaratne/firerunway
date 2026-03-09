@@ -5,6 +5,7 @@ import Card from '@/components/shared/Card';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
 import { Upload, FileText, X, Wand2, Users, Link2, Unlink, EyeOff } from 'lucide-react';
+import SankeyDiagram from '@/components/shared/SankeyDiagram';
 
 interface Transaction {
   id?: string;
@@ -735,6 +736,27 @@ export default function SpendingPlanPage() {
           </div>
         ))}
       </div>
+
+      {/* Sankey Flow Diagram */}
+      {netMonthlyIncome > 0 && fixedCostItems.length > 0 && (
+        <Card>
+          <h3 className="section-title">Where Your Money Goes</h3>
+          <SankeyDiagram
+            income={netMonthlyIncome}
+            buckets={[
+              {
+                label: 'Fixed Costs',
+                amount: fixedCostsTotalWithMisc,
+                color: fixedPct > 60 ? '#ef4444' : '#10b981',
+                items: fixedCostItems.filter(i => i.amount > 0).slice(0, 8).map(i => ({ label: i.label, amount: i.amount })),
+              },
+              { label: 'Investments', amount: effectiveInvestments, color: investPct >= 10 ? '#10b981' : '#f59e0b' },
+              { label: 'Savings', amount: effectiveSavings, color: '#6366f1' },
+              { label: 'Guilt-Free', amount: guiltFreeSpending, color: '#10b981' },
+            ]}
+          />
+        </Card>
+      )}
 
       {/* Income */}
       <Card>
