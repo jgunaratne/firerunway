@@ -11,6 +11,7 @@ import { Upload, FileText, X, Wand2 } from 'lucide-react';
 interface Transaction {
   amount: number;
   personalFinanceCategory: string | null;
+  personalFinanceCategoryDetailed: string | null;
   category: string[];
   name: string;
   date: string;
@@ -39,6 +40,27 @@ const FIXED_COST_SUBCATEGORIES: Record<string, string> = {
   'FOOD_AND_DRINK': 'Dining & Groceries',
   'GENERAL_MERCHANDISE': 'Shopping / Clothes',
 };
+
+// Detailed Plaid categories that should be remapped to FOOD_AND_DRINK
+// These are stores that sell groceries as their primary business
+const GROCERY_DETAILED_CATEGORIES = new Set([
+  'GENERAL_MERCHANDISE_SUPERSTORES',      // Fred Meyer, Walmart, Target
+  'GENERAL_MERCHANDISE_WAREHOUSE_CLUBS',  // Costco, Sam's Club
+  'GENERAL_MERCHANDISE_PHARMACIES',       // Walgreens, CVS
+]);
+
+// Resolve the effective spending category, correcting common Plaid misclassifications
+function resolveCategory(tx: Transaction): string {
+  const primary = tx.personalFinanceCategory || 'OTHER';
+  const detailed = tx.personalFinanceCategoryDetailed || '';
+
+  // Remap superstores/warehouse clubs to groceries
+  if (primary === 'GENERAL_MERCHANDISE' && GROCERY_DETAILED_CATEGORIES.has(detailed)) {
+    return 'FOOD_AND_DRINK';
+  }
+
+  return primary;
+}
 
 function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange, transactions }: {
   label: string; amount: number | string; indent?: boolean; bold?: boolean; highlight?: boolean; dimLabel?: boolean;
@@ -290,7 +312,7 @@ export default function SpendingPlanPage() {
     } else {
       // Use Plaid transaction data — track both totals and individual transactions
       for (const tx of expenses) {
-        const cat = tx.personalFinanceCategory || 'OTHER';
+        const cat = resolveCategory(tx);
         totals.set(cat, (totals.get(cat) || 0) + tx.amount);
         if (!txByCategory.has(cat)) txByCategory.set(cat, []);
         txByCategory.get(cat)!.push(tx);

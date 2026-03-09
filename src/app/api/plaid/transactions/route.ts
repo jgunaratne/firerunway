@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
       amount: number;
       category: string[];
       personalFinanceCategory: string | null;
+      personalFinanceCategoryDetailed: string | null;
       accountId: string;
       institutionName: string;
       pending: boolean;
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
             amount: tx.amount,
             category: tx.category || [],
             personalFinanceCategory: tx.personal_finance_category?.primary || null,
+            personalFinanceCategoryDetailed: tx.personal_finance_category?.detailed || null,
             accountId: tx.account_id,
             institutionName: item.institution_name || 'Unknown',
             pending: tx.pending,
