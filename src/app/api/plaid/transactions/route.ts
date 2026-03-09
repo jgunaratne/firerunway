@@ -129,10 +129,24 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Sort by date descending
-    allTransactions.sort((a, b) => b.date.localeCompare(a.date));
+    // Deduplicate shared credit card transactions
+    // When both partners connect the same card, Plaid returns the same charges twice.
+    // Match on amount + date + merchant/name to detect duplicates.
+    const seen = new Set<string>();
+    const dedupedTransactions: TransactionItem[] = [];
+    for (const tx of allTransactions) {
+      const key = `${tx.amount}|${tx.date}|${(tx.merchantName || tx.name).toLowerCase().trim()}`;
+      if (seen.has(key)) {
+        continue; // Skip duplicate from shared card
+      }
+      seen.add(key);
+      dedupedTransactions.push(tx);
+    }
 
-    return NextResponse.json({ transactions: allTransactions });
+    // Sort by date descending
+    dedupedTransactions.sort((a, b) => b.date.localeCompare(a.date));
+
+    return NextResponse.json({ transactions: dedupedTransactions });
   } catch (err) {
     console.error('Plaid transactions error:', err);
     return NextResponse.json({ transactions: [], error: 'Failed to fetch transactions' });

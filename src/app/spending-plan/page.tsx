@@ -469,13 +469,23 @@ export default function SpendingPlanPage() {
     return { categoryTotals: totals, categoryTransactions: txByCategory };
   }, [expenses, uploadedData, resolveCategoryWithAi, transactions]);
 
-  // Fixed Costs
   const fixedCostItems = useMemo(() => {
     const items: { label: string; amount: number; transactions: Transaction[] }[] = [];
     const groceries = categoryTotals.get('FOOD_AND_DRINK') || 0;
     const groceryTxs = categoryTransactions.get('FOOD_AND_DRINK') || [];
     const shopping = (categoryTotals.get('GENERAL_MERCHANDISE') || 0) + (categoryTotals.get('SHOPPING') || 0);
     const shoppingTxs = [...(categoryTransactions.get('GENERAL_MERCHANDISE') || []), ...(categoryTransactions.get('SHOPPING') || [])];
+
+    // Track which categories we've accounted for
+    const accountedCategories = new Set([
+      ...FIXED_COST_CATEGORIES,
+      'FOOD_AND_DRINK',
+      'GENERAL_MERCHANDISE',
+      'SHOPPING',
+      'ENTERTAINMENT',
+      'GUILT_FREE_EXTRA',
+      'SAVINGS_INVESTMENTS',
+    ]);
 
     for (const cat of FIXED_COST_CATEGORIES) {
       const amount = categoryTotals.get(cat) || 0;
@@ -487,6 +497,20 @@ export default function SpendingPlanPage() {
     // Subscriptions
     const subs = categoryTotals.get('ENTERTAINMENT') || 0;
     items.push({ label: 'Subscriptions / Entertainment', amount: subs, transactions: categoryTransactions.get('ENTERTAINMENT') || [] });
+
+    // Collect all uncategorized/other transactions not in a named row
+    let otherTotal = 0;
+    const otherTxs: Transaction[] = [];
+    Array.from(categoryTotals.entries()).forEach(([cat, amount]) => {
+      if (!accountedCategories.has(cat)) {
+        otherTotal += amount;
+        const txs = categoryTransactions.get(cat) || [];
+        otherTxs.push(...txs);
+      }
+    });
+    if (otherTotal > 0) {
+      items.push({ label: 'Other / Uncategorized', amount: otherTotal, transactions: otherTxs });
+    }
 
     items.sort((a, b) => b.amount - a.amount);
     // Apply manual overrides
