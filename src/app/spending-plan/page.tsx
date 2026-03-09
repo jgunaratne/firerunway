@@ -579,18 +579,6 @@ export default function SpendingPlanPage() {
         ))}
       </div>
 
-      {/* Net Worth */}
-      <Card>
-        <div className="py-2 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border mb-1">
-          <span className="text-sm font-bold text-text-primary">Net Worth</span>
-        </div>
-        <PlanRow label="Assets (real estate, property)" amount={totalAssets} indent />
-        <PlanRow label="Investments (401k, brokerage)" amount={totalInvestments} indent />
-        <PlanRow label="Savings (bank accounts)" amount={totalSavings} indent />
-        <PlanRow label="Debt (mortgages, credit cards)" amount={-totalDebt} indent />
-        <PlanRow label="TOTAL NET WORTH" amount={totalNetWorth} bold highlight />
-      </Card>
-
       {/* Income */}
       <Card>
         <div className="py-2 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border mb-1 flex items-center justify-between">
