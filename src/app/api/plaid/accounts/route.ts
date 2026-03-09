@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
     const supabase = createServerClient();
     const { data: user } = await supabase
       .from('users')
+      .upsert({ firebase_uid: uid }, { onConflict: 'firebase_uid' })
       .select('id')
-      .eq('firebase_uid', uid)
       .single();
 
     if (!user?.id) {

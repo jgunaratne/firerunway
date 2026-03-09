@@ -20,16 +20,17 @@ export async function POST(req: NextRequest) {
     const accessToken = data.access_token;
     const itemId = data.item_id;
 
-    // Get user ID from Supabase
+    // Ensure user row exists (upsert for new users who haven't completed onboarding)
     const supabase = createServerClient();
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('users')
+      .upsert({ firebase_uid: uid }, { onConflict: 'firebase_uid' })
       .select('id')
-      .eq('firebase_uid', uid)
       .single();
 
-    if (!user?.id) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (userError || !user?.id) {
+      console.error('Failed to upsert user:', userError);
+      return NextResponse.json({ error: 'Failed to resolve user' }, { status: 500 });
     }
 
     // Store access token

@@ -480,7 +480,7 @@ function AccountsTab() {
         token: data.linkToken,
         onSuccess: async (publicToken: string, metadata: { institution?: { name?: string; institution_id?: string } }) => {
           try {
-            await fetch('/api/plaid/exchange-token', {
+            const exchangeRes = await fetch('/api/plaid/exchange-token', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -489,7 +489,11 @@ function AccountsTab() {
                 institutionName: metadata.institution?.name || 'Unknown',
               }),
             });
-            refreshBrokerage();
+            if (!exchangeRes.ok) {
+              const body = await exchangeRes.json().catch(() => ({}));
+              throw new Error(body.error || 'Failed to save connection');
+            }
+            await refreshBrokerage();
             refreshUserData();
           } catch (err) {
             console.error('Plaid token exchange error:', err);
