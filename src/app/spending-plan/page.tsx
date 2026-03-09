@@ -118,11 +118,12 @@ function resolveCategory(tx: Transaction): string {
   return primary;
 }
 
-function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange, transactions, onExclude }: {
+function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange, transactions, onExclude, excludedIds }: {
   label: string; amount: number | string; indent?: boolean; bold?: boolean; highlight?: boolean; dimLabel?: boolean;
   onAmountChange?: (val: number) => void;
   transactions?: Transaction[];
   onExclude?: (txId: string) => void;
+  excludedIds?: Set<string>;
 }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState('');
@@ -177,8 +178,10 @@ function PlanRow({ label, amount, indent = false, bold = false, highlight = fals
       </div>
       {expanded && hasDetails && (
         <div className="bg-bg-elevated/50 border-b border-border/20">
-          {transactions.sort((a, b) => b.amount - a.amount).map((tx, i) => (
-            <div key={i} className="flex items-center justify-between py-1 px-3 pl-10 text-xs border-b border-border/10 last:border-b-0 group">
+          {transactions.sort((a, b) => b.amount - a.amount).map((tx, i) => {
+            const isExcluded = excludedIds && tx.id && excludedIds.has(tx.id);
+            return (
+              <div key={i} className={`flex items-center justify-between py-1 px-3 pl-10 text-xs border-b border-border/10 last:border-b-0 group ${isExcluded ? 'opacity-40' : ''}`}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   {tx.ownerName && tx.ownerName.split(', ').map((name, j) => (
@@ -186,24 +189,25 @@ function PlanRow({ label, amount, indent = false, bold = false, highlight = fals
                       {name.charAt(0).toUpperCase()}
                     </span>
                   ))}
-                  <span className="text-text-secondary truncate">{tx.merchantName || tx.name}</span>
+                    <span className={`text-text-secondary truncate ${isExcluded ? 'line-through' : ''}`}>{tx.merchantName || tx.name}</span>
                 </div>
                 <span className="text-text-secondary/40">{tx.date}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="number-display text-text-secondary flex-shrink-0">{formatCurrency(tx.amount)}</span>
+                  <span className={`number-display text-text-secondary flex-shrink-0 ${isExcluded ? 'line-through' : ''}`}>{formatCurrency(tx.amount)}</span>
                 {onExclude && tx.id && (
                   <button
                     onClick={() => onExclude(tx.id!)}
-                    className="opacity-0 group-hover:opacity-100 text-text-secondary/30 hover:text-red-400 transition-all"
-                    title="Exclude this charge"
+                      className={`${isExcluded ? 'opacity-100 text-amber-400' : 'opacity-0 group-hover:opacity-100 text-text-secondary/30 hover:text-red-400'} transition-all`}
+                      title={isExcluded ? 'Re-include this charge' : 'Exclude this charge'}
                   >
                     <EyeOff size={12} />
                   </button>
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -435,7 +439,11 @@ export default function SpendingPlanPage() {
   const handleExclude = useCallback((txId: string) => {
     setExcludedTxIds(prev => {
       const next = new Set(prev);
-      next.add(txId);
+      if (next.has(txId)) {
+        next.delete(txId); // Toggle: re-include
+      } else {
+        next.add(txId);
+      }
       localStorage.setItem('csp_excluded_txs', JSON.stringify(Array.from(next)));
       return next;
     });
@@ -447,9 +455,10 @@ export default function SpendingPlanPage() {
   }, []);
 
   // === Categorize Monthly Spending from Plaid (last month) ===
+  // Keep ALL transactions (including excluded) so they appear grayed out in expanded view
   const expenses = useMemo(
-    () => transactions.filter(t => t.amount > 0 && t.personalFinanceCategory !== 'INCOME' && t.personalFinanceCategory !== 'TRANSFER' && (!t.id || !excludedTxIds.has(t.id))),
-    [transactions, excludedTxIds]
+    () => transactions.filter(t => t.amount > 0 && t.personalFinanceCategory !== 'INCOME' && t.personalFinanceCategory !== 'TRANSFER'),
+    [transactions]
   );
 
   // Date range from transactions
@@ -521,8 +530,10 @@ export default function SpendingPlanPage() {
       'SAVINGS_INVESTMENTS',
     ]);
 
-    // Helper: sum from transactions array (single source of truth)
-    const sumTxs = (txs: Transaction[]) => txs.reduce((s, t) => s + t.amount, 0);
+    // Helper: sum from transactions array, excluding excluded IDs
+    const sumTxs = (txs: Transaction[]) => txs
+      .filter(t => !t.id || !excludedTxIds.has(t.id))
+      .reduce((s, t) => s + t.amount, 0);
 
     for (const cat of FIXED_COST_CATEGORIES) {
       const txs = categoryTransactions.get(cat) || [];
@@ -547,12 +558,8 @@ export default function SpendingPlanPage() {
     }
 
     items.sort((a, b) => b.amount - a.amount);
-    // Apply manual overrides
-    return items.map(item => ({
-      ...item,
-      amount: manualOverrides[item.label] ?? item.amount,
-    }));
-  }, [categoryTransactions, manualOverrides]);
+    return items;
+  }, [categoryTransactions, excludedTxIds]);
 
   const fixedCostsTotal = fixedCostItems.reduce((sum, i) => sum + i.amount, 0);
   // Add 15% miscellaneous buffer
@@ -810,6 +817,7 @@ export default function SpendingPlanPage() {
             onAmountChange={(val) => setOverride(item.label, val)}
             transactions={item.transactions}
             onExclude={handleExclude}
+            excludedIds={excludedTxIds}
           />
         ))}
         <PlanRow label="Miscellaneous (15% buffer)" amount={miscellaneous} indent dimLabel />
