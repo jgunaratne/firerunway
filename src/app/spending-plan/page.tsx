@@ -88,8 +88,8 @@ const MERCHANT_OVERRIDES: [RegExp, string][] = [
   [/insurance|geico|allstate|state\s*farm|progressive|usaa/i, 'MEDICAL'],
   // Utilities → rent & utilities
   [/comcast|xfinity|spectrum|at&?t|verizon|t-?mobile|sprint|electric|power|energy|water|sewage|gas\s*(co|company)|pge|pg&e|duke\s*energy|con\s*edison/i, 'RENT_AND_UTILITIES'],
-  // Gym → personal care
-  [/gym|fitness|planet\s*fitness|equinox|orangetheory|24\s*hour|ymca|crossfit|peloton/i, 'PERSONAL_CARE'],
+  // Gym / activities → personal care
+  [/gym|gymnastics|fitness|planet\s*fitness|equinox|orangetheory|24\s*hour|ymca|crossfit|peloton|martial\s*arts|karate|dance|swim|yoga|pilates/i, 'PERSONAL_CARE'],
   // Coffee shops → food
   [/starbucks|dunkin|peet'?s|dutch\s*bros|coffee/i, 'FOOD_AND_DRINK'],
   // Restaurants → food
