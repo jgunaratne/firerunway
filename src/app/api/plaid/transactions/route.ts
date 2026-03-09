@@ -129,19 +129,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Deduplicate shared credit card transactions
+    // Merge shared credit card transactions
     // When both partners connect the same card, Plaid returns the same charges twice.
-    // Match on amount + date + merchant/name to detect duplicates.
-    const seen = new Set<string>();
-    const dedupedTransactions: TransactionItem[] = [];
+    // Match on amount + date + merchant/name — merge owner names instead of dropping.
+    const txByKey = new Map<string, TransactionItem>();
     for (const tx of allTransactions) {
       const key = `${tx.amount}|${tx.date}|${(tx.merchantName || tx.name).toLowerCase().trim()}`;
-      if (seen.has(key)) {
-        continue; // Skip duplicate from shared card
+      const existing = txByKey.get(key);
+      if (existing) {
+        // Merge owner names if different
+        if (existing.ownerName !== tx.ownerName && !existing.ownerName.includes(tx.ownerName)) {
+          existing.ownerName = `${existing.ownerName}, ${tx.ownerName}`;
+        }
+      } else {
+        txByKey.set(key, { ...tx });
       }
-      seen.add(key);
-      dedupedTransactions.push(tx);
     }
+    const dedupedTransactions = Array.from(txByKey.values());
 
     // Sort by date descending
     dedupedTransactions.sort((a, b) => b.date.localeCompare(a.date));

@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Card from '@/components/shared/Card';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { Upload, FileText, X, Wand2, Users, Link2, Unlink } from 'lucide-react';
+import { Upload, FileText, X, Wand2, Users, Link2, Unlink, EyeOff } from 'lucide-react';
 
 interface Transaction {
+  id?: string;
   amount: number;
   personalFinanceCategory: string | null;
   personalFinanceCategoryDetailed: string | null;
@@ -117,10 +118,11 @@ function resolveCategory(tx: Transaction): string {
   return primary;
 }
 
-function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange, transactions }: {
+function PlanRow({ label, amount, indent = false, bold = false, highlight = false, dimLabel = false, onAmountChange, transactions, onExclude }: {
   label: string; amount: number | string; indent?: boolean; bold?: boolean; highlight?: boolean; dimLabel?: boolean;
   onAmountChange?: (val: number) => void;
   transactions?: Transaction[];
+  onExclude?: (txId: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState('');
@@ -176,19 +178,30 @@ function PlanRow({ label, amount, indent = false, bold = false, highlight = fals
       {expanded && hasDetails && (
         <div className="bg-bg-elevated/50 border-b border-border/20">
           {transactions.sort((a, b) => b.amount - a.amount).map((tx, i) => (
-            <div key={i} className="flex items-center justify-between py-1 px-3 pl-10 text-xs border-b border-border/10 last:border-b-0">
+            <div key={i} className="flex items-center justify-between py-1 px-3 pl-10 text-xs border-b border-border/10 last:border-b-0 group">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  {tx.ownerName && (
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[9px] font-bold flex-shrink-0" title={tx.ownerName}>
-                      {tx.ownerName.charAt(0).toUpperCase()}
+                <div className="flex items-center gap-1">
+                  {tx.ownerName && tx.ownerName.split(', ').map((name, j) => (
+                    <span key={j} className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[9px] font-bold flex-shrink-0" title={name}>
+                      {name.charAt(0).toUpperCase()}
                     </span>
-                  )}
+                  ))}
                   <span className="text-text-secondary truncate">{tx.merchantName || tx.name}</span>
                 </div>
                 <span className="text-text-secondary/40">{tx.date}</span>
               </div>
-              <span className="number-display text-text-secondary ml-2 flex-shrink-0">{formatCurrency(tx.amount)}</span>
+              <div className="flex items-center gap-2">
+                <span className="number-display text-text-secondary flex-shrink-0">{formatCurrency(tx.amount)}</span>
+                {onExclude && tx.id && (
+                  <button
+                    onClick={() => onExclude(tx.id!)}
+                    className="opacity-0 group-hover:opacity-100 text-text-secondary/30 hover:text-red-400 transition-all"
+                    title="Exclude this charge"
+                  >
+                    <EyeOff size={12} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -215,7 +228,7 @@ function SectionHeader({ title, pct, targetRange, actual }: {
 }
 
 export default function SpendingPlanPage() {
-  const { profile, uid, incomeTaxRecords } = useUserData();
+  const { profile, uid } = useUserData();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -406,22 +419,45 @@ export default function SpendingPlanPage() {
     }
   }, [incomeOverride]);
 
-  const importIncomeFromTax = useCallback(() => {
-    if (incomeTaxRecords.length === 0) return;
-    const latest = incomeTaxRecords[0]; // most recent
-    const gross = latest.total_income / 12;
-    const net = (latest.total_income - latest.total_tax) / 12;
-    setIncomeOverride({ gross, net });
-  }, [incomeTaxRecords]);
-
   const grossMonthlyIncome = incomeOverride?.gross ?? (profile?.annual_income || 0) / 12;
   const netMonthlyIncome = incomeOverride?.net ?? grossMonthlyIncome * (1 - 0.30);
 
+  // === Excluded transactions (persisted) ===
+  const [excludedTxIds, setExcludedTxIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('csp_excluded_txs');
+      if (saved) setExcludedTxIds(new Set(JSON.parse(saved)));
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleExclude = useCallback((txId: string) => {
+    setExcludedTxIds(prev => {
+      const next = new Set(prev);
+      next.add(txId);
+      localStorage.setItem('csp_excluded_txs', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  }, []);
+
+  const handleClearExclusions = useCallback(() => {
+    setExcludedTxIds(new Set());
+    localStorage.removeItem('csp_excluded_txs');
+  }, []);
+
   // === Categorize Monthly Spending from Plaid (last month) ===
   const expenses = useMemo(
-    () => transactions.filter(t => t.amount > 0 && t.personalFinanceCategory !== 'INCOME' && t.personalFinanceCategory !== 'TRANSFER'),
-    [transactions]
+    () => transactions.filter(t => t.amount > 0 && t.personalFinanceCategory !== 'INCOME' && t.personalFinanceCategory !== 'TRANSFER' && (!t.id || !excludedTxIds.has(t.id))),
+    [transactions, excludedTxIds]
   );
+
+  // Date range from transactions
+  const dateRange = useMemo(() => {
+    if (expenses.length === 0) return null;
+    const dates = expenses.map(t => t.date).sort();
+    return { start: dates[0], end: dates[dates.length - 1] };
+  }, [expenses]);
 
   // Resolve category with AI corrections applied
   const resolveCategoryWithAi = useCallback((tx: Transaction, index: number): string => {
@@ -471,9 +507,7 @@ export default function SpendingPlanPage() {
 
   const fixedCostItems = useMemo(() => {
     const items: { label: string; amount: number; transactions: Transaction[] }[] = [];
-    const groceries = categoryTotals.get('FOOD_AND_DRINK') || 0;
     const groceryTxs = categoryTransactions.get('FOOD_AND_DRINK') || [];
-    const shopping = (categoryTotals.get('GENERAL_MERCHANDISE') || 0) + (categoryTotals.get('SHOPPING') || 0);
     const shoppingTxs = [...(categoryTransactions.get('GENERAL_MERCHANDISE') || []), ...(categoryTransactions.get('SHOPPING') || [])];
 
     // Track which categories we've accounted for
@@ -487,29 +521,29 @@ export default function SpendingPlanPage() {
       'SAVINGS_INVESTMENTS',
     ]);
 
+    // Helper: sum from transactions array (single source of truth)
+    const sumTxs = (txs: Transaction[]) => txs.reduce((s, t) => s + t.amount, 0);
+
     for (const cat of FIXED_COST_CATEGORIES) {
-      const amount = categoryTotals.get(cat) || 0;
-      items.push({ label: FIXED_COST_SUBCATEGORIES[cat] || cat, amount, transactions: categoryTransactions.get(cat) || [] });
+      const txs = categoryTransactions.get(cat) || [];
+      items.push({ label: FIXED_COST_SUBCATEGORIES[cat] || cat, amount: sumTxs(txs), transactions: txs });
     }
-    items.push({ label: 'Groceries & Dining', amount: groceries, transactions: groceryTxs });
-    items.push({ label: 'Clothes / Shopping', amount: shopping, transactions: shoppingTxs });
+    items.push({ label: 'Groceries & Dining', amount: sumTxs(groceryTxs), transactions: groceryTxs });
+    items.push({ label: 'Clothes / Shopping', amount: sumTxs(shoppingTxs), transactions: shoppingTxs });
 
     // Subscriptions
-    const subs = categoryTotals.get('ENTERTAINMENT') || 0;
-    items.push({ label: 'Subscriptions / Entertainment', amount: subs, transactions: categoryTransactions.get('ENTERTAINMENT') || [] });
+    const subsTxs = categoryTransactions.get('ENTERTAINMENT') || [];
+    items.push({ label: 'Subscriptions / Entertainment', amount: sumTxs(subsTxs), transactions: subsTxs });
 
     // Collect all uncategorized/other transactions not in a named row
-    let otherTotal = 0;
     const otherTxs: Transaction[] = [];
-    Array.from(categoryTotals.entries()).forEach(([cat, amount]) => {
+    Array.from(categoryTransactions.entries()).forEach(([cat, txs]) => {
       if (!accountedCategories.has(cat)) {
-        otherTotal += amount;
-        const txs = categoryTransactions.get(cat) || [];
         otherTxs.push(...txs);
       }
     });
-    if (otherTotal > 0) {
-      items.push({ label: 'Other / Uncategorized', amount: otherTotal, transactions: otherTxs });
+    if (otherTxs.length > 0) {
+      items.push({ label: 'Other / Uncategorized', amount: sumTxs(otherTxs), transactions: otherTxs });
     }
 
     items.sort((a, b) => b.amount - a.amount);
@@ -518,7 +552,7 @@ export default function SpendingPlanPage() {
       ...item,
       amount: manualOverrides[item.label] ?? item.amount,
     }));
-  }, [categoryTotals, categoryTransactions, manualOverrides]);
+  }, [categoryTransactions, manualOverrides]);
 
   const fixedCostsTotal = fixedCostItems.reduce((sum, i) => sum + i.amount, 0);
   // Add 15% miscellaneous buffer
@@ -566,7 +600,23 @@ export default function SpendingPlanPage() {
       <div
       >
         <h1 className="page-title">Conscious Spending Plan</h1>
-        <p className="page-subtitle">Know exactly where your money goes — so you can spend guilt-free on what you love</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="page-subtitle">Know exactly where your money goes — so you can spend guilt-free on what you love</p>
+          {dateRange && (
+            <span className="text-xs text-text-secondary/50 bg-bg-elevated px-2 py-0.5 rounded-full border border-border/30">
+              {new Date(dateRange.start + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(dateRange.end + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          )}
+          {excludedTxIds.size > 0 && (
+            <button
+              onClick={handleClearExclusions}
+              className="text-xs text-text-secondary/50 hover:text-accent transition-colors"
+              title="Restore excluded transactions"
+            >
+              {excludedTxIds.size} excluded · restore
+            </button>
+          )}
+        </div>
 
         {/* Upload Section */}
         <div className="mt-4 flex items-center gap-3">
@@ -683,22 +733,33 @@ export default function SpendingPlanPage() {
       <Card>
         <div className="py-2 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border mb-1 flex items-center justify-between">
           <span className="text-sm font-bold text-text-primary">Income</span>
-          <button
-            onClick={incomeTaxRecords.length > 0 ? importIncomeFromTax : undefined}
-              className={`flex items-center gap-1.5 text-sm font-medium px-2 py-1 rounded-lg transition-all ${incomeOverride
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                : 'text-text-secondary hover:text-accent hover:bg-accent/10'
-                }`}
-            title={incomeTaxRecords.length > 0 ? `Import from ${incomeTaxRecords[0].document_type} (${incomeTaxRecords[0].tax_year})` : 'Enter income manually by clicking the amounts below'}
-            >
-              <Wand2 size={14} />
-            {incomeOverride ? (incomeTaxRecords.length > 0 ? 'Imported from W-2' : 'Income Set') : (incomeTaxRecords.length > 0 ? 'Import from Tax' : 'Set Income')}
-          </button>
+          <div className="flex items-center gap-2">
+            {incomeOverride && (
+              <button
+                onClick={() => setIncomeOverride(null)}
+                className="text-xs text-text-secondary/40 hover:text-red-400 transition-colors"
+                title="Reset income"
+              >
+                <X size={12} />
+              </button>
+            )}
+            <span className="text-xs text-text-secondary/50">Click amounts to edit</span>
+          </div>
         </div>
         <PlanRow
-          label="Gross monthly income (before taxes)"
+          label="Annual base salary (excl. RSUs & bonus)"
+          amount={grossMonthlyIncome * 12}
+          indent
+          onAmountChange={(val) => {
+            const monthly = val / 12;
+            setIncomeOverride({ gross: monthly, net: monthly * 0.7 });
+          }}
+        />
+        <PlanRow
+          label="Gross monthly income"
           amount={grossMonthlyIncome}
           indent
+          dimLabel
           onAmountChange={(val) => setIncomeOverride(prev => prev ? { ...prev, gross: val } : { gross: val, net: val * 0.7 })}
         />
         <PlanRow
@@ -748,6 +809,7 @@ export default function SpendingPlanPage() {
             indent
             onAmountChange={(val) => setOverride(item.label, val)}
             transactions={item.transactions}
+            onExclude={handleExclude}
           />
         ))}
         <PlanRow label="Miscellaneous (15% buffer)" amount={miscellaneous} indent dimLabel />
