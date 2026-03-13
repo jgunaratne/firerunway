@@ -738,11 +738,11 @@ export default function SpendingPlanPage() {
       </div>
 
       {/* Sankey Flow Diagram */}
-      {netMonthlyIncome > 0 && fixedCostItems.length > 0 && (
+      {(netMonthlyIncome > 0 || fixedCostsTotalWithMisc > 0) && fixedCostItems.length > 0 && (
         <Card>
           <h3 className="section-title">Where Your Money Goes</h3>
           <SankeyDiagram
-            income={netMonthlyIncome}
+            income={netMonthlyIncome > 0 ? netMonthlyIncome : fixedCostsTotalWithMisc + effectiveInvestments + effectiveSavings + guiltFreeSpending}
             buckets={[
               {
                 label: 'Fixed Costs',
@@ -755,6 +755,9 @@ export default function SpendingPlanPage() {
               { label: 'Guilt-Free', amount: guiltFreeSpending, color: '#10b981' },
             ]}
           />
+          {netMonthlyIncome <= 0 && (
+            <p className="text-xs text-text-secondary/50 mt-2 text-center">Set your income above for accurate percentages</p>
+          )}
         </Card>
       )}
 

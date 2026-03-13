@@ -30,6 +30,8 @@ export interface BrokeragePosition {
   shares: number;
   price: number;
   value: number;
+  openPnl: number | null;
+  averagePurchasePrice: number | null;
   accountId: string;
   accountName: string;
   accountType: string;
@@ -230,6 +232,8 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
           shares: p.shares || 0,
           price: p.price || 0,
           value: p.value || 0,
+          openPnl: p.openPnl ?? null,
+          averagePurchasePrice: p.averagePurchasePrice ?? null,
           accountId: rawAccountId,
           accountName: rawAccountName,
           accountType: p.accountType || '',
@@ -249,6 +253,8 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
           shares: 1,
           price: acct.balance,
           value: acct.balance,
+          openPnl: null,
+          averagePurchasePrice: null,
           accountId: acct.id,
           accountName: acct.name,
           accountType: acct.type,

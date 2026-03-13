@@ -129,18 +129,18 @@ export const DEMO_BROKERAGE_ACCOUNTS = [
 // ─── Positions ──────────────────────────────────────────────────────
 
 export const DEMO_POSITIONS = [
-  { ticker: 'VTI', name: 'Vanguard Total Stock Market ETF', shares: 1200, price: 265.40, value: 318480, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'VXUS', name: 'Vanguard Total Intl Stock ETF', shares: 800, price: 62.15, value: 49720, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'BND', name: 'Vanguard Total Bond Market ETF', shares: 500, price: 72.80, value: 36400, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'AMZN', name: 'Amazon.com Inc', shares: 350, price: 190.25, value: 66588, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'AAPL', name: 'Apple Inc', shares: 400, price: 178.50, value: 71400, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'MSFT', name: 'Microsoft Corp', shares: 200, price: 415.60, value: 83120, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'SCHD', name: 'Schwab US Dividend Equity ETF', shares: 600, price: 81.20, value: 48720, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'QQQ', name: 'Invesco QQQ Trust', shares: 250, price: 470.30, value: 117575, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
-  { ticker: 'FXAIX', name: 'Fidelity 500 Index Fund', shares: 850, price: 198.40, value: 168640, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
-  { ticker: 'FXNAX', name: 'Fidelity US Bond Index Fund', shares: 1200, price: 10.45, value: 12540, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
-  { ticker: 'FSPSX', name: 'Fidelity Intl Index Fund', shares: 2500, price: 48.90, value: 122250, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
-  { ticker: 'FSMEX', name: 'Fidelity Medical Tech Fund', shares: 300, price: 60.50, value: 18150, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
+  { ticker: 'VTI', name: 'Vanguard Total Stock Market ETF', shares: 1200, price: 265.40, value: 318480, openPnl: 48200, averagePurchasePrice: 225.23, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'VXUS', name: 'Vanguard Total Intl Stock ETF', shares: 800, price: 62.15, value: 49720, openPnl: -2400, averagePurchasePrice: 65.15, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'BND', name: 'Vanguard Total Bond Market ETF', shares: 500, price: 72.80, value: 36400, openPnl: -1800, averagePurchasePrice: 76.40, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'AMZN', name: 'Amazon.com Inc', shares: 350, price: 190.25, value: 66588, openPnl: 22300, averagePurchasePrice: 126.50, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'AAPL', name: 'Apple Inc', shares: 400, price: 178.50, value: 71400, openPnl: 15600, averagePurchasePrice: 139.50, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'MSFT', name: 'Microsoft Corp', shares: 200, price: 415.60, value: 83120, openPnl: 31200, averagePurchasePrice: 259.60, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'SCHD', name: 'Schwab US Dividend Equity ETF', shares: 600, price: 81.20, value: 48720, openPnl: 5400, averagePurchasePrice: 72.20, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'QQQ', name: 'Invesco QQQ Trust', shares: 250, price: 470.30, value: 117575, openPnl: 28500, averagePurchasePrice: 356.30, accountId: 'demo-acct-1', accountName: 'Individual Brokerage', accountType: 'MARGIN', institutionName: 'Charles Schwab' },
+  { ticker: 'FXAIX', name: 'Fidelity 500 Index Fund', shares: 850, price: 198.40, value: 168640, openPnl: 38200, averagePurchasePrice: 153.46, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
+  { ticker: 'FXNAX', name: 'Fidelity US Bond Index Fund', shares: 1200, price: 10.45, value: 12540, openPnl: -960, averagePurchasePrice: 11.25, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
+  { ticker: 'FSPSX', name: 'Fidelity Intl Index Fund', shares: 2500, price: 48.90, value: 122250, openPnl: -5200, averagePurchasePrice: 50.98, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
+  { ticker: 'FSMEX', name: 'Fidelity Medical Tech Fund', shares: 300, price: 60.50, value: 18150, openPnl: 2100, averagePurchasePrice: 53.50, accountId: 'demo-acct-2', accountName: '401(k)', accountType: 'RETIREMENT', institutionName: 'Fidelity' },
 ];
 
 // ─── Plaid Accounts ─────────────────────────────────────────────────

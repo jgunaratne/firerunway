@@ -4,7 +4,7 @@ import { saveAnalysis, getAnalysis } from '@/lib/supabase-db';
 import { analyzeWithGemini } from '@/lib/gemini-pdf';
 import { extractUserId, resolveUserId } from '@/lib/auth-helpers';
 import { createServerClient } from '@/lib/supabase';
-import { getAllHoldings as snapGetAllHoldings } from '@/lib/snaptrade';
+import { listAccounts, getAccountPositions, getAccountBalances } from '@/lib/snaptrade';
 
 interface Position {
   ticker: string;
@@ -29,45 +29,63 @@ export async function POST(request: Request) {
       .eq('id', userId)
       .single();
 
-    // Fetch SnapTrade holdings
+    // Fetch SnapTrade holdings using per-account API (more reliable)
     const positions: Position[] = [];
     let totalValue = 0;
 
     if (userRow?.snaptrade_user_secret) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const holdings: any[] = await snapGetAllHoldings(userRow.snaptrade_user_id ?? '', userRow.snaptrade_user_secret as string);
-        for (const account of holdings) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const acctObj = account.account as Record<string, any> | undefined;
-          const institutionName = String(acctObj?.institution_name || acctObj?.name || 'Unknown');
-          const acctName = String(acctObj?.name || institutionName);
+        const snapUserId = userRow.snaptrade_user_id ?? '';
+        const snapSecret = userRow.snaptrade_user_secret as string;
 
-          if (Array.isArray(account.positions)) {
-            for (const pos of account.positions) {
-              const value = (pos.units || 0) * (pos.price || 0);
-              totalValue += value;
-              const sym = pos.symbol as Record<string, unknown> | string | undefined;
-              let ticker = 'N/A';
-              let name = 'Unknown';
-              if (typeof sym === 'string') {
-                ticker = sym;
-                name = sym;
-              } else if (sym) {
-                const rawTicker = sym.symbol;
-                ticker = typeof rawTicker === 'string' ? rawTicker
-                  : (typeof rawTicker === 'object' && rawTicker !== null && 'symbol' in rawTicker)
-                    ? String((rawTicker as Record<string, unknown>).symbol)
-                    : String(rawTicker || sym.description || 'N/A');
-                name = typeof sym.description === 'string' ? sym.description
-                  : typeof sym.name === 'string' ? sym.name : ticker;
+        // List all accounts, then fetch positions + balances per account
+        const accounts = await listAccounts(snapUserId, snapSecret);
+        if (Array.isArray(accounts)) {
+          const results = await Promise.allSettled(
+            accounts.map(async (acct) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const acctObj = acct as Record<string, any>;
+              const accountId = String(acctObj.id || '');
+              const [acctPositions, balances] = await Promise.all([
+                getAccountPositions(snapUserId, snapSecret, accountId).catch(() => []),
+                getAccountBalances(snapUserId, snapSecret, accountId).catch(() => []),
+              ]);
+              return { acctObj, accountId, acctPositions, balances };
+            })
+          );
+
+          for (const result of results) {
+            if (result.status !== 'fulfilled') continue;
+            const { acctObj, acctPositions, balances } = result.value;
+            const institutionName = String(acctObj.institution_name || acctObj.name || 'Unknown');
+            const acctName = String(acctObj.name || institutionName);
+
+            if (Array.isArray(acctPositions)) {
+              for (const pos of acctPositions) {
+                const value = (pos.units || 0) * (pos.price || 0);
+                totalValue += value;
+                const sym = pos.symbol as Record<string, unknown> | string | undefined;
+                let ticker = 'N/A';
+                let name = 'Unknown';
+                if (typeof sym === 'string') {
+                  ticker = sym;
+                  name = sym;
+                } else if (sym) {
+                  const rawTicker = sym.symbol;
+                  ticker = typeof rawTicker === 'string' ? rawTicker
+                    : (typeof rawTicker === 'object' && rawTicker !== null && 'symbol' in rawTicker)
+                      ? String((rawTicker as Record<string, unknown>).symbol)
+                      : String(rawTicker || sym.description || 'N/A');
+                  name = typeof sym.description === 'string' ? sym.description
+                    : typeof sym.name === 'string' ? sym.name : ticker;
+                }
+                positions.push({ ticker, name, shares: pos.units || 0, price: pos.price || 0, value, accountName: acctName, institutionName });
               }
-              positions.push({ ticker, name, shares: pos.units || 0, price: pos.price || 0, value, accountName: acctName, institutionName });
             }
-          }
-          if (Array.isArray(account.balances)) {
-            for (const bal of account.balances) {
-              totalValue += bal.cash || 0;
+            if (Array.isArray(balances)) {
+              for (const bal of balances) {
+                totalValue += (bal as Record<string, unknown>).cash as number || 0;
+              }
             }
           }
         }

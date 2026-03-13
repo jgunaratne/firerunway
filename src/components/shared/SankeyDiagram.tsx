@@ -63,9 +63,12 @@ export default function SankeyDiagram({ income, buckets }: SankeyDiagramProps) {
       }
     }
 
-    const W = 800;
+    const W = 900;
     const nodeWidth = 12;
-    const colX = [40, W / 2 - nodeWidth / 2, W - 40 - nodeWidth];
+    // Left column at 80 (room for "Net Income" label to the left)
+    // Middle column centered at ~444
+    // Right column at 730 (fills width, ~170px for labels)
+    const colX = [80, W / 2 - nodeWidth / 2, 730];
 
     // Compute y positions based on value proportions
     const pos = new Map<string, { x: number; y: number; h: number }>();
@@ -102,7 +105,7 @@ export default function SankeyDiagram({ income, buckets }: SankeyDiagramProps) {
 
   return (
     <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 800 ${svgH}`} className="w-full" style={{ minWidth: 600 }}>
+      <svg viewBox={`0 0 900 ${svgH}`} className="w-full" style={{ minWidth: 600 }}>
         <defs>
           {links.map((link, i) => {
             const sn = nodes.find(n => n.id === link.source);
@@ -179,7 +182,7 @@ export default function SankeyDiagram({ income, buckets }: SankeyDiagramProps) {
                 className="text-[10px] fill-[var(--text-secondary)]"
                 style={{ fontSize: 10 }}
               >
-                {node.label}
+                {node.label.length > 20 ? node.label.slice(0, 18) + '…' : node.label}
               </text>
               {p.h > 14 && (
                 <text

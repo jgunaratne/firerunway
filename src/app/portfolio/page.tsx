@@ -1,30 +1,225 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   Legend,
+  Treemap,
 } from 'recharts';
 import Card from '@/components/shared/Card';
 import AIAnalysis from '@/components/shared/AIAnalysis';
 import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import { formatCurrency } from '@/lib/calculations';
 import { useSearchParams } from 'next/navigation';
-import { useBrokerageData } from '@/lib/BrokerageDataContext';
+import { useBrokerageData, BrokeragePosition } from '@/lib/BrokerageDataContext';
 import { useUserData } from '@/lib/UserDataContext';
 import { useAuth } from '@/lib/AuthProvider';
 import {
   TrendingUp, Building2, CreditCard, Landmark,
-  PiggyBank, CircleCheck,
+  PiggyBank, CircleCheck, List, LayoutGrid,
 } from 'lucide-react';
 
 const tabs = ['Holdings', 'Allocation', 'Performance', 'Accounts'] as const;
 
 
 
+// ─── Treemap helpers ────────────────────────────────────────────────
+
+/** Compute P&L percentage for a position. */
+function pnlPercent(pos: BrokeragePosition): number | null {
+  if (pos.openPnl != null && pos.value > 0) {
+    const costBasis = pos.value - pos.openPnl;
+    if (costBasis > 0) return (pos.openPnl / costBasis) * 100;
+  }
+  if (pos.averagePurchasePrice != null && pos.averagePurchasePrice > 0) {
+    return ((pos.price - pos.averagePurchasePrice) / pos.averagePurchasePrice) * 100;
+  }
+  return null;
+}
+
+/** Map a P&L percentage to a green/red fill color. */
+function pnlColor(pct: number | null): string {
+  if (pct == null || pct === 0) return '#4b5563'; // gray-600 – no data or flat
+  if (pct > 0) {
+    // green gradient: brighter for bigger gains
+    const intensity = Math.min(pct / 40, 1); // cap at 40%
+    const g = Math.round(130 + intensity * 90); // 130..220
+    const r = Math.round(22 - intensity * 10);
+    return `rgb(${r}, ${g}, 60)`;
+  }
+  // red gradient: deeper for bigger losses
+  const intensity = Math.min(Math.abs(pct) / 30, 1); // cap at 30%
+  const r = Math.round(180 + intensity * 60); // 180..240
+  const g = Math.round(60 - intensity * 30); // 60..30
+  return `rgb(${r}, ${g}, 50)`;
+}
+
+/** Custom rectangle renderer for the Treemap. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TreemapCell(props: any) {
+  const { x, y, width, height, ticker, value: cellValue, pct, fill } = props;
+  if (width < 4 || height < 4) return null;
+  const showTicker = width > 36 && height > 22;
+  const showValue = width > 60 && height > 38;
+  const showPct = width > 50 && height > 52;
+  const fontSize = Math.min(14, Math.max(9, width / 7));
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rx={4}
+        fill={fill}
+        stroke="var(--bg-primary)"
+        strokeWidth={2}
+        style={{ transition: 'fill 0.3s' }}
+      />
+      {showTicker && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 - (showValue ? 8 : 0)}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="#fff"
+          fontSize={fontSize}
+          fontWeight={700}
+          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)', fontFamily: 'var(--font-mono, monospace)' }}
+        >
+          {ticker}
+        </text>
+      )}
+      {showValue && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + (showPct ? 4 : 10)}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="rgba(255,255,255,0.85)"
+          fontSize={Math.max(8, fontSize - 2)}
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+        >
+          {formatCurrency(cellValue)}
+        </text>
+      )}
+      {showPct && pct != null && (
+        <text
+          x={x + width / 2}
+          y={y + height / 2 + 18}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="rgba(255,255,255,0.7)"
+          fontSize={Math.max(8, fontSize - 3)}
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
+        >
+          {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
+        </text>
+      )}
+    </g>
+  );
+}
+
+// ─── Custom Treemap Tooltip ─────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TreemapTooltipContent({ active, payload }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const d = payload[0]?.payload;
+  if (!d || !d.ticker) return null;
+  const pct = d.pct as number | null;
+  return (
+    <div style={{
+      background: 'var(--bg-elevated)',
+      border: '1px solid var(--border)',
+      borderRadius: 10,
+      padding: '10px 14px',
+      fontSize: 12,
+      color: 'var(--text-primary)',
+      minWidth: 160,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+    }}>
+      <p style={{ fontWeight: 700, marginBottom: 4, fontFamily: 'var(--font-mono, monospace)' }}>
+        {d.ticker} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>{d.posName}</span>
+      </p>
+      <p>Value: <b>{formatCurrency(d.value)}</b></p>
+      <p>Shares: {d.shares?.toLocaleString(undefined, { maximumFractionDigits: 4 })}</p>
+      <p>Price: ${d.posPrice?.toFixed(2)}</p>
+      {pct != null && (
+        <p style={{ color: pct >= 0 ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+          P&L: {pct > 0 ? '+' : ''}{pct.toFixed(2)}%
+          {d.openPnl != null && ` (${d.openPnl >= 0 ? '+' : ''}${formatCurrency(d.openPnl)})`}
+        </p>
+      )}
+      <p style={{ color: 'var(--text-secondary)', marginTop: 2 }}>{d.accountLabel}</p>
+    </div>
+  );
+}
+
+// ─── Holdings Tab ───────────────────────────────────────────────────
+
 function HoldingsTab() {
   const { positions, totalInvestment, loading, accounts: brokerageAccounts } = useBrokerageData();
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'treemap'>('list');
+
+  // Build a resolver: given a position, find the institution name from accounts data
+  const resolveInstitution = useCallback((pos: BrokeragePosition): string => {
+    if (pos.institutionName && pos.institutionName.toLowerCase() !== 'unknown') {
+      return pos.institutionName;
+    }
+    const match = brokerageAccounts.find(a =>
+      (pos.accountId && a.id === pos.accountId) ||
+      (pos.accountName && a.name === pos.accountName) ||
+      (pos.accountId && a.number === pos.accountId) ||
+      (pos.accountName && a.number === pos.accountName)
+    );
+    if (match && match.institution_name && match.institution_name.toLowerCase() !== 'unknown') {
+      return match.institution_name;
+    }
+    const uniqueInstitutions = new Set(
+      brokerageAccounts
+        .map(a => a.institution_name)
+        .filter(n => n && n.toLowerCase() !== 'unknown')
+    );
+    if (uniqueInstitutions.size === 1) {
+      return Array.from(uniqueInstitutions)[0];
+    }
+    return pos.institutionName || '';
+  }, [brokerageAccounts]);
+
+  // Group positions by account
+  const grouped = useMemo(() => positions.reduce((acc, pos) => {
+    const inst = resolveInstitution(pos);
+    const key = pos.accountName || inst || 'Unknown Account';
+    if (!acc[key]) acc[key] = { name: key, institutionName: inst, type: pos.accountType, holdings: [] };
+    acc[key].holdings.push(pos);
+    return acc;
+  }, {} as Record<string, { name: string; institutionName: string; type: string; holdings: BrokeragePosition[] }>), [positions, resolveInstitution]);
+
+  // Build treemap data: group by account as parent nodes
+  const treemapData = useMemo(() => {
+    return Object.entries(grouped).map(([accountName, group]) => ({
+      name: accountName,
+      children: group.holdings
+        .filter(h => h.value > 0 && h.ticker !== '—') // exclude zero-value and cash entries
+        .map(h => {
+          const pct = pnlPercent(h);
+          return {
+            name: h.ticker,
+            ticker: h.ticker,
+            posName: h.name,
+            value: Math.round(h.value),
+            shares: h.shares,
+            posPrice: h.price,
+            openPnl: h.openPnl,
+            pct,
+            fill: pnlColor(pct),
+            accountLabel: `${accountName}${group.institutionName && group.institutionName !== accountName ? ` · ${group.institutionName}` : ''}`,
+          };
+        }),
+    })).filter(g => g.children.length > 0);
+  }, [grouped]);
 
   if (loading) {
     return <div className="text-center py-10 text-text-secondary text-sm">Loading holdings...</div>;
@@ -42,43 +237,6 @@ function HoldingsTab() {
       </Card>
     );
   }
-
-  // Build a resolver: given a position, find the institution name from accounts data
-  const resolveInstitution = (pos: typeof positions[0]): string => {
-    // If the position already has a good institution name, use it
-    if (pos.institutionName && pos.institutionName.toLowerCase() !== 'unknown') {
-      return pos.institutionName;
-    }
-    // Try to find a matching brokerage account by ID, name, or number
-    const match = brokerageAccounts.find(a =>
-      (pos.accountId && a.id === pos.accountId) ||
-      (pos.accountName && a.name === pos.accountName) ||
-      (pos.accountId && a.number === pos.accountId) ||
-      (pos.accountName && a.number === pos.accountName)
-    );
-    if (match && match.institution_name && match.institution_name.toLowerCase() !== 'unknown') {
-      return match.institution_name;
-    }
-    // If only one institution is connected, use it
-    const uniqueInstitutions = new Set(
-      brokerageAccounts
-        .map(a => a.institution_name)
-        .filter(n => n && n.toLowerCase() !== 'unknown')
-    );
-    if (uniqueInstitutions.size === 1) {
-      return Array.from(uniqueInstitutions)[0];
-    }
-    return pos.institutionName || '';
-  };
-
-  // Group positions by individual account (not institution)
-  const grouped = positions.reduce((acc, pos) => {
-    const inst = resolveInstitution(pos);
-    const key = pos.accountName || inst || 'Unknown Account';
-    if (!acc[key]) acc[key] = { name: key, institutionName: inst, type: pos.accountType, holdings: [] };
-    acc[key].holdings.push(pos);
-    return acc;
-  }, {} as Record<string, { name: string; institutionName: string; type: string; holdings: typeof positions }>);
 
   const accountKeys = Object.keys(grouped);
   const allExpanded = accountKeys.every(k => expandedAccounts.has(k));
@@ -102,63 +260,123 @@ function HoldingsTab() {
 
   return (
     <div className="space-y-4">
-      {/* Expand/Collapse All + Total */}
+      {/* Toolbar: Toggle + Expand/Collapse */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={toggleAll}
-          className="text-sm text-accent hover:text-accent/80 transition-colors font-medium"
-        >
-          {allExpanded ? '▾ Collapse All' : '▸ Expand All'}
-        </button>
+        {viewMode === 'list' ? (
+          <button
+            onClick={toggleAll}
+            className="text-sm text-accent hover:text-accent/80 transition-colors font-medium"
+          >
+            {allExpanded ? '▾ Collapse All' : '▸ Expand All'}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'rgb(22, 200, 60)' }} />
+            <span className="text-sm text-text-secondary">Gain</span>
+            <span className="inline-block w-3 h-3 rounded-sm ml-2" style={{ background: 'rgb(220, 50, 50)' }} />
+            <span className="text-sm text-text-secondary">Loss</span>
+            <span className="inline-block w-3 h-3 rounded-sm ml-2" style={{ background: '#4b5563' }} />
+            <span className="text-sm text-text-secondary">N/A</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1 bg-bg-secondary rounded-lg p-0.5">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded-md transition-all ${
+              viewMode === 'list'
+                ? 'bg-accent text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+            title="List view"
+          >
+            <List size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode('treemap')}
+            className={`p-1.5 rounded-md transition-all ${
+              viewMode === 'treemap'
+                ? 'bg-accent text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+            title="Treemap view"
+          >
+            <LayoutGrid size={16} />
+          </button>
+        </div>
       </div>
 
-      {Object.entries(grouped).map(([name, group]) => {
-        const accountTotal = group.holdings.reduce((sum, h) => sum + h.value, 0);
-        const isExpanded = expandedAccounts.has(name);
-        return (
-          <Card key={name} className="overflow-hidden">
-            <button onClick={() => toggleAccount(name)} className="w-full text-left flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-accent text-sm">{isExpanded ? '▾' : '▸'}</span>
-                <div>
-                  <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
-                  <p className="text-sm text-text-secondary">
-                    {group.institutionName && group.institutionName !== name && group.institutionName.toLowerCase() !== 'unknown' ? `${group.institutionName} · ` : ''}{group.type ? `${group.type} · ` : ''}{group.holdings.length} positions
-                  </p>
-                </div>
-              </div>
-              <p className="number-display text-lg font-bold text-text-primary">{formatCurrency(accountTotal)}</p>
-            </button>
-            {isExpanded && (
-              <div className="overflow-x-auto mt-4 border-t border-border pt-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-sm text-text-secondary border-b border-border">
-                      <th className="text-left pb-2 font-medium">Ticker</th>
-                      <th className="text-right pb-2 font-medium">Shares</th>
-                      <th className="text-right pb-2 font-medium">Price</th>
-                      <th className="text-right pb-2 font-medium">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.holdings.map((h, j) => (
-                      <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 transition-colors themed-hover">
-                        <td className="py-2">
-                          <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
-                          <p className="text-sm text-text-secondary hidden md:block">{h.name}</p>
-                        </td>
-                        <td className="text-right number-display py-2">{h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
-                        <td className="text-right number-display py-2">${h.price.toFixed(2)}</td>
-                        <td className="text-right number-display font-medium py-2">{formatCurrency(h.value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        );
-      })}
+      {/* ── Treemap View ── */}
+      {viewMode === 'treemap' && (
+        <Card className="overflow-hidden">
+          <div style={{ width: '100%', height: Math.max(400, Math.min(600, positions.length * 30)) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap
+                data={treemapData}
+                dataKey="value"
+                stroke="var(--bg-primary)"
+                animationDuration={500}
+                content={<TreemapCell />}
+              >
+                <Tooltip content={<TreemapTooltipContent />} />
+              </Treemap>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
+      {/* ── List View ── */}
+      {viewMode === 'list' && (
+        <>
+          {Object.entries(grouped).map(([name, group]) => {
+            const accountTotal = group.holdings.reduce((sum, h) => sum + h.value, 0);
+            const isExpanded = expandedAccounts.has(name);
+            return (
+              <Card key={name} className="overflow-hidden">
+                <button onClick={() => toggleAccount(name)} className="w-full text-left flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-accent text-sm">{isExpanded ? '▾' : '▸'}</span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-text-primary">{name}</h4>
+                      <p className="text-sm text-text-secondary">
+                        {group.institutionName && group.institutionName !== name && group.institutionName.toLowerCase() !== 'unknown' ? `${group.institutionName} · ` : ''}{group.type ? `${group.type} · ` : ''}{group.holdings.length} positions
+                      </p>
+                    </div>
+                  </div>
+                  <p className="number-display text-lg font-bold text-text-primary">{formatCurrency(accountTotal)}</p>
+                </button>
+                {isExpanded && (
+                  <div className="overflow-x-auto mt-4 border-t border-border pt-4">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-sm text-text-secondary border-b border-border">
+                          <th className="text-left pb-2 font-medium">Ticker</th>
+                          <th className="text-right pb-2 font-medium">Shares</th>
+                          <th className="text-right pb-2 font-medium">Price</th>
+                          <th className="text-right pb-2 font-medium">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.holdings.map((h, j) => (
+                          <tr key={`${h.ticker}-${j}`} className="border-b border-border/50 transition-colors themed-hover">
+                            <td className="py-2">
+                              <p className="number-display font-semibold text-text-primary">{h.ticker}</p>
+                              <p className="text-sm text-text-secondary hidden md:block">{h.name}</p>
+                            </td>
+                            <td className="text-right number-display py-2">{h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                            <td className="text-right number-display py-2">${h.price.toFixed(2)}</td>
+                            <td className="text-right number-display font-medium py-2">{formatCurrency(h.value)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </>
+      )}
 
       {/* Totals bar */}
       <Card className="bg-accent/5 border-accent/20">

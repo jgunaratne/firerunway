@@ -88,6 +88,7 @@ export async function getAccountHoldings(
 
 /**
  * Get holdings for all accounts belonging to a user.
+ * NOTE: This endpoint is deprecated by SnapTrade. Prefer getAccountPositions.
  */
 export async function getAllHoldings(userId: string, userSecret: string) {
   const res = await getClient().accountInformation.getAllUserHoldings({
@@ -95,6 +96,50 @@ export async function getAllHoldings(userId: string, userSecret: string) {
     userSecret,
   });
   return res.data;
+}
+
+/**
+ * Get positions for a specific account using the recommended fine-grained API.
+ * Returns an array of Position objects (symbol, units, price, etc.).
+ */
+export async function getAccountPositions(
+  userId: string,
+  userSecret: string,
+  accountId: string
+) {
+  const res = await getClient().accountInformation.getUserAccountPositions({
+    userId,
+    userSecret,
+    accountId,
+  });
+  return res.data;
+}
+
+/**
+ * Fetch positions for ALL accounts in parallel using the per-account API.
+ * This is the recommended approach (getAllUserHoldings is deprecated).
+ * Returns a map of accountId → Position[].
+ */
+export async function getAllPositionsByAccount(
+  userId: string,
+  userSecret: string
+): Promise<{ accountId: string; positions: Awaited<ReturnType<typeof getAccountPositions>> }[]> {
+  // First, list all accounts
+  const accounts = await listAccounts(userId, userSecret);
+  if (!Array.isArray(accounts) || accounts.length === 0) return [];
+
+  // Fetch positions for each account in parallel
+  const results = await Promise.allSettled(
+    accounts.map(async (acct) => {
+      const id = (acct as Record<string, unknown>).id as string;
+      const positions = await getAccountPositions(userId, userSecret, id);
+      return { accountId: id, positions };
+    })
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<{ accountId: string; positions: Awaited<ReturnType<typeof getAccountPositions>> }> => r.status === 'fulfilled')
+    .map(r => r.value);
 }
 
 /**

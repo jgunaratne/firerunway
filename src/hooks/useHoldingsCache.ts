@@ -22,6 +22,8 @@ export interface BrokeragePosition {
   shares: number;
   price: number;
   value: number;
+  openPnl: number | null;
+  averagePurchasePrice: number | null;
   accountId: string;
   accountName: string;
   accountType: string;
