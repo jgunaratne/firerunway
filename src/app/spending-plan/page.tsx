@@ -243,6 +243,21 @@ export default function SpendingPlanPage() {
   const [partnerEmail, setPartnerEmail] = useState('');
   const [linkingPartner, setLinkingPartner] = useState(false);
   const [partnerError, setPartnerError] = useState('');
+  const [sharingEnabled, setSharingEnabled] = useState(true);
+
+  // Read sharing preference from localStorage + listen for changes
+  useEffect(() => {
+    try {
+      setSharingEnabled(localStorage.getItem('firerunway-household-sharing') !== 'off');
+    } catch { /* SSR guard */ }
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'firerunway-household-sharing') {
+        setSharingEnabled(e.newValue !== 'off');
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
 
   // Fetch partner info
   useEffect(() => {
@@ -258,13 +273,13 @@ export default function SpendingPlanPage() {
     if (!uid) { setLoading(false); return; }
     setLoading(true);
     const params = new URLSearchParams({ uid, months: '1' });
-    if (partner) params.set('includePartner', 'true');
+    if (partner && sharingEnabled) params.set('includePartner', 'true');
     fetch(`/api/plaid/transactions?${params}`)
       .then(r => r.json())
       .then(d => setTransactions(d.transactions || []))
       .catch(() => setTransactions([]))
       .finally(() => setLoading(false));
-  }, [uid, partner]);
+  }, [uid, partner, sharingEnabled]);
 
   const handleLinkPartner = useCallback(async () => {
     if (!partnerEmail.trim()) return;
@@ -711,6 +726,9 @@ export default function SpendingPlanPage() {
           </>
         )}
         {partnerError && <span className="text-sm text-red-400">{partnerError}</span>}
+        {!sharingEnabled && partner && (
+          <span className="text-xs text-text-secondary/50 italic">Sharing disabled in settings</span>
+        )}
       </div>
       {/* Four-bucket overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
