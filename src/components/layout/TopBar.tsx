@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/AuthProvider';
 import { signOut } from '@/lib/firebase';
 import { useNetWorth } from '@/hooks/useNetWorth';
 import { isDemoMode, disableDemoMode } from '@/lib/demo-data';
-import { Sun, Moon, Flame, RefreshCw, LogOut } from 'lucide-react';
+import { Sun, Moon, Flame, RefreshCw, LogOut, Settings } from 'lucide-react';
 
 export default function TopBar() {
   const pathname = usePathname();
@@ -23,17 +23,20 @@ export default function TopBar() {
   const { theme, mounted, toggleTheme } = useTheme();
   const { user } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const { totalNetWorth, investable, rsuValue } = useNetWorth();
   const { forceRefresh: refreshHoldings } = useBrokerageData();
   const { refresh: refreshUserData } = useUserData();
   const [demoMode, setDemoMode] = useState(false);
   useEffect(() => { setDemoMode(isDemoMode()); }, []);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowUserMenu(false);
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettingsMenu(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -68,15 +71,12 @@ export default function TopBar() {
     clearBrokerageCache();
     disableDemoMode();
     if (wasDemo) {
-      // Full reload to clear demo state from all providers
       window.location.href = '/';
       return;
     }
     await signOut();
     router.push('/');
   };
-
-
 
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
@@ -93,6 +93,8 @@ export default function TopBar() {
     annualIncome,
   }).total;
   const fiScore = Number.isFinite(rawFiScore) ? rawFiScore : 0;
+
+  const isDark = mounted && theme === 'dark';
 
   return (
     <header className="h-16 border-b border-border bg-bg-surface flex items-center justify-between px-6 shrink-0 sticky top-0 z-50">
@@ -130,15 +132,60 @@ export default function TopBar() {
         </div>
       </div>
 
-      {/* Right: Theme toggle + User */}
+      {/* Right: Settings gear + User */}
       <div className="flex items-center gap-4">
-        <button
-          onClick={toggleTheme}
-          className="text-text-secondary hover:text-text-primary transition-colors"
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {mounted ? (theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />) : <Sun className="w-5 h-5" />}
-        </button>
+        {/* Settings gear */}
+        <div className="relative" ref={settingsRef}>
+          <button
+            onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+            className={`p-1.5 rounded-lg transition-all duration-200 ${
+              showSettingsMenu
+                ? 'text-text-primary bg-bg-elevated'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-elevated'
+            }`}
+            title="Settings"
+            id="settings-gear-button"
+          >
+            <Settings className={`w-5 h-5 transition-transform duration-300 ${showSettingsMenu ? 'rotate-90' : ''}`} />
+          </button>
+
+          {showSettingsMenu && (
+            <div
+              className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-bg-surface border border-border shadow-xl py-2 z-50"
+              style={{ backdropFilter: 'blur(20px)' }}
+              id="settings-dropdown"
+            >
+              {/* Appearance section */}
+              <div className="px-3 pt-1 pb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary opacity-60">
+                  Appearance
+                </span>
+              </div>
+              <button
+                onClick={toggleTheme}
+                className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                id="theme-toggle-button"
+              >
+                <span className="flex items-center gap-2.5">
+                  {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                  <span>{isDark ? 'Dark mode' : 'Light mode'}</span>
+                </span>
+                {/* Toggle switch */}
+                <div
+                  className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${
+                    isDark ? 'bg-accent' : 'bg-border'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      isDark ? 'translate-x-[18px]' : 'translate-x-0.5'
+                    }`}
+                  />
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
 
         {user ? (
           <div className="relative" ref={menuRef}>
@@ -183,3 +230,4 @@ export default function TopBar() {
     </header>
   );
 }
+
