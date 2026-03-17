@@ -14,6 +14,17 @@ import { useNetWorth } from '@/hooks/useNetWorth';
 import { isDemoMode, disableDemoMode } from '@/lib/demo-data';
 import { Sun, Moon, Flame, RefreshCw, LogOut, Settings, Users } from 'lucide-react';
 
+function formatRelativeTime(ts: number): string {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 10) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export default function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -27,8 +38,18 @@ export default function TopBar() {
   const menuRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const { totalNetWorth, investable, rsuValue } = useNetWorth();
-  const { forceRefresh: refreshHoldings } = useBrokerageData();
-  const { refresh: refreshUserData } = useUserData();
+  const { forceRefresh: refreshHoldings, lastRefreshedAt: brokerageRefreshed } = useBrokerageData();
+  const { refresh: refreshUserData, lastRefreshedAt: userDataRefreshed } = useUserData();
+  const lastRefreshed = brokerageRefreshed || userDataRefreshed
+    ? Math.max(brokerageRefreshed || 0, userDataRefreshed || 0)
+    : null;
+  // Re-render periodically to update relative time display
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!lastRefreshed) return;
+    const id = setInterval(() => setTick(t => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, [lastRefreshed]);
   const [demoMode, setDemoMode] = useState(false);
   const [householdSharing, setHouseholdSharing] = useState(true);
   useEffect(() => {
@@ -128,13 +149,39 @@ export default function TopBar() {
               <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} />
             </span>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1.5 relative group">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-text-secondary hover:text-text-primary transition-colors"
+              title="Refresh all data"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            {lastRefreshed && (
+              <span className="text-[11px] text-text-secondary/60 font-mono tabular-nums">
+                {formatRelativeTime(lastRefreshed)}
+              </span>
+            )}
+            {/* Hover tooltip with details */}
+            {lastRefreshed && (
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-50">
+                <div className="bg-bg-surface border border-border rounded-lg shadow-xl px-3 py-2 whitespace-nowrap text-xs">
+                  <p className="text-text-secondary mb-1 font-medium">Last refreshed</p>
+                  {brokerageRefreshed && (
+                    <p className="text-text-secondary">
+                      <span className="text-text-primary">Portfolio:</span> {new Date(brokerageRefreshed).toLocaleTimeString()}
+                    </p>
+                  )}
+                  {userDataRefreshed && (
+                    <p className="text-text-secondary">
+                      <span className="text-text-primary">Profile:</span> {new Date(userDataRefreshed).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

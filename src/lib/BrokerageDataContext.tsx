@@ -94,6 +94,7 @@ interface BrokerageDataContextType {
   totalInvestment: number;
   plaidAccounts: PlaidAccount[];
   loading: boolean;
+  lastRefreshedAt: number | null;
   refresh: () => Promise<void>;
   forceRefresh: () => Promise<void>;
 }
@@ -106,6 +107,7 @@ const BrokerageDataContext = createContext<BrokerageDataContextType>({
   totalInvestment: 0,
   plaidAccounts: [],
   loading: true,
+  lastRefreshedAt: null,
   refresh: () => Promise.resolve(),
   forceRefresh: () => Promise.resolve(),
 });
@@ -137,6 +139,7 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
   const [totalInvestment, setTotalInvestment] = useState(0);
   const [plaidAccounts, setPlaidAccounts] = useState<PlaidAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
 
   const applyCache = useCallback((cached: CachedBrokerageData) => {
     setAccounts(cached.accounts);
@@ -342,6 +345,7 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
     try {
       const cached = await fetchAndCache(uid);
       applyCache(cached);
+      setLastRefreshedAt(Date.now());
     } catch {
       console.error('Failed to refresh brokerage data');
     } finally {
@@ -362,6 +366,7 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
       setTotalInvestment(DEMO_TOTAL_INVESTMENT);
       setPlaidAccounts(DEMO_PLAID_ACCOUNTS);
       setLoading(false);
+      setLastRefreshedAt(Date.now());
       return;
     }
 
@@ -375,6 +380,7 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
     if (cached) {
       applyCache(cached);
       setLoading(false);
+      setLastRefreshedAt(cached.cachedAt);
       return;
     }
 
@@ -383,6 +389,7 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
       try {
         const fresh = await fetchAndCache(uid);
         applyCache(fresh);
+        setLastRefreshedAt(Date.now());
       } catch {
         console.error('Failed to fetch brokerage data');
       } finally {
@@ -427,10 +434,11 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
       totalInvestment: totalInvestment + manualTotal,
       plaidAccounts,
       loading,
+      lastRefreshedAt,
       refresh,
       forceRefresh,
     };
-  }, [accounts, positions, totalInvestment, plaidAccounts, loading, refresh, forceRefresh, manualHoldings]);
+  }, [accounts, positions, totalInvestment, plaidAccounts, loading, lastRefreshedAt, refresh, forceRefresh, manualHoldings]);
 
   return (
     <BrokerageDataContext.Provider value={mergedValue}>

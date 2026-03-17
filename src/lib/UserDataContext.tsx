@@ -107,6 +107,7 @@ interface UserData {
   incomeTaxRecords: IncomeTaxRecord[];
   uid: string | null;
   isLoading: boolean;
+  lastRefreshedAt: number | null;
   refresh: () => Promise<void>;
 }
 
@@ -121,6 +122,7 @@ const UserDataContext = createContext<UserData>({
   incomeTaxRecords: [],
   uid: null,
   isLoading: true,
+  lastRefreshedAt: null,
   refresh: () => Promise.resolve(),
 });
 
@@ -154,6 +156,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     netWorthHistory: [],
     incomeTaxRecords: [],
     isLoading: true,
+    lastRefreshedAt: null,
   });
 
   const loadFromCache = useCallback((): CachedUserData | null => {
@@ -182,6 +185,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
         netWorthHistory: DEMO_NET_WORTH_HISTORY,
         incomeTaxRecords: DEMO_INCOME_TAX_RECORDS,
         isLoading: false,
+        lastRefreshedAt: Date.now(),
       });
       return;
     }
@@ -196,6 +200,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
         netWorthHistory: [],
         incomeTaxRecords: [],
         isLoading: false,
+        lastRefreshedAt: null,
       });
       return;
     }
@@ -230,7 +235,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
           // localStorage full — no-op
         }
 
-        setData({ ...userData, isLoading: false });
+        setData({ ...userData, isLoading: false, lastRefreshedAt: Date.now() });
         return;
       }
     } catch (err) {
@@ -265,6 +270,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
         netWorthHistory: cached.netWorthHistory,
         incomeTaxRecords: cached.incomeTaxRecords,
         isLoading: false,
+        lastRefreshedAt: cached.cachedAt,
       });
       return;
     }
