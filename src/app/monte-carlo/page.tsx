@@ -37,6 +37,9 @@ interface SimParams {
   retirementSpend: number;
   // Home
   homeValue: number;
+  mortgageBalance: number;
+  annualMortgagePayment: number; // total annual payment (P&I)
+  mortgageRate: number; // annual interest rate
   homeMaintenanceRate: number; // annual % of home value spent on maintenance
   includeHome: boolean;
   // Distribution params
@@ -139,11 +142,14 @@ function runMonteCarloSync(params: SimParams): SimResult {
   for (let sim = 0; sim < NUM_SIMS; sim++) {
     let stockVal = params.startingPortfolio;
     let homeVal = params.includeHome ? params.homeValue : 0;
+    let mortgage = params.includeHome ? params.mortgageBalance : 0;
     let failed = false;
 
+    // Home equity = home value - mortgage
+    const homeEquity0 = Math.max(homeVal - mortgage, 0);
     const stockValues: number[] = [stockVal];
-    const homeValues: number[] = [homeVal];
-    const totalValues: number[] = [stockVal + homeVal];
+    const homeEquityValues: number[] = [homeEquity0];
+    const totalValues: number[] = [stockVal + homeEquity0];
     let spend = params.annualSpend;
     let isRetired = false;
 
@@ -174,33 +180,44 @@ function runMonteCarloSync(params: SimParams): SimResult {
       // Liquid investments: grows by stock return, plus contributions, minus spending
       stockVal = stockVal * (1 + rStock) + contrib - yearSpend;
 
-      // Home: grows by real estate return, minus maintenance costs
+      // Home: full value appreciates, minus maintenance costs
       const maintenanceCost = homeVal * params.homeMaintenanceRate;
       homeVal = homeVal * (1 + rHome) - maintenanceCost;
       homeVal = Math.max(homeVal, 0);
+
+      // Mortgage: pay down principal (payment minus interest)
+      if (mortgage > 0) {
+        const interestPayment = mortgage * params.mortgageRate;
+        const principalPayment = Math.min(params.annualMortgagePayment - interestPayment, mortgage);
+        mortgage = Math.max(mortgage - principalPayment, 0);
+      }
+
+      // Home equity = home value - remaining mortgage
+      const homeEquity = Math.max(homeVal - mortgage, 0);
 
       // Inflation-adjust spend
       spend *= (1 + params.inflationRate);
 
       stockValues.push(Math.max(stockVal, 0));
-      homeValues.push(homeVal);
-      totalValues.push(Math.max(stockVal, 0) + homeVal);
+      homeEquityValues.push(homeEquity);
+      totalValues.push(Math.max(stockVal, 0) + homeEquity);
 
       // Success = liquid portfolio never goes to $0
       if (stockVal <= 0) {
         failed = true;
         for (let r = year + 1; r <= params.years; r++) {
           stockValues.push(0);
-          const hv = homeValues[homeValues.length - 1] * (1 + muHome) - homeValues[homeValues.length - 1] * params.homeMaintenanceRate;
-          homeValues.push(Math.max(hv, 0));
-          totalValues.push(Math.max(hv, 0));
+          // Continue home appreciation and mortgage paydown even after liquid runs out
+          const hv = homeEquityValues[homeEquityValues.length - 1];
+          homeEquityValues.push(Math.max(hv * (1 + muHome), 0));
+          totalValues.push(homeEquityValues[homeEquityValues.length - 1]);
         }
         break;
       }
     }
     if (!failed) successes++;
     allStockRuns.push(stockValues);
-    allHomeRuns.push(homeValues);
+    allHomeRuns.push(homeEquityValues);
     allTotalRuns.push(totalValues);
   }
 
@@ -299,6 +316,9 @@ export default function MonteCarloPage() {
   // Compute base values from real data
   const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
   const homeValue = realEstate.reduce((sum, p) => sum + (p.current_value ?? 0), 0);
+  const mortgageBalance = realEstate.reduce((sum, p) => sum + (p.mortgage_balance ?? 0), 0);
+  const mortgageRate = realEstate[0]?.mortgage_rate ? realEstate[0].mortgage_rate / 100 : 0.04;
+  const annualMortgagePayment = realEstate.reduce((sum, p) => sum + ((p.monthly_payment ?? 0) * 12), 0);
   const basePortfolio = totalInvestment > 0 ? totalInvestment : rsuValue;
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
@@ -332,7 +352,10 @@ export default function MonteCarloPage() {
     annualSpend,
     retirementSpend: Math.round(annualSpend * 0.8),
     homeValue: homeValue || 0,
-    homeMaintenanceRate: 0.01, // 1% of home value per year
+    mortgageBalance: mortgageBalance || 0,
+    annualMortgagePayment: annualMortgagePayment || 0,
+    mortgageRate: mortgageRate,
+    homeMaintenanceRate: 0.01,
     includeHome: homeValue > 0,
     muStock: 0.08,
     sigmaStock: 0.18,
@@ -383,6 +406,9 @@ export default function MonteCarloPage() {
           annualSpend,
           retirementSpend: Math.round(annualSpend * 0.8),
           homeValue: homeValue || 0,
+          mortgageBalance: mortgageBalance || 0,
+          annualMortgagePayment: annualMortgagePayment || 0,
+          mortgageRate: mortgageRate,
           includeHome: homeValue > 0,
           fireNumber,
         }));
@@ -685,7 +711,18 @@ export default function MonteCarloPage() {
                       <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="year" stroke="var(--border)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(yr) => birthYear ? `${yr}\n(${yr - birthYear})` : `${yr}`} />
+                  <XAxis
+                    dataKey="year"
+                    stroke="var(--border)"
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={Math.max(Math.floor(params.years / 6) - 1, 0)}
+                    tickFormatter={(yr) => {
+                      const age = birthYear ? yr - birthYear : null;
+                      return age ? `'${String(yr).slice(2)} (${age})` : `'${String(yr).slice(2)}`;
+                    }}
+                  />
                   <YAxis stroke="var(--border)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} tickFormatter={(v) => `$${(v / 1_000_000).toFixed(1)}M`} tickLine={false} axisLine={false} width={60} />
                   <Tooltip content={<CustomFanTooltip birthYear={birthYear} />} />
                   <ReferenceLine y={params.fireNumber} stroke="#10b981" strokeDasharray="6 4" strokeWidth={2} label={{ value: `FIRE: ${formatCurrency(params.fireNumber, true)}`, position: 'right', fill: '#10b981', fontSize: 11 }} />
