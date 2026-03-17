@@ -15,12 +15,19 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 interface UserProfile {
   annual_income: number;
+  annual_bonus: number;
+  annual_bonus_is_pct: boolean;
+  spouse_income: number;
+  spouse_bonus: number;
+  spouse_bonus_is_pct: boolean;
+  tax_rate_override: number | null;
   annual_spend: number;
   retirement_spend: number;
   state_of_residence: string;
   filing_status: string;
   fire_number: number;
   fire_target_year: number | null;
+  birth_year: number | null;
   swr: number;
 }
 

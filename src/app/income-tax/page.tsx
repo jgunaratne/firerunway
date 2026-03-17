@@ -121,7 +121,8 @@ function BreakdownTable({ items, labels, colors }: {
 }
 
 export default function IncomeTaxPage() {
-  const { uid } = useUserData();
+  const { uid, profile, refresh } = useUserData();
+  const [savingProfile, setSavingProfile] = useState(false);
   const [records, setRecords] = useState<IncomeTaxRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -144,6 +145,29 @@ export default function IncomeTaxPage() {
       return next;
     });
   };
+
+  // Profile-based bonus ($/% mode)
+  const bonusIsPct = profile?.annual_bonus_is_pct ?? false;
+  const bonusRaw = profile?.annual_bonus || 0;
+  const baseSalary = manualIncome.salary || profile?.annual_income || 0;
+  const resolvedBonus = bonusIsPct ? baseSalary * (bonusRaw / 100) : bonusRaw;
+
+  const updateProfileFields = useCallback(async (fields: Record<string, number | boolean | null>) => {
+    if (!uid) return;
+    setSavingProfile(true);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, ...fields }),
+      });
+      if (res.ok) await refresh();
+    } catch (err) {
+      console.error('Profile update error:', err);
+    } finally {
+      setSavingProfile(false);
+    }
+  }, [uid, refresh]);
 
   const load = useCallback(async () => {
     if (!uid) return;
@@ -231,9 +255,11 @@ export default function IncomeTaxPage() {
   const hasManualIncome = Object.values(manualIncome).some(v => v > 0);
   // Auto-calculate RSU remainder if not manually set
   const autoRsu = !manualIncome.rsu && totalIncome > 0 && hasManualIncome
-    ? Math.max(0, totalIncome - (manualIncome.salary || 0) - (manualIncome.bonus || 0))
+    ? Math.max(0, totalIncome - (manualIncome.salary || 0) - resolvedBonus)
     : 0;
-  const effectiveManualIncome = autoRsu > 0 ? { ...manualIncome, rsu: autoRsu } : manualIncome;
+  const effectiveManualIncome = autoRsu > 0
+    ? { ...manualIncome, rsu: autoRsu, bonus: resolvedBonus }
+    : { ...manualIncome, bonus: resolvedBonus };
   const displayIncome = hasManualIncome ? { ...effectiveManualIncome } : aggregatedIncome;
   const displayTotalIncome = hasManualIncome
     ? Object.values(effectiveManualIncome).reduce((s, v) => s + v, 0)
@@ -306,14 +332,13 @@ export default function IncomeTaxPage() {
         <div className="space-y-3">
           {[
             { key: 'salary', label: 'Base Salary', color: INCOME_COLORS.salary },
-            { key: 'bonus', label: 'Bonus', color: INCOME_COLORS.bonus },
             { key: 'rsu', label: 'RSU / Stock Comp', color: INCOME_COLORS.rsu },
           ].map(({ key, label, color }) => {
             // Auto-calculate RSU as remainder if W-2 total exists and RSU not manually set
-            const autoRsu = key === 'rsu' && !manualIncome.rsu && totalIncome > 0
-              ? Math.max(0, totalIncome - (manualIncome.salary || 0) - (manualIncome.bonus || 0))
+            const autoRsuVal = key === 'rsu' && !manualIncome.rsu && totalIncome > 0
+              ? Math.max(0, totalIncome - (manualIncome.salary || 0) - resolvedBonus)
               : 0;
-            const displayValue = manualIncome[key] || (key === 'rsu' ? autoRsu : 0);
+            const displayValue = manualIncome[key] || (key === 'rsu' ? autoRsuVal : 0);
 
             return (
             <div key={key} className="flex items-center gap-3">
@@ -325,13 +350,47 @@ export default function IncomeTaxPage() {
                   type="number"
                   value={manualIncome[key] || ''}
                   onChange={(e) => updateManualIncome(key, parseFloat(e.target.value) || 0)}
-                    placeholder={key === 'rsu' && autoRsu > 0 ? autoRsu.toLocaleString() : '0'}
+                    placeholder={key === 'rsu' && autoRsuVal > 0 ? autoRsuVal.toLocaleString() : '0'}
                     className={`w-36 bg-bg-elevated border border-border rounded-lg px-2.5 pl-6 py-1.5 text-sm number-display text-right focus:outline-none focus:border-accent/40 ${!manualIncome[key] && displayValue > 0 ? 'text-text-secondary/50' : 'text-text-primary'}`}
                 />
               </div>
             </div>
             );
           })}
+          {/* Bonus row with $/% toggle */}
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: INCOME_COLORS.bonus }} />
+            <span className="text-text-secondary text-sm flex-1">Bonus</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => updateProfileFields({ annual_bonus_is_pct: !bonusIsPct })}
+                className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${
+                  bonusIsPct
+                    ? 'bg-accent/15 border-accent/30 text-accent'
+                    : 'bg-bg-elevated border-border text-text-secondary hover:text-text-primary'
+                }`}
+                title={bonusIsPct ? 'Currently: % of base. Click for $.' : 'Currently: $. Click for %.'}
+              >
+                {bonusIsPct ? '%' : '$'}
+              </button>
+              <div className="relative">
+                {!bonusIsPct && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-secondary/40 text-sm">$</span>}
+                <input
+                  type="number"
+                  value={bonusRaw || ''}
+                  onChange={(e) => updateProfileFields({ annual_bonus: parseFloat(e.target.value) || 0 })}
+                  placeholder="0"
+                  className={`w-36 bg-bg-elevated border border-border rounded-lg px-2.5 ${bonusIsPct ? 'pl-2.5' : 'pl-6'} py-1.5 text-sm number-display text-right focus:outline-none focus:border-accent/40 text-text-primary`}
+                />
+              </div>
+              {bonusIsPct && resolvedBonus > 0 && (
+                <span className="text-xs text-text-secondary/60 number-display">
+                  ({formatCurrency(resolvedBonus)})
+                </span>
+              )}
+              {savingProfile && <span className="text-xs text-accent animate-pulse">...</span>}
+            </div>
+          </div>
           {hasManualIncome && (
             <div className="flex items-center gap-3 pt-2 border-t border-border/30">
               <div className="w-2.5 h-2.5 flex-shrink-0" />

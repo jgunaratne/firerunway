@@ -232,8 +232,96 @@ function SectionHeader({ title, pct, targetRange, actual }: {
   );
 }
 
+function BonusInput({ value, isPct, resolvedAmount, onSave }: {
+  value: number; isPct: boolean; resolvedAmount: number;
+  onSave: (val: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState('');
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="number"
+        className="w-28 bg-bg-elevated border border-accent/40 rounded px-2 py-0.5 text-sm text-text-primary text-right number-display focus:outline-none"
+        value={editVal}
+        onChange={(e) => setEditVal(e.target.value)}
+        onBlur={() => {
+          const n = parseFloat(editVal);
+          if (!isNaN(n) && n >= 0) onSave(n);
+          setEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="number-display text-sm text-text-primary cursor-pointer hover:text-accent/80 hover:underline decoration-dotted underline-offset-2"
+      onClick={() => { setEditVal(String(value || '')); setEditing(true); }}
+      title="Click to edit"
+    >
+      {value > 0
+        ? isPct
+          ? `${value}% (${formatCurrency(resolvedAmount)})`
+          : formatCurrency(value)
+        : isPct ? '0%' : formatCurrency(0)
+      }
+    </span>
+  );
+}
+
+function TaxRateInput({ rate, annualAmount, onSave }: {
+  rate: number; annualAmount: number;
+  onSave: (pctValue: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState('');
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          type="number"
+          step="0.1"
+          className="w-16 bg-bg-elevated border border-accent/40 rounded px-2 py-0.5 text-sm text-text-primary text-right number-display focus:outline-none"
+          value={editVal}
+          onChange={(e) => setEditVal(e.target.value)}
+          onBlur={() => {
+            const n = parseFloat(editVal);
+            if (!isNaN(n) && n >= 0 && n <= 100) onSave(n);
+            setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+        />
+        <span className="text-xs text-text-secondary">%</span>
+      </div>
+    );
+  }
+
+  return (
+    <span
+      className="number-display text-sm text-text-secondary/60 cursor-pointer hover:text-accent/80 hover:underline decoration-dotted underline-offset-2"
+      onClick={() => { setEditVal(rate.toFixed(0)); setEditing(true); }}
+      title="Click to set tax rate"
+    >
+      -{formatCurrency(annualAmount)} ({rate.toFixed(0)}%)
+    </span>
+  );
+}
+
 export default function SpendingPlanPage() {
-  const { profile, uid } = useUserData();
+  const { profile, uid, incomeTaxRecords, refresh } = useUserData();
+  const [saving, setSaving] = useState(false);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -419,28 +507,46 @@ export default function SpendingPlanPage() {
     }
   }, []);
 
-  // === Income ===
-  const [incomeOverride, setIncomeOverride] = useState<{ gross: number; net: number } | null>(null);
-
-  // Hydrate income override from localStorage
-  useEffect(() => {
+  // === Income (profile-based) ===
+  const updateProfileField = useCallback(async (fields: Record<string, number | boolean>) => {
+    if (!uid) return;
+    setSaving(true);
     try {
-      const saved = localStorage.getItem('csp_income_override');
-      if (saved) setIncomeOverride(JSON.parse(saved));
-    } catch { /* ignore */ }
-  }, []);
-
-  // Persist income override
-  useEffect(() => {
-    if (incomeOverride) {
-      localStorage.setItem('csp_income_override', JSON.stringify(incomeOverride));
-    } else {
-      localStorage.removeItem('csp_income_override');
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, ...fields }),
+      });
+      if (res.ok) await refresh();
+    } catch (err) {
+      console.error('Profile update error:', err);
+    } finally {
+      setSaving(false);
     }
-  }, [incomeOverride]);
+  }, [uid, refresh]);
 
-  const grossMonthlyIncome = incomeOverride?.gross ?? (profile?.annual_income || 0) / 12;
-  const netMonthlyIncome = incomeOverride?.net ?? grossMonthlyIncome * (1 - 0.30);
+  const baseSalary = profile?.annual_income || 0;
+  const bonusRaw = profile?.annual_bonus || 0;
+  const bonusIsPct = profile?.annual_bonus_is_pct ?? false;
+  const resolvedBonus = bonusIsPct ? baseSalary * (bonusRaw / 100) : bonusRaw;
+  const spouseIncome = profile?.spouse_income || 0;
+  const spouseBonusRaw = profile?.spouse_bonus || 0;
+  const spouseBonusIsPct = profile?.spouse_bonus_is_pct ?? false;
+  const resolvedSpouseBonus = spouseBonusIsPct ? spouseIncome * (spouseBonusRaw / 100) : spouseBonusRaw;
+
+  // Tax rate: profile override > W-2 auto-calc > 30% default
+  const w2TaxRate = useMemo(() => {
+    if (!incomeTaxRecords || incomeTaxRecords.length === 0) return null;
+    const latest = incomeTaxRecords[0];
+    return (latest.effective_tax_rate || 0) / 100;
+  }, [incomeTaxRecords]);
+  const taxRateOverride = profile?.tax_rate_override;
+  const effectiveTaxRate = taxRateOverride != null ? taxRateOverride / 100 : (w2TaxRate ?? 0.30);
+  const taxSource = taxRateOverride != null ? 'manual' : w2TaxRate != null ? 'from W-2' : 'default';
+
+  const totalGrossAnnual = baseSalary + resolvedBonus + spouseIncome + resolvedSpouseBonus;
+  const grossMonthlyIncome = totalGrossAnnual / 12;
+  const netMonthlyIncome = grossMonthlyIncome * (1 - effectiveTaxRate);
 
   // === Excluded transactions (persisted) ===
   const [excludedTxIds, setExcludedTxIds] = useState<Set<string>>(new Set());
@@ -784,41 +890,117 @@ export default function SpendingPlanPage() {
         <div className="py-2 px-3 bg-[var(--overlay-bg-secondary)] rounded-t-lg border-b border-border mb-1 flex items-center justify-between">
           <span className="text-sm font-bold text-text-primary">Income</span>
           <div className="flex items-center gap-2">
-            {incomeOverride && (
-              <button
-                onClick={() => setIncomeOverride(null)}
-                className="text-xs text-text-secondary/40 hover:text-red-400 transition-colors"
-                title="Reset income"
-              >
-                <X size={12} />
-              </button>
-            )}
+            {saving && <span className="text-xs text-accent animate-pulse">Saving...</span>}
             <span className="text-xs text-text-secondary/50">Click amounts to edit</span>
           </div>
         </div>
         <PlanRow
-          label="Annual base salary (excl. RSUs & bonus)"
-          amount={grossMonthlyIncome * 12}
+          label="Annual base salary"
+          amount={baseSalary}
           indent
-          onAmountChange={(val) => {
-            const monthly = val / 12;
-            setIncomeOverride({ gross: monthly, net: monthly * 0.7 });
-          }}
+          onAmountChange={(val) => updateProfileField({ annual_income: val })}
         />
+        {/* Bonus with $/% toggle */}
+        <div className="flex items-center justify-between py-2 px-3 border-b border-border/20">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm pl-4 text-text-secondary">Annual bonus</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => updateProfileField({ annual_bonus_is_pct: !bonusIsPct })}
+              className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${
+                bonusIsPct
+                  ? 'bg-accent/15 border-accent/30 text-accent'
+                  : 'bg-bg-elevated border-border text-text-secondary hover:text-text-primary'
+              }`}
+              title={bonusIsPct ? 'Currently: % of base salary. Click for dollar amount.' : 'Currently: dollar amount. Click for % of base salary.'}
+            >
+              {bonusIsPct ? '%' : '$'}
+            </button>
+            <BonusInput
+              value={bonusRaw}
+              isPct={bonusIsPct}
+              resolvedAmount={resolvedBonus}
+              onSave={(val) => updateProfileField({ annual_bonus: val })}
+            />
+          </div>
+        </div>
         <PlanRow
-          label="Gross monthly income"
-          amount={grossMonthlyIncome}
+          label="Spouse / partner base salary"
+          amount={spouseIncome}
+          indent
+          onAmountChange={(val) => updateProfileField({ spouse_income: val })}
+        />
+        {/* Spouse Bonus with $/% toggle */}
+        <div className="flex items-center justify-between py-2 px-3 border-b border-border/20">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm pl-4 text-text-secondary">Spouse bonus</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => updateProfileField({ spouse_bonus_is_pct: !spouseBonusIsPct })}
+              className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${
+                spouseBonusIsPct
+                  ? 'bg-accent/15 border-accent/30 text-accent'
+                  : 'bg-bg-elevated border-border text-text-secondary hover:text-text-primary'
+              }`}
+              title={spouseBonusIsPct ? 'Currently: % of spouse salary. Click for $.' : 'Currently: $. Click for % of spouse salary.'}
+            >
+              {spouseBonusIsPct ? '%' : '$'}
+            </button>
+            <BonusInput
+              value={spouseBonusRaw}
+              isPct={spouseBonusIsPct}
+              resolvedAmount={resolvedSpouseBonus}
+              onSave={(val) => updateProfileField({ spouse_bonus: val })}
+            />
+          </div>
+        </div>
+        <PlanRow
+          label="Total gross annual income"
+          amount={totalGrossAnnual}
           indent
           dimLabel
-          onAmountChange={(val) => setIncomeOverride(prev => prev ? { ...prev, gross: val } : { gross: val, net: val * 0.7 })}
         />
-        <PlanRow
-          label="Net monthly income (after taxes)"
-          amount={netMonthlyIncome}
-          bold
-          highlight
-          onAmountChange={(val) => setIncomeOverride(prev => prev ? { ...prev, net: val } : { gross: val / 0.7, net: val })}
-        />
+        {/* Editable tax rate — annual */}
+        <div className="flex items-center justify-between py-2 px-3 border-b border-border/20">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm pl-4 text-text-secondary/60">
+              Annual taxes ({taxSource})
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <TaxRateInput
+              rate={effectiveTaxRate * 100}
+              annualAmount={totalGrossAnnual * effectiveTaxRate}
+              onSave={(pct) => updateProfileField({ tax_rate_override: pct })}
+            />
+            {taxRateOverride != null && (
+              <button
+                onClick={() => updateProfileField({ tax_rate_override: null as unknown as number })}
+                className="text-xs text-text-secondary/40 hover:text-red-400 transition-colors ml-1"
+                title="Reset to auto-calculated rate"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Annual / Monthly summary */}
+        <div className="mt-1 border-t border-border/40">
+          <PlanRow
+            label="Net annual income"
+            amount={totalGrossAnnual * (1 - effectiveTaxRate)}
+            bold
+            highlight
+          />
+          <PlanRow
+            label="Net monthly income"
+            amount={netMonthlyIncome}
+            indent
+            dimLabel
+          />
+        </div>
       </Card>
 
       {/* Fixed Costs */}

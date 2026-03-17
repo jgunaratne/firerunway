@@ -33,12 +33,19 @@ export function disableDemoMode(): void {
 
 export const DEMO_PROFILE = {
   annual_income: 380000,
+  annual_bonus: 15,
+  annual_bonus_is_pct: true,
+  spouse_income: 95000,
+  spouse_bonus: 10,
+  spouse_bonus_is_pct: true,
+  tax_rate_override: null,
   annual_spend: 120000,
   retirement_spend: 96000,
   state_of_residence: 'WA',
   filing_status: 'mfj',
   fire_number: 3000000,
   fire_target_year: 2030,
+  birth_year: 1992,
   swr: 4,
 };
 

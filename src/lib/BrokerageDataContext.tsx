@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { maskAccountNumber } from '@/lib/mask-utils';
 import {
   isDemoMode,
@@ -10,6 +10,34 @@ import {
 
 const CACHE_KEY = 'snaptrade_brokerage_data';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MANUAL_HOLDINGS_KEY = 'firerunway-manual-holdings';
+
+export interface ManualHolding {
+  id: string;
+  ticker: string;
+  shares: number;
+  price: number;
+}
+
+/** Read manual holdings from localStorage. Safe to call during SSR. */
+export function getManualHoldings(): ManualHolding[] {
+  try {
+    const raw = localStorage.getItem(MANUAL_HOLDINGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+/** Write manual holdings to localStorage and dispatch a storage event. */
+export function setManualHoldings(holdings: ManualHolding[]) {
+  try {
+    const value = JSON.stringify(holdings);
+    localStorage.setItem(MANUAL_HOLDINGS_KEY, value);
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: MANUAL_HOLDINGS_KEY,
+      newValue: value,
+    }));
+  } catch { /* SSR guard */ }
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -363,8 +391,49 @@ export function BrokerageDataProvider({ uid, children }: { uid: string | null; c
     })();
   }, [uid, loadFromCache, fetchAndCache, applyCache]);
 
+  // ─── Manual Holdings ────────────────────────────────────────────────
+  const [manualHoldings, setManualHoldingsState] = useState<ManualHolding[]>([]);
+
+  useEffect(() => {
+    setManualHoldingsState(getManualHoldings());
+    const handler = (e: StorageEvent) => {
+      if (e.key === MANUAL_HOLDINGS_KEY) {
+        setManualHoldingsState(e.newValue ? JSON.parse(e.newValue) : []);
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
+  // Merge manual holdings into positions + totalInvestment
+  const mergedValue = useMemo(() => {
+    const manualPositions: BrokeragePosition[] = manualHoldings.map(h => ({
+      ticker: h.ticker || 'N/A',
+      name: h.ticker || 'Manual Entry',
+      shares: h.shares,
+      price: h.price,
+      value: h.shares * h.price,
+      openPnl: null,
+      averagePurchasePrice: null,
+      accountId: 'manual',
+      accountName: 'Manual Entry',
+      accountType: 'Manual',
+      institutionName: 'Manual Entry',
+    }));
+    const manualTotal = manualPositions.reduce((s, p) => s + p.value, 0);
+    return {
+      accounts,
+      positions: [...positions, ...manualPositions],
+      totalInvestment: totalInvestment + manualTotal,
+      plaidAccounts,
+      loading,
+      refresh,
+      forceRefresh,
+    };
+  }, [accounts, positions, totalInvestment, plaidAccounts, loading, refresh, forceRefresh, manualHoldings]);
+
   return (
-    <BrokerageDataContext.Provider value={{ accounts, positions, totalInvestment, plaidAccounts, loading, refresh, forceRefresh }}>
+    <BrokerageDataContext.Provider value={mergedValue}>
       {children}
     </BrokerageDataContext.Provider>
   );
