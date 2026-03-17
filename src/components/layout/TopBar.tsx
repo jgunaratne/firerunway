@@ -37,7 +37,7 @@ export default function TopBar() {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
-  const { totalNetWorth, investable, rsuValue } = useNetWorth();
+  const { totalNetWorth, investable, rsuValue, isLoading: dataLoading } = useNetWorth();
   const { forceRefresh: refreshHoldings, lastRefreshedAt: brokerageRefreshed } = useBrokerageData();
   const { refresh: refreshUserData, lastRefreshedAt: userDataRefreshed } = useUserData();
   const lastRefreshed = brokerageRefreshed || userDataRefreshed
@@ -137,7 +137,11 @@ export default function TopBar() {
           <div className="flex items-center gap-2">
             <span className="text-text-secondary">FI Score</span>
             <span className="font-semibold text-accent">
-              <AnimatedNumber value={fiScore} />
+              {dataLoading ? (
+                <span className="inline-block w-8 h-4 rounded bg-border animate-pulse" />
+              ) : (
+                <AnimatedNumber value={fiScore} />
+              )}
             </span>
             {demoMode && (
               <span className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Demo</span>
@@ -146,7 +150,11 @@ export default function TopBar() {
           <div className="flex items-center gap-2">
             <span className="text-text-secondary">Net Worth</span>
             <span className="font-semibold text-accent-green font-mono">
-              <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} />
+              {dataLoading ? (
+                <span className="inline-block w-16 h-4 rounded bg-border animate-pulse" />
+              ) : (
+                <AnimatedNumber value={totalNetWorth} format={(n) => formatCurrency(n, true)} />
+              )}
             </span>
           </div>
           <div className="flex items-center gap-1.5 relative group">

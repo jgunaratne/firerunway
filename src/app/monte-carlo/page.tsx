@@ -10,9 +10,10 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import AIAnalysis from '@/components/shared/AIAnalysis';
 import { formatCurrency } from '@/lib/calculations';
 import { useUserData } from '@/lib/UserDataContext';
-import { useBrokerageData } from '@/lib/BrokerageDataContext';
+
 import { usePageContext } from '@/lib/PageContextProvider';
-import { useStockPrice } from '@/hooks/useStockPrice';
+
+import { useNetWorth } from '@/hooks/useNetWorth';
 import {
   Briefcase, GraduationCap, TrendingDown, DollarSign,
   Heart, Home as HomeIcon, Calendar,
@@ -307,19 +308,17 @@ function CustomFanTooltip({ active, payload, label, birthYear }: {
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function MonteCarloPage() {
-  const { profile, rsuGrants, realEstate, isLoading, uid, refresh } = useUserData();
-  const { totalInvestment } = useBrokerageData();
+  const { profile, realEstate, isLoading, uid, refresh } = useUserData();
+  const { investable: netWorthInvestable,
+          totalPropertyValue, totalMortgageDebt } = useNetWorth();
   const [savingProfile, setSavingProfile] = useState(false);
-  const ticker = rsuGrants[0]?.company_ticker || 'AMZN';
-  const stockPrice = useStockPrice(ticker);
 
-  // Compute base values from real data
-  const rsuValue = rsuGrants.reduce((sum, g) => sum + g.vested_shares * stockPrice, 0);
-  const homeValue = realEstate.reduce((sum, p) => sum + (p.current_value ?? 0), 0);
-  const mortgageBalance = realEstate.reduce((sum, p) => sum + (p.mortgage_balance ?? 0), 0);
+  // Use useNetWorth as single source of truth for starting values (matches TopBar)
+  const homeValue = totalPropertyValue;
+  const mortgageBalance = totalMortgageDebt;
   const mortgageRate = realEstate[0]?.mortgage_rate ? realEstate[0].mortgage_rate / 100 : 0.04;
   const annualMortgagePayment = realEstate.reduce((sum, p) => sum + ((p.monthly_payment ?? 0) * 12), 0);
-  const basePortfolio = totalInvestment > 0 ? totalInvestment : rsuValue;
+  const basePortfolio = netWorthInvestable;
   const annualSpend = profile?.annual_spend || 0;
   const annualIncome = profile?.annual_income || 0;
   const fireNumber = profile?.fire_number || 0;
@@ -398,30 +397,35 @@ export default function MonteCarloPage() {
   useEffect(() => {
     if (!isLoading && !dataSeeded && (basePortfolio > 0 || profile)) {
       const saved = loadSavedParams();
+      // Always sync financial facts from real data — these change over time
+      // Only preserve user-configured settings (distribution params, etc.) from save
+      const financialFacts = {
+        startingPortfolio: basePortfolio || 0,
+        homeValue: homeValue || 0,
+        mortgageBalance: mortgageBalance || 0,
+        annualMortgagePayment: annualMortgagePayment || 0,
+        mortgageRate: mortgageRate,
+        includeHome: homeValue > 0,
+      };
       if (!saved) {
         setParams(prev => ({
           ...prev,
-          startingPortfolio: basePortfolio || prev.startingPortfolio,
+          ...financialFacts,
           annualContribution: Math.round(annualIncome * savingsRate),
           annualSpend,
           retirementSpend: Math.round(annualSpend * 0.8),
-          homeValue: homeValue || 0,
-          mortgageBalance: mortgageBalance || 0,
-          annualMortgagePayment: annualMortgagePayment || 0,
-          mortgageRate: mortgageRate,
-          includeHome: homeValue > 0,
           fireNumber,
         }));
       } else {
+        // Merge saved user preferences with fresh financial data
         setParams(prev => ({
           ...prev,
-          startingPortfolio: basePortfolio || prev.startingPortfolio,
-          homeValue: homeValue || prev.homeValue,
+          ...financialFacts,
         }));
       }
       setDataSeeded(true);
     }
-  }, [isLoading, dataSeeded, basePortfolio, homeValue, annualIncome, annualSpend, savingsRate, fireNumber, profile]);
+  }, [isLoading, dataSeeded, basePortfolio, homeValue, mortgageBalance, annualMortgagePayment, mortgageRate, annualIncome, annualSpend, savingsRate, fireNumber, profile]);
 
   // Auto-save params to localStorage whenever they change
   useEffect(() => {
