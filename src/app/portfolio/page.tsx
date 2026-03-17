@@ -159,7 +159,7 @@ function TreemapTooltipContent({ active, payload }: any) {
 // ─── Holdings Tab ───────────────────────────────────────────────────
 
 function HoldingsTab() {
-  const { positions, totalInvestment, loading, accounts: brokerageAccounts } = useBrokerageData();
+  const { positions, totalInvestment, loading, accounts: brokerageAccounts, lastRefreshedAt } = useBrokerageData();
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'treemap'>('list');
 
@@ -386,7 +386,11 @@ function HoldingsTab() {
             <p className="number-display text-xl font-bold text-text-primary">
               <AnimatedNumber value={totalInvestment} format={(n) => formatCurrency(n)} />
             </p>
-            <p className="text-sm text-text-secondary">Last synced: just now</p>
+            <p className="text-sm text-text-secondary">
+              {lastRefreshedAt
+                ? `Synced ${new Date(lastRefreshedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}`
+                : 'Not yet synced'}
+            </p>
           </div>
         </div>
       </Card>
