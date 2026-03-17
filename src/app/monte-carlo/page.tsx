@@ -49,6 +49,8 @@ interface SimParams {
   muHome: number;
   sigmaHome: number;
   rho: number; // correlation coefficient
+  // Retirement
+  retirementYear: number | null; // calendar year when contributions stop
   // General
   inflationRate: number;
   years: number;
@@ -160,10 +162,16 @@ function runMonteCarloSync(params: SimParams): SimResult {
       const rStock = muStock + L11 * z1;
       const rHome = muHome + L21 * z1 + L22 * z2;
 
+      const currentYear = new Date().getFullYear() + year;
+
+      // Check if retirement year has been reached
+      if (params.retirementYear && currentYear >= params.retirementYear) {
+        isRetired = true;
+      }
+
       let contrib = isRetired ? 0 : params.annualContribution;
       let yearSpend = isRetired ? params.retirementSpend : spend;
 
-      const currentYear = new Date().getFullYear() + year;
       for (const evt of params.lifeEvents) {
         if (evt.year === currentYear) {
           if (evt.type === 'quit' || evt.type === 'layoff') {
@@ -361,6 +369,7 @@ export default function MonteCarloPage() {
     muHome: 0.04,
     sigmaHome: 0.04,
     rho: 0.20,
+    retirementYear: null,
     inflationRate: 0.03,
     years: 25,
     fireNumber: fireNumber,
@@ -741,6 +750,21 @@ export default function MonteCarloPage() {
                     <ReferenceLine key={evt.id} x={evt.year} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} label={{ value: evt.iconLabel, position: 'top', fontSize: 11 }} />
                   ))}
 
+                  {/* Retirement year marker */}
+                  {params.retirementYear && params.retirementYear > currentYear && params.retirementYear <= currentYear + params.years && (
+                    <ReferenceLine
+                      x={params.retirementYear}
+                      stroke="#f97316"
+                      strokeDasharray="6 3"
+                      strokeWidth={1.5}
+                      label={{
+                        value: birthYear ? `Retire (${params.retirementYear - birthYear})` : `Retire ${params.retirementYear}`,
+                        position: 'top',
+                        fill: '#f97316',
+                        fontSize: 11,
+                      }}
+                    />
+                  )}
                   {chartView === 'fan' ? (
                     <>
                       <Area type="monotone" dataKey="p90" stroke="none" fill="url(#p90grad)" name="90th pctile" isAnimationActive={false} />
@@ -947,6 +971,40 @@ export default function MonteCarloPage() {
                   <div>
                     <label className="text-sm text-text-secondary">Annual contribution</label>
                     <input type="text" value={`$${params.annualContribution.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, annualContribution: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-text-secondary">Stop contributions at{birthYear ? ' (age)' : ' (year)'}</label>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <input
+                        type="number"
+                        value={params.retirementYear ? (birthYear ? params.retirementYear - birthYear : params.retirementYear) : ''}
+                        placeholder={birthYear ? 'e.g. 65' : `e.g. ${currentYear + 20}`}
+                        onChange={e => {
+                          const val = parseInt(e.target.value);
+                          if (!e.target.value) {
+                            setParams(p => ({ ...p, retirementYear: null }));
+                          } else if (birthYear) {
+                            setParams(p => ({ ...p, retirementYear: birthYear + val }));
+                          } else {
+                            setParams(p => ({ ...p, retirementYear: val }));
+                          }
+                        }}
+                        className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary"
+                      />
+                      {params.retirementYear && (
+                        <button
+                          onClick={() => setParams(p => ({ ...p, retirementYear: null }))}
+                          className="text-xs text-text-secondary hover:text-accent-red transition-colors shrink-0"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-text-secondary/60 mt-0.5">
+                      {params.retirementYear
+                        ? `Contributions stop in ${params.retirementYear}${birthYear ? ` (age ${params.retirementYear - birthYear})` : ''}, then spend $${params.retirementSpend.toLocaleString()}/yr`
+                        : 'Leave empty to contribute for the full period'}
+                    </p>
                   </div>
                 </div>
               </div>
