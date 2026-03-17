@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
   Label,
@@ -320,6 +320,7 @@ export default function MonteCarloPage() {
   const { investable: netWorthInvestable,
           totalPropertyValue, totalMortgageDebt } = useNetWorth();
   const [savingProfile, setSavingProfile] = useState(false);
+  const fireNumberTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Use useNetWorth as single source of truth for starting values (matches TopBar)
   const homeValue = totalPropertyValue;
@@ -1096,7 +1097,16 @@ export default function MonteCarloPage() {
                 <div className="space-y-2">
                   <div>
                     <label className="text-sm text-text-secondary">FIRE number</label>
-                    <input type="text" value={`$${params.fireNumber.toLocaleString()}`} onChange={e => setParams(p => ({ ...p, fireNumber: parseInt(e.target.value.replace(/\D/g, '')) || 0 }))} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
+                    <input type="text" value={`$${params.fireNumber.toLocaleString()}`} onChange={e => {
+                      const val = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                      setParams(p => ({ ...p, fireNumber: val }));
+                      // Debounce profile save
+                      if (fireNumberTimerRef.current) clearTimeout(fireNumberTimerRef.current);
+                      fireNumberTimerRef.current = setTimeout(() => {
+                        updateProfileField('fire_number', val);
+                      }, 500);
+                    }} className="w-full bg-bg-elevated border border-border rounded px-2 py-1.5 text-sm number-display text-text-primary mt-0.5" />
+                    <p className="text-[11px] text-text-secondary/60 mt-0.5">Synced across all pages</p>
                   </div>
                   <div>
                     <label className="text-sm text-text-secondary">Projection years: {params.years}{currentAge ? ` (to age ${currentAge + params.years})` : ''}</label>
